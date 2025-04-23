@@ -2,52 +2,99 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import AnimatedButton from "@/components/common/AnimatedButton";
+import { categories } from "@/lib/data"; // Import categories
+import { Collection } from "@/lib/interdace"; // Import Collection interface
 
-const CreateNFTPage = () => {
+// Rename component
+const CreateCollectionPage = () => {
+  // Update state to match Collection fields (excluding id, volume, verified, image string initially)
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
-    price: "",
-    image: null,
+    creator: "",
+    items: "",
+    floorPrice: "",
+    category: categories[1]?.id || "art", // Default to the first category after 'all'
+    imageFile: null as File | null, // Store the file object
   });
-  const [isUploading, setIsUploading] = useState(false);
-  const [preview, setPreview] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [preview, setPreview] = useState<string>(""); // Keep preview URL state
 
-  const handleImageChange = (event: any) => {
-    const file = event.target.files[0];
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      setFormData({ ...formData, image: file });
+      setFormData({ ...formData, imageFile: file });
+      // Revoke previous object URL to prevent memory leaks
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
       setPreview(URL.createObjectURL(file));
     }
   };
 
-  const handleInputChange = (event: any) => {
+  const handleInputChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = event.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (event: any) => {
+  // Rename submit handler
+  const handleCreateCollection = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsUploading(true);
+    if (!formData.imageFile) {
+      alert("Please upload a collection image.");
+      return;
+    }
+    setIsSubmitting(true);
+
+    // Create FormData object to send file and text data
+    const data = new FormData();
+    data.append('name', formData.name);
+    data.append('creator', formData.creator);
+    data.append('items', formData.items);
+    data.append('floorPrice', formData.floorPrice);
+    data.append('category', formData.category);
+    data.append('imageFile', formData.imageFile); // Append the file object
 
     try {
-      setTimeout(() => {
-        console.log("NFT created:", formData);
-        setIsUploading(false);
-        alert("NFT created successfully");
-        setFormData({
-          name: "",
-          description: "",
-          price: "",
-          image: null,
-        });
-        setPreview("");
-      }, 2000);
-    } catch (error) {
-      setIsUploading(false);
-      console.log(error);
+      const response = await fetch('/api/collections', {
+        method: 'POST',
+        body: data, // Send FormData object
+      });
+
+      if (!response.ok) {
+        // Attempt to read error message from response body
+        const errorData = await response.json().catch(() => ({})); // Gracefully handle non-JSON errors
+        console.error("API Error Response:", errorData);
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const newCollection = await response.json();
+      console.log("Collection Created via API:", newCollection);
+      alert(`Collection '${newCollection.name}' created successfully!`);
+
+      // Reset form
+      setFormData({
+        name: "",
+        creator: "",
+        items: "",
+        floorPrice: "",
+        category: categories[1]?.id || "art",
+        imageFile: null,
+      });
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+      setPreview("");
+
+    } catch (error: any) {
+      console.error("Error creating collection:", error);
+      alert(`Failed to create collection: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
@@ -55,16 +102,19 @@ const CreateNFTPage = () => {
       transition={{ duration: 0.5 }}
       className="max-w-3xl mx-auto"
     >
-      <h1 className="text-3xl font-bold text-white mb-8">Create New NFT</h1>
-      <form className="space-y-6" onSubmit={handleSubmit}>
+      {/* Update title */}
+      <h1 className="text-3xl font-bold text-white mb-8">Create New Collection</h1>
+      {/* Update form handler */}
+      <form className="space-y-6" onSubmit={handleCreateCollection}>
         <motion.div
           whileHover={{ scale: 1.01 }}
           className="bg-gray-800 p-6 rounded-xl"
         >
+          {/* Update section title */}
           <h2 className="text-xl font-semibold text-white mb-4">
-            Upload Media
+            Collection Image
           </h2>
-
+          {/* Image upload section remains similar */}
           <div className="border-2 border-dashed border-gray-700 text-center rounded-lg p-8 cursor-pointer">
             {preview ? (
               <div className="relative h-64 w-full mb-4">
@@ -91,17 +141,18 @@ const CreateNFTPage = () => {
                 </svg>
 
                 <p className="tezxt-gray-400">
-                  PNG, GIF, WEBP, MP4 or AVI. Max 100MB.
+                  PNG, GIF, WEBP. Max 100MB.
                 </p>
               </div>
             )}
             <label className="mt-4 inline-block px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors cursor-pointer">
-              Choose File
+              Choose Image
               <input
                 type="file"
                 className="hidden"
-                accept="image/*,video/*"
+                accept="image/png, image/gif, image/webp, image/jpeg"
                 onChange={handleImageChange}
+                required // Make image required for collection
               />
             </label>
           </div>
@@ -111,10 +162,12 @@ const CreateNFTPage = () => {
           whileHover={{ scale: 1.01 }}
           className="bg-gray-800 p-6 rounded-xl"
         >
-          <h2 className="text-xl font-semibold text-white mb-4">NFT Details</h2>
+          {/* Update section title */}
+          <h2 className="text-xl font-semibold text-white mb-4">Collection Details</h2>
           <div className="space-y-4">
+            {/* Collection Name */}
             <div>
-              <label className="block text-gray-400 mb-2">Name</label>
+              <label className="block text-gray-400 mb-2">Collection Name</label>
               <input
                 type="text"
                 name="name"
@@ -124,40 +177,79 @@ const CreateNFTPage = () => {
                 required
               />
             </div>
-            <div>
-              <label className="block text-gray-400 mb-2">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
+            {/* Creator Name */}
+             <div>
+              <label className="block text-gray-400 mb-2">Creator Name</label>
+              <input
+                type="text"
+                name="creator"
+                value={formData.creator}
                 onChange={handleInputChange}
-                rows={4}
                 className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
                 required
               />
             </div>
-            <div>
-              <label className="block text-gray-400 mb-2">Price (ETH)</label>
+            {/* Number of Items */}
+             <div>
+              <label className="block text-gray-400 mb-2">Number of Items</label>
               <input
                 type="number"
-                name="price"
-                value={formData.price}
+                name="items"
+                value={formData.items}
                 onChange={handleInputChange}
-                min="0.01"
+                 min="1"
+                step="1"
+                className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
+                required
+              />
+            </div>
+            {/* Floor Price */}
+            <div>
+              <label className="block text-gray-400 mb-2">Floor Price (ETH)</label>
+              <input
+                type="number"
+                name="floorPrice" // Changed from 'price'
+                value={formData.floorPrice} // Changed from 'price'
+                onChange={handleInputChange}
+                min="0" // Allow 0 floor price
                 step="0.01"
                 className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
                 required
               />
             </div>
+             {/* Category Dropdown */}
+             <div className="relative"> {/* Added relative positioning for the arrow */}
+                <label htmlFor="category" className="block text-gray-400 mb-2">Category</label>
+                <select
+                  id="category"
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 appearance-none pr-8"
+                  required
+                >
+                  {categories.filter(cat => cat.id !== 'all').map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                 <div className="pointer-events-none absolute inset-y-0 right-0 top-0 pt-7 flex items-center px-2 text-gray-400"> {/* Adjusted arrow positioning */}
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+              </div>
+            {/* Removed Description Field */}
           </div>
         </motion.div>
 
         <div className="flex justify-end">
+          {/* Update button text and disabled logic */}
           <AnimatedButton
             type="submit"
-            disabled={isUploading || !formData.image}
+            disabled={isSubmitting || !formData.imageFile} // Check for imageFile
             className="px-8 py-3"
           >
-            {isUploading ? (
+            {isSubmitting ? (
               <span className="flex items-center">
                 <svg
                   className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
@@ -179,10 +271,10 @@ const CreateNFTPage = () => {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-                Creating ...
+                Creating Collection...
               </span>
             ) : (
-              "Create NFT"
+              "Create Collection"
             )}
           </AnimatedButton>
         </div>
@@ -191,4 +283,5 @@ const CreateNFTPage = () => {
   );
 };
 
-export default CreateNFTPage;
+// Update export name
+export default CreateCollectionPage;

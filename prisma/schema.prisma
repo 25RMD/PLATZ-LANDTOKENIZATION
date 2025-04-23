@@ -1,0 +1,24 @@
+    // prisma/schema.prisma
+
+    generator client {
+      provider = "prisma-client-js"
+    }
+
+    datasource db {
+      provider = "postgresql"
+      url      = env("DATABASE_URL")
+    }
+
+    model Collection {
+      id         String   @id @default(cuid()) // Use cuid() or uuid() for unique IDs
+      name       String
+      creator    String
+      items      Int
+      volume     Float    @default(0) // Use Float for potential decimals
+      floorPrice Float
+      image      String   // This will store the URL from your image storage
+      category   String
+      verified   Boolean  @default(false)
+      createdAt  DateTime @default(now()) // Optional: track creation time
+      updatedAt  DateTime @updatedAt     // Optional: track update time
+    }

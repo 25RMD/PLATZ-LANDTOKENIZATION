@@ -1,6 +1,6 @@
 "use client";
-import { categories, collections, sortOptions } from "@/lib/data";
-import React, { useState } from "react";
+import { categories, sortOptions } from "@/lib/data";
+import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   FiChevronDown,
@@ -8,23 +8,52 @@ import {
   FiGrid,
   FiList,
   FiSearch,
+  FiAlertCircle
 } from "react-icons/fi";
 import CollectionCard from "@/components/CollectionCard";
 import CollectionListCard from "@/components/CollectionListCard";
+import { Collection } from "@/lib/interdace";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 const CollectionsPage = () => {
+  const [allCollections, setAllCollections] = useState<Collection[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("volume");
 
-  const filteredCollections = collections
+  useEffect(() => {
+    const fetchCollections = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/collections');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data: Collection[] = await response.json();
+        setAllCollections(data);
+      } catch (err: any) {
+        console.error("Failed to fetch collections:", err);
+        setError(err.message || "Failed to load collections. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCollections();
+  }, []);
+
+  const filteredCollections = allCollections
     .filter((collection) =>
       collection.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .filter((collection) =>
-      activeCategory == "all" ? true : collection.category === activeCategory
+      activeCategory === "all" ? true : collection.category === activeCategory
     )
     .sort((a, b) => {
       switch (sortBy) {
@@ -35,6 +64,11 @@ const CollectionsPage = () => {
         case "items":
           return b.items - a.items;
         case "newest":
+          const idA = parseInt(a.id);
+          const idB = parseInt(b.id);
+          if (!isNaN(idA) && !isNaN(idB)) {
+             return idB - idA;
+          }
           return b.id.localeCompare(a.id);
         default:
           return 0;
@@ -57,7 +91,6 @@ const CollectionsPage = () => {
         </p>
       </motion.div>
 
-      {/* Search and Filter Bar */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -129,7 +162,6 @@ const CollectionsPage = () => {
           </div>
         </div>
 
-        {/* Filter Panel */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -163,8 +195,24 @@ const CollectionsPage = () => {
           )}
         </AnimatePresence>
       </motion.div>
-      {/* collections  */}
-      {filteredCollections?.length === 0 ? (
+
+      {isLoading ? (
+        <div className="flex justify-center items-center py-20">
+          <LoadingSpinner size="lg" />
+          <p className="ml-4 text-white">Loading collections...</p>
+        </div>
+      ) : error ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center py-20 bg-red-900/20 rounded-lg border border-red-700"
+        >
+          <FiAlertCircle className="mx-auto h-12 w-12 text-red-400 mb-4" />
+          <h3 className="text-xl text-red-300 mb-2">Failed to Load Collections</h3>
+          <p className="text-red-400">{error}</p>
+        </motion.div>
+      ) : filteredCollections.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -173,9 +221,9 @@ const CollectionsPage = () => {
         >
           <h3 className="text-xl text-white mb-2">No collections found</h3>
           <p className="text-gray-400">
-            {searchTerm
-              ? "Try a different search term"
-              : "No collections available"}
+            {searchTerm || activeCategory !== 'all'
+              ? "Try adjusting your search or filters"
+              : "No collections available. Try creating one!"}
           </p>
         </motion.div>
       ) : viewMode === "grid" ? (
@@ -185,9 +233,9 @@ const CollectionsPage = () => {
           transition={{ duration: 0.5 }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
         >
-          {filteredCollections?.map((collection, index) => (
+          {filteredCollections.map((collection, index) => (
             <motion.div
-              key={index}
+              key={collection.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.05 }}

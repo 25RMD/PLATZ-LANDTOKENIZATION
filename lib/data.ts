@@ -308,6 +308,17 @@ export const collections: Collection[] = [
     category: "pfp",
     verified: true,
   },
+  {
+    id: "6",
+    name: "test",
+    creator: "test",
+    items: 10000,
+    volume: 125000,
+    floorPrice: 65.5,
+    image: "/images/crypto1.png",
+    category: "art",
+    verified: true,
+  },
 ];
 
 export const categories = [
@@ -380,9 +391,8 @@ export const footerLinks = [
 ];
 
 export const navItems = [
-  { name: "Explore", path: "/marketplace" },
+  { name: "Explore", path: "/collections" },
   { name: "Create", path: "/create" },
-  { name: "Collections", path: "/collections" },
 ];
 
 export const socialShare = [
