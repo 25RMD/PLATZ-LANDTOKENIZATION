@@ -8,12 +8,15 @@ import {
   FiGrid,
   FiList,
   FiSearch,
-  FiAlertCircle
+  FiAlertCircle,
+  FiX
 } from "react-icons/fi";
 import CollectionCard from "@/components/CollectionCard";
 import CollectionListCard from "@/components/CollectionListCard";
 import { Collection } from "@/lib/interdace";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
+import CollectionCardSkeleton from '@/components/skeletons/CollectionCardSkeleton';
+import CollectionListCardSkeleton from '@/components/skeletons/CollectionListCardSkeleton';
 
 const CollectionsPage = () => {
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
@@ -76,18 +79,18 @@ const CollectionsPage = () => {
     });
 
   return (
-    <>
+    <div className="pt-8 md:pt-12">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="mb-12"
       >
-        <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-          Browse Collections
+        <h1 className="text-4xl md:text-5xl font-bold text-text-light dark:text-text-dark mb-3">
+          Browse Properties
         </h1>
-        <p className="text-gray-400">
-          Discover the most popular NFT collections on our marketplace
+        <p className="text-base text-gray-500 dark:text-gray-400">
+          Discover unique digital assets and land tokens.
         </p>
       </motion.div>
 
@@ -95,28 +98,32 @@ const CollectionsPage = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="mb-8"
+        className="mb-10"
       >
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-          <div className="relative w-full md:w-1/3">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-6">
+          <div className="relative w-full md:w-2/5">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FiSearch className="text-gray-400" />
+              <FiSearch className="text-gray-400 dark:text-gray-500" />
             </div>
             <input
               type="text"
-              placeholder="Search collections..."
-              className="w-full bg-gray-800 text-white px-4 py-2 pl-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
+              placeholder="Search properties..."
+              className="w-full bg-gray-50 dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2.5 pl-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-200 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto">
+          <div className="flex gap-2 w-full md:w-auto flex-wrap">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className={`flex items-center gap-1.5 px-4 py-2 border rounded-lg text-sm transition-colors duration-150 ${ 
+                showFilters 
+                  ? 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 text-text-light dark:text-text-dark' 
+                  : 'bg-transparent border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600'
+              }`}
             >
-              <FiFilter />
+              <FiFilter className="w-4 h-4"/>
               <span>Filters</span>
             </button>
 
@@ -124,39 +131,41 @@ const CollectionsPage = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none bg-gray-800 text-white px-4 py-2 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
+                className="appearance-none bg-gray-50 dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2.5 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-200 dark:border-zinc-700 transition-colors text-sm"
               >
                 {sortOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
+                  <option key={option.id} value={option.id} className="bg-primary-light dark:bg-primary-dark text-text-light dark:text-text-dark">
+                    Sort: {option.name}
                   </option>
                 ))}
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <FiChevronDown className="text-gray-400" />
+                <FiChevronDown className="text-gray-400 dark:text-gray-500 w-4 h-4" />
               </div>
             </div>
 
-            <div className="hidden md:flex gap-1 bg-gray-800 p-1 rounded-lg">
+            <div className="hidden md:flex gap-1 bg-gray-100 dark:bg-zinc-800 p-1 rounded-lg border border-gray-200 dark:border-zinc-700">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-md ${
+                className={`p-1.5 rounded-md transition-colors ${
                   viewMode === "grid"
-                    ? "bg-gray-700 text-purple-400"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-white text-blue-600 dark:bg-zinc-700 dark:text-blue-400 shadow-sm"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
+                aria-label="Grid view"
               >
-                <FiGrid />
+                <FiGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`p-2 rounded-md ${
+                className={`p-1.5 rounded-md transition-colors ${
                   viewMode === "list"
-                    ? "bg-gray-700 text-purple-400"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-white text-blue-600 dark:bg-zinc-700 dark:text-blue-400 shadow-sm"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
+                aria-label="List view"
               >
-                <FiList />
+                <FiList className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -169,21 +178,30 @@ const CollectionsPage = () => {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
-              className="mt-4 bg-gray-800 rounded-lg overflow-hidden"
+              className="mt-4 mb-6 bg-gray-50 dark:bg-zinc-800 rounded-lg overflow-hidden border border-gray-200 dark:border-zinc-700"
             >
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-white mb-3">
-                  Categories
+              <div className="p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-text-light dark:text-text-dark">
+                    Filter by Category
                 </h3>
+                   <button 
+                      onClick={() => setShowFilters(false)} 
+                      className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      aria-label="Close filters"
+                    >
+                      <FiX className="w-5 h-5" />
+                   </button>
+                 </div>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((category) => (
                     <button
                       key={category.id}
                       onClick={() => setActiveCategory(category.id)}
-                      className={`px-3 py-1 rounded-full text-sm ${
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 border ${
                         activeCategory === category.id
-                          ? "bg-purple-600 text-white"
-                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                          ? "bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500"
+                          : "bg-white dark:bg-zinc-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-600 hover:border-gray-400 dark:hover:border-zinc-500"
                       }`}
                     >
                       {category.name}
@@ -197,20 +215,29 @@ const CollectionsPage = () => {
       </motion.div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center py-20">
-          <LoadingSpinner size="lg" />
-          <p className="ml-4 text-white">Loading collections...</p>
+        viewMode === "grid" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <CollectionCardSkeleton key={index} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <CollectionListCardSkeleton key={index} />
+            ))}
         </div>
+        )
       ) : error ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="text-center py-20 bg-red-900/20 rounded-lg border border-red-700"
+          className="text-center py-20 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-300 dark:border-red-700"
         >
-          <FiAlertCircle className="mx-auto h-12 w-12 text-red-400 mb-4" />
-          <h3 className="text-xl text-red-300 mb-2">Failed to Load Collections</h3>
-          <p className="text-red-400">{error}</p>
+          <FiAlertCircle className="mx-auto h-12 w-12 text-red-500 dark:text-red-400 mb-4" />
+          <h3 className="text-xl text-red-700 dark:text-red-300 mb-2">Failed to Load Properties</h3>
+          <p className="text-red-600 dark:text-red-400">{error}</p>
         </motion.div>
       ) : filteredCollections.length === 0 ? (
         <motion.div
@@ -219,11 +246,13 @@ const CollectionsPage = () => {
           transition={{ duration: 0.5 }}
           className="text-center py-20"
         >
-          <h3 className="text-xl text-white mb-2">No collections found</h3>
-          <p className="text-gray-400">
+          <h3 className="text-xl font-medium text-text-light dark:text-text-dark mb-2">
+            No properties found
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400">
             {searchTerm || activeCategory !== 'all'
               ? "Try adjusting your search or filters"
-              : "No collections available. Try creating one!"}
+              : "No properties available. Try creating one!"}
           </p>
         </motion.div>
       ) : viewMode === "grid" ? (
@@ -231,7 +260,7 @@ const CollectionsPage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
         >
           {filteredCollections.map((collection, index) => (
             <motion.div
@@ -250,7 +279,7 @@ const CollectionsPage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="space-y-4"
+          className="space-y-3"
         >
           {filteredCollections.map((collection, index) => (
             <motion.div
@@ -264,7 +293,7 @@ const CollectionsPage = () => {
           ))}
         </motion.div>
       )}
-    </>
+    </div>
   );
 };
 

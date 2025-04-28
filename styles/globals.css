@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Solana Wallet Button Customization using Tailwind @apply */
+button.wallet-adapter-button-trigger {
+  @apply 
+    /* Base styles from AnimatedButton */
+    font-semibold rounded-lg transition-all duration-300 ease-in-out
+    focus:outline-none /* Basic focus reset */
+    
+    /* Size sm from AnimatedButton */
+    px-3 py-1.5 text-xs
+    
+    /* Base Variant: Outline with WHITE border by default */
+    bg-transparent border border-white uppercase 
+    
+    /* Light Mode Override: Black border and text */
+    border-black text-black 
+    hover:bg-black hover:text-white
+    
+    /* Dark Mode: White border and text (inherits default border-white) */
+    dark:text-white 
+    dark:hover:bg-white dark:hover:text-black;
+}
+
+/* Optional: Adjust icon color if needed */
+button.wallet-adapter-button-trigger .wallet-adapter-button-icon img {
+  /* Light Mode Icon Color */
+  @apply filter-none; 
+  /* Dark Mode Icon Color */
+  @apply dark:invert dark:brightness-200; 
+}
+
+/* Optional: Basic styling for dropdown items */
+.wallet-adapter-dropdown-list {
+  @apply bg-primary-light dark:bg-primary-dark border border-black/10 dark:border-white/10 rounded-md shadow-lg;
+}
+
+.wallet-adapter-dropdown-list-item {
+  @apply text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 px-4 py-2 text-sm;
+}
+
+/* --- Previous CSS rules removed --- */

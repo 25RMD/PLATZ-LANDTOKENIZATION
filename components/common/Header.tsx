@@ -1,18 +1,22 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   FaBars,
-  FaEthereum,
   FaSignOutAlt,
   FaTimes,
   FaUser,
   FaWallet,
 } from "react-icons/fa";
+import { IoMapOutline } from "react-icons/io5";
 import { navItems } from "@/lib/data";
 import { usePathname } from "next/navigation";
 import AnimatedButton from "./AnimatedButton";
+import ThemeSwitcher from "../ThemeSwitcher";
+import { useAuth } from "@/context/AuthContext";
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 const mobileMenuVariants = {
   open: {
@@ -33,175 +37,220 @@ const mobileMenuVariants = {
   },
 };
 
+// Variants for account menu popup
+const accountMenuVariants = {
+  open: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { duration: 0.2, ease: "easeOut" },
+  },
+  closed: {
+    opacity: 0,
+    scale: 0.95,
+    y: -10,
+    transition: { duration: 0.15, ease: "easeIn" },
+  },
+};
+
 const Header = () => {
   const pathname = usePathname();
-  const [isScrolled, setIsScrolled] = useState<boolean>(false);
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const { isAuthenticated, isVerified, user, logout, isLoading: authLoading } = useAuth();
+  const { connected: isWalletConnected } = useWallet();
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setIsAccountMenuOpen(false);
       }
     };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [accountMenuRef]);
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.addEventListener("scroll", handleScroll);
-  }, []);
-  const handleWallet = (isConnect: boolean) => {
-    setWalletConnected(isConnect);
-    setWalletAddress(isConnect ? "0x7f...3a4b" : "");
-  };
   return (
     <motion.header
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className={`fixed w-full z-50 transition-all duration-300 ${
-        isScrolled ? "bg-gray-900 shadow-lg" : "transparent"
-      }`}
+      className="fixed top-[25px] w-full z-50"
     >
-      <div className="container mx-auto py-3">
-        <div className="flex items-center justify-between">
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Link href="/" className="flex justify-center space-x-2">
-              <FaEthereum className="text-purple-500 text-2xl" />
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
-                NFT Market
-              </span>
-            </Link>
-          </motion.div>
+      <div className="relative h-16 flex items-center justify-between px-4 container mx-auto bg-primary-light dark:bg-primary-dark rounded-xl border border-black/10 dark:border-white/10 shadow-lg">
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Link href="/" className="flex justify-center space-x-2 items-center">
+            <IoMapOutline className="text-text-light dark:text-text-dark text-2xl" />
+            <span className="text-base font-bold text-text-light dark:text-text-dark uppercase">
+              Platz
+            </span>
+          </Link>
+        </motion.div>
 
-          {/* desktop navigation  */}
-          <nav className="hidden md:flex items-center space-x-8">
-            {navItems.map((item, index: number) => (
-              <Link
-                href={item.path}
-                key={index}
-                className={`relative px-2 py-1 text-sm font-medium ${
-                  pathname == item.path
-                    ? "text-purple-400"
-                    : "text-gray-300 hover:text-white"
-                } transition-colors`}
-              >
-                {item.name}
-                {pathname == item.path && (
-                  <motion.span
-                    layoutId="navUnderline"
-                    className="absolute left-0 bottom-0 w-full h-0.5 bg-purple-500"
-                    transition={{
-                      type: "spring",
-                      bounce: 0.2,
-                      duration: 0.6,
-                    }}
-                  />
-                )}
-              </Link>
-            ))}
-          </nav>
+        <nav className="hidden md:block absolute left-1/2 transform -translate-x-1/2">
+          <ul className="flex space-x-6">
+            {navItems
+              .filter(item => item.path !== '/create-nft' || isVerified)
+               .map((item, index: number) => (
+                <li key={item.path}>
+                  <Link
+                    href={item.path}
+                    className={`relative px-1 py-1 text-base font-medium uppercase ${
+                      pathname == item.path
+                        ? "text-text-light dark:text-text-dark"
+                        : "text-text-light dark:text-text-dark opacity-60 hover:opacity-100"
+                    } transition-opacity duration-200`}
+                  >
+                    {item.name}
+                    {pathname == item.path && (
+                      <motion.span
+                        layoutId="navUnderline"
+                        className="absolute left-0 bottom-0 w-full h-0.5 bg-text-light dark:bg-text-dark"
+                        transition={{
+                          type: "spring",
+                          bounce: 0.2,
+                          duration: 0.6,
+                        }}
+                      />
+                    )}
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        </nav>
 
-          {/* auth action  */}
-          <div className="hidden md:flex items-center space-x-4">
-            {walletConnected ? (
-              <motion.div
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-              >
-                <FaWallet className="text-purple-400" />
-                <span className="text-sm text-gray-200">{walletAddress}</span>
-                <button
-                  onClick={() => handleWallet(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <FaTimes />
-                </button>
-              </motion.div>
-            ) : (
-              <AnimatedButton
-                onClick={handleWallet}
-                size="sm"
-                variant="outline"
-                className="flex items-center space-x-2"
-                isConnect={true}
-              >
-                <FaWallet />
-                <span>Connect</span>
-              </AnimatedButton>
-            )}
+        <div className="hidden md:flex items-center space-x-4">
+          <ThemeSwitcher />
+          
+          <WalletMultiButton 
+          />
 
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-purple-500">
-                <div className="w-full h-full bg-purple-600 flex items-center justify-center">
-                  <FaUser className="text-white" />
+          {authLoading ? (
+            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-700 animate-pulse"></div>
+          ) : isAuthenticated ? (
+            <div className="relative" ref={accountMenuRef}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 cursor-pointer focus:outline-none"
+                aria-label="Account options"
+                onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
+              >
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-black dark:border-white">
+                  <div className="w-full h-full bg-black dark:bg-white flex items-center justify-center">
+                    <FaUser className="text-white dark:text-black" />
+                  </div>
                 </div>
-              </div>
-              <span className="text-sm text-gray-300 hidden lg:inline">
-                Account
-              </span>
-            </motion.div>
-          </div>
+              </motion.button>
 
-          <button
-            className="md:hidden text-gray-300 hover:text-white focus:outline-none"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <FaTimes className="text-xl" />
-            ) : (
-              <FaBars className="text-xl" />
-            )}
-          </button>
+              <AnimatePresence>
+                {isAccountMenuOpen && (
+                  <motion.div
+                    initial="closed"
+                    animate="open"
+                    exit="closed"
+                    variants={accountMenuVariants}
+                    className="absolute top-full right-0 mt-2 w-48 origin-top-right rounded-md shadow-lg bg-primary-light dark:bg-primary-dark ring-1 ring-black dark:ring-white ring-opacity-5 dark:ring-opacity-10 focus:outline-none z-10"
+                  >
+                    <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                      <div className="px-4 py-2 border-b border-gray-200 dark:border-zinc-700">
+                        <p className="text-sm font-medium text-text-light dark:text-text-dark truncate">
+                          {user?.username || "Account"}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {user?.email || user?.solanaPubKey}
+                        </p>
+                      </div>
+                      <div className="py-1">
+                        {[
+                          { name: 'Profile', href: '/profile' },
+                          { name: 'Watchlist', href: '/watchlist' },
+                          { name: 'Orders', href: '/orders' },
+                        ].map((item) => (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            className="block w-full text-left px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                            role="menuitem"
+                            onClick={() => setIsAccountMenuOpen(false)}
+                          >
+                            {item.name}
+                          </Link>
+                        ))}
+                      </div>
+                      <div className="border-t border-gray-200 dark:border-zinc-700 py-1">
+                        <button
+                          onClick={async () => {
+                            setIsAccountMenuOpen(false);
+                            await logout();
+                          }}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          role="menuitem"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <Link href="/login">
+                <AnimatedButton size="sm" variant="outline" className="border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black text-xs uppercase">
+                  Log In
+                </AnimatedButton>
+              </Link>
+              <Link href="/signup">
+                <AnimatedButton 
+                  size="sm" 
+                  variant="outline"
+                  className="border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black text-xs uppercase"
+                >
+                  Sign Up
+                </AnimatedButton>
+              </Link>
+            </div>
+          )}
         </div>
-        {/* mobile menu   */}
+
+        <button
+          className="md:hidden text-text-light dark:text-text-dark hover:opacity-80 focus:outline-none"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          {mobileMenuOpen ? (
+            <FaTimes className="text-xl" />
+          ) : (
+            <FaBars className="text-xl" />
+          )}
+        </button>
+
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
               initial="closed"
               animate="open"
               exit="closed"
-              variants={{
-                open: {
-                  height: "auto",
-                  opacity: 1,
-                  transition: {
-                    duration: 0.3,
-                    ease: "easeOut",
-                  },
-                },
-                closed: {
-                  height: 0,
-                  opacity: 0,
-                  transition: {
-                    duration: 0.2,
-                    ease: "easeIn",
-                  },
-                },
-              }}
-              className="md:hidden overflow-hidden"
+              variants={mobileMenuVariants}
+              className="md:hidden absolute top-full left-0 right-0 mt-2 w-full rounded-lg overflow-hidden bg-primary-light dark:bg-primary-dark shadow-lg border border-black/10 dark:border-white/10"
             >
-              <div className="pt-4 pb-6 space-y-4">
-                {navItems.map((item) => (
+              <div className="pt-4 pb-6 space-y-1 px-2">
+                {navItems
+                  .filter(item => item.path !== '/create-nft' || isVerified)
+                  .map((item) => (
                   <motion.div
                     key={item.name}
-                    variants={mobileMenuVariants}
-                    initial="closed"
-                    animate="open"
-                    exit="closed"
                   >
                     <Link
                       href={item.path}
-                      className={`block px-3 py-2 rounded-md text-base font-medium ${
+                      className={`block px-3 py-2 rounded-md text-base font-medium uppercase ${
                         pathname === item.path
-                          ? "bg-gray-800 text-purple-400"
-                          : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                          ? "bg-black text-white dark:bg-white dark:text-black"
+                          : "text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800"
                       }`}
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -209,55 +258,65 @@ const Header = () => {
                     </Link>
                   </motion.div>
                 ))}
+                <div className="pt-4 border-t border-gray-200 dark:border-zinc-700 space-y-4 px-3">
+                  <div className="mt-2">
+                    <ThemeSwitcher />
+                  </div>
+                  <div className="mt-2">
+                    <WalletMultiButton style={{ width: '100%' }} />
+                  </div>
+
+                  {authLoading ? (
+                    <div className="h-10 bg-gray-200 dark:bg-zinc-700 rounded-md animate-pulse"></div>
+                  ) : isAuthenticated ? (
+                    <div className="space-y-2">
+                      <Link href="/profile"
+                        className="flex items-center justify-between w-full px-3 py-2 rounded-md text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-full overflow-hidden border border-black dark:border-white">
+                            <div className="w-full h-full bg-black dark:bg-white flex items-center justify-center">
+                              <FaUser className="text-white dark:text-black" />
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium">{user?.username || user?.solanaPubKey?.substring(0,6) || 'Profile'}</span>
+                        </div>
+                      </Link>
+                      <button
+                        onClick={async () => {
+                          setMobileMenuOpen(false);
+                          await logout();
+                        }}
+                        className="flex items-center justify-between w-full px-3 py-2 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+                      >
+                        <span className="text-sm font-medium">Sign Out</span>
+                        <FaSignOutAlt />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Link href="/login">
+                        <AnimatedButton size="sm" variant="outline" className="w-full text-xs uppercase border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black" onClick={() => setMobileMenuOpen(false)}>
+                          Log In
+                        </AnimatedButton>
+                      </Link>
+                      <Link href="/signup">
+                        <AnimatedButton 
+                          size="sm" 
+                          variant="outline"
+                          className="w-full text-xs uppercase border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          Sign Up
+                        </AnimatedButton>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
-
-          <div className="md:hidden pt-4 border-t border-gray-700 space-y-4">
-            {walletConnected ? (
-              <motion.div
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-              >
-                <FaWallet className="text-purple-400" />
-                <span className="text-sm text-gray-200">{walletAddress}</span>
-                <button
-                  onClick={() => handleWallet(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <FaTimes />
-                </button>
-              </motion.div>
-            ) : (
-              <AnimatedButton
-                onClick={handleWallet}
-                size="sm"
-                variant="outline"
-                className="flex items-center space-x-2"
-                isConnect={true}
-              >
-                <FaWallet />
-                <span>Connect</span>
-              </AnimatedButton>
-            )}
-
-            <motion.div
-              variants={mobileMenuVariants}
-              className="flex items-center justify-between px-3 py-2 bg-gray-800 rounded-md"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-purple-500">
-                  <div className="w-full h-full bg-purple-600 flex items-center justify-center">
-                    <FaUser className="text-white" />
-                  </div>
-                </div>
-                <span className="text-gray-200">Account</span>
-              </div>
-              <button className="text-gray-400 hover:text-white">
-                <FaSignOutAlt />
-              </button>
-            </motion.div>
-          </div>
         </AnimatePresence>
       </div>
     </motion.header>

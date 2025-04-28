@@ -1,54 +1,8 @@
-import { AnimatedButtonProps } from "@/lib/interdace";
-import { Variants } from "framer-motion";
-import React from "react";
+import React, { ReactNode } from "react";
 import { motion } from "framer-motion";
+import { AnimatedButtonProps } from "@/lib/interdace";
 
-const buttonVariants: Variants = {
-  hover: {
-    scale: 1.05,
-    transition: {
-      duration: 0.2,
-      ease: "easeOut",
-    },
-  },
-  tap: {
-    scale: 0.95,
-    transition: {
-      duration: 0.1,
-      ease: "easeOut",
-    },
-  },
-  disabled: {
-    opacity: 0.6,
-    cursor: "not-allowed",
-  },
-};
-
-const getSizeClasses = (size: string) => {
-  switch (size) {
-    case "sm":
-      return "px-3 py-1.5 text-sm";
-    case "lg":
-      return "px-6 py-3 text-lg";
-    default: // md
-      return "px-4 py-2 text-base";
-  }
-};
-
-const getVariantClasses = (variant: string) => {
-  switch (variant) {
-    case "secondary":
-      return "bg-gray-700 text-white hover:bg-gray-600";
-    case "outline":
-      return "bg-transparent border-2 border-purple-500 text-purple-500 hover:bg-purple-500 hover:bg-opacity-10";
-    case "gradient":
-      return "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700";
-    default: // primary
-      return "bg-purple-600 text-white hover:bg-purple-700";
-  }
-};
-
-const AnimatedButton = ({
+const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   children,
   onClick,
   type = "button",
@@ -58,21 +12,42 @@ const AnimatedButton = ({
   className = "",
   fullWidth = false,
   isConnect = false,
-}: AnimatedButtonProps) => {
-  const variantClasses = getVariantClasses(variant);
-  const sizeClasses = getSizeClasses(size);
-  const widthClass = fullWidth ? "w-full" : "w-auto";
+}) => {
+  const baseStyles = "font-semibold rounded-lg transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+
+  const sizeStyles = {
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-5 py-2.5 text-sm",
+    lg: "px-6 py-3 text-base",
+  };
+
+  const variantStyles = {
+    // Updated Primary for B&W theme
+    primary: "bg-gray-800 dark:bg-gray-200 text-white dark:text-black hover:bg-gray-700 dark:hover:bg-gray-300 focus:ring-gray-500 dark:focus:ring-gray-400",
+    // Updated Secondary for B&W theme
+    secondary: "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 focus:ring-gray-400 dark:focus:ring-gray-500",
+    // Updated Outline for B&W theme
+    outline: "bg-transparent border border-gray-700 dark:border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-gray-500 dark:focus:ring-gray-400",
+    // Gradient remains, but check its contrast in light/dark
+    gradient: "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 focus:ring-purple-500",
+  };
+
+  const buttonClasses = `
+    ${baseStyles}
+    ${sizeStyles[size]}
+    ${variantStyles[variant]}
+    ${fullWidth ? "w-full" : ""}
+    ${className}
+  `;
+
   return (
     <motion.button
       type={type}
-      onClick={() => onClick?.(isConnect)}
+      onClick={onClick ? () => onClick(isConnect) : undefined}
       disabled={disabled}
-      variants={buttonVariants}
-      initial="rest"
-      whileHover={disabled ? {} : "hover"}
-      whileTap={disabled ? {} : "tap"}
-      animate={disabled ? "disabled" : "rest"}
-      className={`${variantClasses} ${sizeClasses} ${widthClass} rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 ${className}`}
+      className={buttonClasses.trim()}
+      whileHover={{ scale: disabled ? 1 : 1.03, y: disabled ? 0 : -2 }}
+      whileTap={{ scale: disabled ? 1 : 0.98 }}
     >
       {children}
     </motion.button>

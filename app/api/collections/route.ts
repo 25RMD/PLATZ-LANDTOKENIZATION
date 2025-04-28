@@ -1,74 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Collection } from '@/lib/interdace';
-import { collections as initialCollections } from '@/lib/data'; // Import initial data
+import prisma from '@/lib/prisma'; // Use the standard alias import
+// import prisma from '../../../lib/prisma'; // Remove relative path
+import { Collection } from '@/lib/interdace'; // Keep for type hints if needed, Prisma Client is typed
 
-// --- Simulate Database ---
-// This in-memory array will hold collections for the lifetime of the server instance.
-// It will be reset if the server restarts.
-// In a real app, you would replace this with database interactions.
-let serverCollections: Collection[] = [...initialCollections];
-// ------------------------
+// --- Remove the simulated database array ---
+// let serverCollections: Collection[] = [...initialCollections]; 
 
-export async function POST(request: NextRequest) {
+// GET Handler - Fetch from Actual Database
+export async function GET(request: NextRequest) {
   try {
-    // Use formData to handle file uploads along with text fields
-    const formData = await request.formData();
-    const name = formData.get('name') as string;
-    const creator = formData.get('creator') as string;
-    const items = formData.get('items') as string;
-    const floorPrice = formData.get('floorPrice') as string;
-    const category = formData.get('category') as string;
-    const imageFile = formData.get('imageFile') as File | null;
-
-    // Basic validation
-    if (!name || !creator || !items || !floorPrice || !category || !imageFile) {
-      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
-    }
-
-    // --- Simulate Image Upload ---
-    // In a real app, you would upload the imageFile to cloud storage (S3, Cloudinary, etc.)
-    // and get back a permanent URL. For now, we'll just use a placeholder or the filename.
-    const imageUrl = `/images/uploads/${Date.now()}_${imageFile.name}`; // Example placeholder path
-    console.log(`Simulating upload for image: ${imageFile.name}, Placeholder URL: ${imageUrl}`);
-    // ---------------------------
-
-    // Construct the new collection object
-    const newCollection: Collection = {
-      id: Date.now().toString(), // Simple unique ID generation
-      name: name,
-      creator: creator,
-      items: parseInt(items, 10) || 0,
-      volume: 0, // Default volume for new collections
-      floorPrice: parseFloat(floorPrice) || 0,
-      image: imageUrl, // Use the placeholder URL
-      category: category,
-      verified: false, // Default verification status for new collections
-    };
-
-    // --- Simulate Database Write ---
-    serverCollections.push(newCollection);
-    console.log('--- New Collection Added (Server-Side In-Memory) ---');
-    console.log(newCollection);
-    console.log('----------------------------------------------------');
-    // -----------------------------
-
-    // Return the newly created collection object
-    return NextResponse.json(newCollection, { status: 201 }); // 201 Created status
-
+    console.log("API GET /api/collections: Fetching from database..."); // Added log
+    console.log("API GET /api/collections: Value of prisma before findMany:", prisma);
+    const properties = await prisma.property.findMany({
+      orderBy: {
+        // Example: Order by volume descending by default, or createdAt
+        createdAt: 'desc'
+      }
+    });
+    console.log(`API GET /api/collections: Found ${properties.length} properties.`); // Updated log message
+    return NextResponse.json(properties);
   } catch (error) {
-    console.error('Error creating collection:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    console.error('API GET /api/collections: Error fetching properties:', error); // Updated log message
+    return NextResponse.json({ message: 'Internal Server Error fetching properties' }, { status: 500 }); // Updated error message
   }
 }
 
-// Implement the GET handler to return current collections
-export async function GET(request: NextRequest) {
+// POST Handler - Create in Actual Database
+export async function POST(request: NextRequest) {
   try {
-    // In a real app, this would fetch from your database.
-    // Here, we return the current state of our in-memory array.
-    return NextResponse.json(serverCollections);
+    // 1. Check Authentication & Verification using Middleware Header
+    const userId = request.headers.get('x-user-id');
+    if (!userId) {
+      // Should be caught by middleware, but double-check
+      return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    }
+
+    // Fetch user to check verification status
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { kycVerified: true },
+    });
+
+    if (!user?.kycVerified) {
+      console.warn(`User ${userId} attempted to create collection but is not verified.`);
+      return NextResponse.json({ message: 'User verification required to create listings.' }, { status: 403 }); // Forbidden
+    }
+
+    // 2. Proceed with Collection/Property Creation
+    console.log("API POST /api/collections: Received request..."); // Added log
+    const formData = await request.formData();
+    const name = formData.get('name') as string;
+    const creator = formData.get('creator') as string;
+    const itemsStr = formData.get('items') as string;
+    const floorPriceStr = formData.get('floorPrice') as string;
+    const category = formData.get('category') as string;
+    const imageFile = formData.get('imageFile') as File | null;
+
+    if (!name || !creator || !itemsStr || !floorPriceStr || !category || !imageFile) {
+      console.log("API POST /api/collections: Missing required fields."); // Added log
+      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+    }
+
+    // --- Actual Image Upload Needed Here ---
+    // TODO: Implement actual image upload to cloud storage (S3, Cloudinary, Vercel Blob, etc.)
+    // TODO: Get the permanent URL back from the storage service.
+    // Using a placeholder for now:
+    const imageUrl = `/placeholder/uploads/${Date.now()}_${imageFile.name}`;
+    console.log(`API POST /api/collections: TODO: Implement actual image upload for ${imageFile.name}. Using placeholder: ${imageUrl}`);
+    // --------------------------------------
+
+    // Prepare data for Prisma (ensure correct types)
+    const items = parseInt(itemsStr, 10);
+    const floorPrice = parseFloat(floorPriceStr);
+
+    // Validate parsed numbers
+    if (isNaN(items) || isNaN(floorPrice)) {
+       console.log(`API POST /api/collections: Invalid number format. Items: ${itemsStr}, FloorPrice: ${floorPriceStr}`); // Added log
+       return NextResponse.json({ message: 'Invalid number format for items or floor price' }, { status: 400 });
+    }
+
+     const collectionData = {
+        name: name,
+        creator: creator,
+        items: items, // Use parsed number
+        floorPrice: floorPrice, // Use parsed number
+        image: imageUrl, // Use the ACTUAL URL from image storage eventually
+        category: category,
+        // volume and verified will use default values from schema
+        // id, createdAt, updatedAt are handled by Prisma/database
+      };
+
+    console.log("API POST /api/collections: Attempting to create collection in DB:", collectionData); // Added log
+    const newCollection = await prisma.collection.create({
+      data: collectionData,
+    });
+
+    console.log('--- API POST /api/collections: New Collection Added (Database) ---');
+    console.log(newCollection);
+    console.log('------------------------------------------------------------------');
+
+    return NextResponse.json(newCollection, { status: 201 });
+
   } catch (error) {
-    console.error('Error fetching collections:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    console.error('API POST /api/collections: Error creating collection:', error);
+     // Prisma can throw specific errors, you might want to handle those
+     // e.g., PrismaClientKnownRequestError
+    return NextResponse.json({ message: 'Internal Server Error creating collection' }, { status: 500 });
   }
 } 

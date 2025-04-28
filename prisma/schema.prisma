@@ -9,16 +9,102 @@
       url      = env("DATABASE_URL")
     }
 
-    model Collection {
-      id         String   @id @default(cuid()) // Use cuid() or uuid() for unique IDs
+    // Renamed from Collection
+    model Property {
+      id         String   @id @default(cuid()) // Use cuid() or uuid()
       name       String
-      creator    String
-      items      Int
-      volume     Float    @default(0) // Use Float for potential decimals
+      creator    String // Consider linking to User ID later
+      items      Int      // Number of tokens/shares
+      volume     Float    @default(0)
       floorPrice Float
-      image      String   // This will store the URL from your image storage
+      image      String
       category   String
       verified   Boolean  @default(false)
-      createdAt  DateTime @default(now()) // Optional: track creation time
-      updatedAt  DateTime @updatedAt     // Optional: track update time
+      createdAt  DateTime @default(now())
+      updatedAt  DateTime @updatedAt
+
+      // Relation to NFTs: A Property can have many NFTs
+      nfts       NFT[]
+
+      @@map("properties") // Map to 'properties' table if desired, or remove to use model name
     }
+
+    model NFT {
+      id           String   @id @default(cuid())
+      name         String
+      itemNumber   Int
+      image        String
+      price        Float
+      createdAt    DateTime @default(now())
+      updatedAt    DateTime @updatedAt
+
+      // Relation to Property: Each NFT belongs to one Property
+      propertyId String
+      property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+      // Optional: Relation to Owner User
+      // ownerId    String?
+      // owner      User?    @relation(fields: [ownerId], references: [id])
+
+      @@unique([propertyId, itemNumber])
+      @@index([propertyId])
+      @@map("nfts")
+    }
+
+    model User {
+      id            String    @id @default(uuid()) // Use Prisma's uuid()
+      username      String?   @unique @db.VarChar(50)
+      email         String?   @unique @db.VarChar(255)
+      passwordHash  String?   @map("password_hash") @db.VarChar(255)
+      solanaPubKey  String?   @unique @map("solana_pub_key") @db.VarChar(44) // Renamed & Corrected type/map
+      signInNonce   String?   @map("sign_in_nonce") @db.VarChar(255) // Renamed & Corrected map
+
+      // Profile/KYC Fields
+      fullName      String?   @map("full_name") @db.VarChar(100)
+      dateOfBirth   DateTime? @map("date_of_birth") @db.Date // Added DOB
+      phone         String?   @db.VarChar(20) // Added Phone
+      // Address Fields (already present)
+      addressLine1  String?   @map("address_line1") @db.VarChar(255)
+      addressLine2  String?   @map("address_line2") @db.VarChar(255)
+      city          String?   @db.VarChar(100)
+      stateProvince String?   @map("state_province") @db.VarChar(100)
+      postalCode    String?   @map("postal_code") @db.VarChar(20)
+      country       String?   @db.VarChar(100)
+      // Document Fields (References/IDs)
+      govIdType     String?   @map("gov_id_type") @db.VarChar(50) // e.g., 'passport', 'drivers_license'
+      govIdRef      String?   @map("gov_id_ref") @db.Text // Reference to uploaded ID (URL/ID)
+      sofDocRef     String?   @map("sof_doc_ref") @db.Text // Reference to Source of Funds doc (URL/ID)
+      kycVerified   Boolean   @default(false) @map("kyc_verified") // Status field
+      isAdmin       Boolean   @default(false) @map("is_admin") // Added Admin flag
+
+      // Timestamps
+      createdAt     DateTime  @default(now()) @map("created_at")
+      updatedAt     DateTime  @updatedAt @map("updated_at")
+
+      // Optional: Add relations if needed, e.g., to NFTs or Properties
+      // nfts NFT[]
+
+      @@map("users") // Maps the model name to the 'users' table name in the DB
+      @@index([solanaPubKey], name: "idx_users_solana_pub_key") // Corrected index
+      @@index([username]) // Removed explicit name if not needed
+      @@index([email])    // Removed explicit name if not needed
+      kycUpdateRequests KycUpdateRequest[] // Add relation to pending requests
+    }
+
+    // Add new model for pending KYC updates
+    model KycUpdateRequest {
+      id        String   @id @default(cuid())
+      userId    String   // Foreign key to User
+      user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+      status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+      changes   Json     // Store the proposed { field: newValue } pairs
+      adminNotes String?  @db.Text
+      createdAt DateTime @default(now())
+      updatedAt DateTime @updatedAt
+
+      @@index([userId])
+      @@index([status])
+      @@map("kyc_update_requests") // Explicitly map table name
+    }
+
+    // Add other models like NFT, Property if needed
