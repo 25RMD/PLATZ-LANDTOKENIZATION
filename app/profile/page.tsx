@@ -286,8 +286,9 @@ const ProfileContent = () => {
     const success = await updateUserProfile(updateData);
     toast.dismiss(loadingToastId);
     if (success) {
-      toast.success('Profile updated successfully!');
-      setIsEditing(false); 
+      // Remove this redundant toast. Success feedback is handled in updateUserProfile.
+      // toast.success('Profile updated successfully!'); 
+      setIsEditing(false); // Exit edit mode
     } else {
       // Context error handles API errors
       console.error("Profile update failed (toast displayed by context)");

@@ -5,6 +5,23 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { ProfileUpdateSchema } from '@/lib/schemas'; // Import schema
+import { Prisma } from '@prisma/client'; // Import Prisma for Json type
+
+// --- Define KYC-related fields --- 
+const kycFields: (keyof Prisma.UserUpdateInput)[] = [
+    'fullName',
+    'dateOfBirth',
+    'phone',
+    'addressLine1',
+    'addressLine2',
+    'city',
+    'stateProvince',
+    'postalCode',
+    'country',
+    'govIdType',
+    'govIdRef',
+    'sofDocRef'
+];
 
 // GET handler to fetch current user's profile
 export async function GET(request: NextRequest) {
@@ -57,11 +74,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
     }
 
-    // Get data from request body
     const body = await request.json();
-
-    // Validate request body against schema
     const validationResult = ProfileUpdateSchema.safeParse(body);
+
     if (!validationResult.success) {
        return NextResponse.json(
             { message: "Invalid input", errors: validationResult.error.flatten().fieldErrors },
@@ -69,53 +84,129 @@ export async function PUT(request: NextRequest) {
         );
     }
 
-    // Use validated data (safeParse ensures only defined fields are present)
-    const dataToUpdate = validationResult.data;
+    const validatedData = validationResult.data;
 
-    // Clean data: Convert empty strings back to null for optional fields if desired by DB
-    Object.keys(dataToUpdate).forEach(key => {
-      if (dataToUpdate[key as keyof typeof dataToUpdate] === '') {
-        dataToUpdate[key as keyof typeof dataToUpdate] = null;
-      }
+    // Fetch current user data to compare
+    const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        // Select fields needed for comparison + potentially updated non-KYC fields
+        select: {
+            email: true, // Example non-KYC field
+            fullName: true,
+            dateOfBirth: true,
+            phone: true,
+            addressLine1: true,
+            addressLine2: true,
+            city: true,
+            stateProvince: true,
+            postalCode: true,
+            country: true,
+            govIdType: true,
+            govIdRef: true,
+            sofDocRef: true,
+            kycVerified: true,
+        }
     });
 
-    // Remove fields that shouldn't be updated via this route
-    delete (dataToUpdate as any).username;
-    delete (dataToUpdate as any).solanaPubKey;
-    delete (dataToUpdate as any).kycVerified; // User cannot verify themselves
-    // Add any other fields to prevent update if necessary
-
-    // Check if there's anything left to update after validation & filtering
-    if (Object.keys(dataToUpdate).length === 0) {
-        return NextResponse.json({ message: 'No valid updatable fields provided' }, { status: 400 });
+    if (!currentUser) {
+        return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      // Pass the validated and filtered data object
-      data: dataToUpdate,
-      select: { // Return the updated profile data, including new fields
-          username: true,
-          email: true,
-          solanaPubKey: true,
-          fullName: true,
-          dateOfBirth: true,
-          phone: true,
-          addressLine1: true,
-          addressLine2: true,
-          city: true,
-          stateProvince: true,
-          postalCode: true,
-          country: true,
-          govIdType: true,
-          govIdRef: true,
-          sofDocRef: true,
-          kycVerified: true,
-       },
-    });
+    const kycChanges: Record<string, any> = {};
+    const nonKycUpdates: Record<string, any> = {};
+    let hasKycChanges = false;
 
-    console.log(`Profile updated for user: ${userId}`);
-    return NextResponse.json(updatedUser, { status: 200 });
+    // Compare incoming data with current data
+    for (const key in validatedData) {
+        const typedKey = key as keyof typeof validatedData;
+        let incomingValue = validatedData[typedKey];
+        let currentValue = currentUser[typedKey as keyof typeof currentUser];
+
+        // Normalize empty strings to null for comparison/update
+        if (incomingValue === '') incomingValue = null;
+
+        // Format date for comparison (YYYY-MM-DD)
+        if (currentValue instanceof Date) {
+            currentValue = currentValue.toISOString().split('T')[0] as any;
+        }
+        // Validated data dateOfBirth is already string | null
+
+        // Only consider fields that have actually changed
+        if (incomingValue !== currentValue) {
+            if (kycFields.includes(typedKey)) {
+                kycChanges[typedKey] = incomingValue;
+                hasKycChanges = true;
+            } else {
+                // Add non-KYC changes to a separate object for direct update
+                // Exclude fields that should never be updated here (like kycVerified)
+                if (typedKey !== 'kycVerified') { 
+                     nonKycUpdates[typedKey] = incomingValue;
+                }
+            }
+        }
+    }
+
+    // --- Logic based on whether KYC fields were changed --- 
+    if (hasKycChanges) {
+        // Create a KYC Update Request record
+        console.log(`[API PUT /profile] User ${userId} submitting KYC changes for review:`, kycChanges);
+        await prisma.kycUpdateRequest.create({
+            data: {
+                userId: userId,
+                changes: kycChanges as Prisma.JsonObject, // Store changes as JSON
+                status: 'PENDING',
+            }
+        });
+
+        // --- Revoke verification if user was previously verified --- 
+        if (currentUser.kycVerified) {
+            console.log(`[API PUT /profile] User ${userId} was verified, revoking status due to KYC field change.`);
+            nonKycUpdates.kycVerified = false; // Add status reset to the direct update
+        }
+        // ----------------------------------------------------------
+
+        // If non-KYC fields (or kycVerified status) also changed, update them directly
+        if (Object.keys(nonKycUpdates).length > 0) {
+            console.log(`[API PUT /profile] User ${userId} updating non-KYC fields (or revoking KYC) alongside KYC submission:`, nonKycUpdates);
+            await prisma.user.update({
+                where: { id: userId },
+                data: nonKycUpdates,
+            });
+        }
+
+        // Fetch the LATEST profile state (now potentially with kycVerified: false) to return
+        const latestUserProfile = await prisma.user.findUnique({ 
+            where: { id: userId }, 
+            select: profileSelectFields // Use the helper select object
+        });
+
+        return NextResponse.json(
+            { 
+                message: 'Profile updated. KYC changes submitted for review.',
+                user: latestUserProfile // Return potentially updated profile state
+            },
+            { status: 200 } 
+        );
+
+    } else if (Object.keys(nonKycUpdates).length > 0) {
+        // Only non-KYC changes detected, update directly
+        console.log(`[API PUT /profile] User ${userId} updating non-KYC fields:`, nonKycUpdates);
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: nonKycUpdates,
+            select: profileSelectFields, // Use the helper select object
+        });
+        return NextResponse.json(updatedUser, { status: 200 });
+    } else {
+        // No changes detected
+        console.log(`[API PUT /profile] User ${userId} submitted profile update with no actual changes.`);
+         // Return current profile data
+         const latestUserProfile = await prisma.user.findUnique({ 
+            where: { id: userId }, 
+            select: profileSelectFields // Use the helper select object
+        }); 
+        return NextResponse.json(latestUserProfile, { status: 200 });
+    }
 
   } catch (error) {
     // Handle potential errors like unique constraint violations (e.g., email already exists)
@@ -127,6 +218,26 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ message: 'An error occurred updating profile data.' }, { status: 500 });
   }
 }
+
+// Helper to select profile fields consistently
+const profileSelectFields = {
+    username: true,
+    email: true,
+    solanaPubKey: true,
+    fullName: true,
+    dateOfBirth: true,
+    phone: true,
+    addressLine1: true,
+    addressLine2: true,
+    city: true,
+    stateProvince: true,
+    postalCode: true,
+    country: true,
+    govIdType: true,
+    govIdRef: true,
+    sofDocRef: true,
+    kycVerified: true,
+}; 
 
 // You might use PATCH instead of PUT if you only allow partial updates
 // export async function PATCH(request: Request) { ... } 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useWallet, useSignMessage } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
+import { toast } from 'react-hot-toast';
 
 // Define the User type based on what the /api/auth/me route returns
 // Adjust fields based on your actual Prisma schema select in /api/auth/me
@@ -276,21 +277,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               body: JSON.stringify(profileData),
           });
 
+          const responseData = await response.json(); // Always parse JSON body
+
           if (response.ok) {
-              const updatedProfile: User = await response.json();
+              // --- ADD LOGGING --- 
+              console.log("[AuthContext updateUserProfile] API Response OK. Data:", responseData);
+              // --- END LOGGING --- 
+
+              const updatedProfile: User = responseData.user; // Extract user data
               // Update local user state with the new profile info
               setUser(currentUser => currentUser ? { ...currentUser, ...updatedProfile } : null);
               setIsLoading(false);
+
+              // Check response message for pending KYC
+              if (responseData.message === 'Profile updated. KYC changes submitted for review.') {
+                  // Add duration option (e.g., 10 seconds)
+                  toast.success('Profile updated. KYC changes submitted for review (2-3 business days).', { duration: 10000 });
+              } else {
+                  // Assume standard success if message field is missing or different
+                  toast.success('Profile updated successfully!'); 
+              }
               return true;
           } else {
-              const errorData = await response.json().catch(() => ({ message: 'Failed to update profile' }));
-              setError(errorData.message || 'Could not update profile.');
+              // Use error message from response body if available
+              setError(responseData.message || 'Could not update profile.');
               setIsLoading(false);
               return false;
           }
       } catch (err) {
           console.error("Update profile error:", err);
-          setError('Network error updating profile.');
+          // Handle potential non-JSON errors during fetch or parsing
+          setError('Network error or invalid response updating profile.');
           setIsLoading(false);
           return false;
       }
