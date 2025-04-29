@@ -2,37 +2,31 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 
-// GET handler for admins to fetch pending KYC requests
+// GET handler for admins to fetch PENDING KYC Update Requests
 export async function GET(request: NextRequest) {
-  // Middleware already verified admin status and attached user info
-  const requestingUserId = request.headers.get('x-user-id');
   const isAdmin = request.headers.get('x-user-is-admin') === 'true';
 
-  // Double-check admin status (defense in depth)
   if (!isAdmin) {
     return NextResponse.json({ message: 'Forbidden: Admin access required' }, { status: 403 });
   }
 
   try {
-    // Fetch users who are not yet verified BUT have submitted some KYC data
-    // Adjust the `where` clause based on which fields indicate a pending request
-    const pendingUsers = await prisma.user.findMany({
+    // Fetch PENDING KycUpdateRequests and include associated User data
+    const pendingRequests = await prisma.kycUpdateRequest.findMany({
       where: {
-        kycVerified: false,
-        // Add conditions to only fetch users who have submitted data, e.g.:
-        OR: [
-          { fullName: { not: null } },
-          { dateOfBirth: { not: null } },
-          { phone: { not: null } },
-          { addressLine1: { not: null } },
-          { govIdRef: { not: null } },
-          { sofDocRef: { not: null } },
-        ],
-        // Optionally exclude the requesting admin if needed
-        // id: { not: requestingUserId }
+        status: 'PENDING', // Only fetch pending requests
       },
       select: {
-        // Select fields needed for the admin review dashboard
+        // Select fields from the KycUpdateRequest itself
+        id: true, // The ID of the update request (crucial for approve/reject actions)
+        userId: true,
+        status: true,
+        changes: true, // The proposed changes submitted by the user
+        createdAt: true, // When the request was submitted
+        adminNotes: true,
+        // Include selected fields from the related User record
+        user: {
+          select: {
         id: true,
         username: true,
         email: true,
@@ -48,17 +42,34 @@ export async function GET(request: NextRequest) {
         govIdType: true,
         govIdRef: true,
         sofDocRef: true,
-        createdAt: true,
+            kycVerified: true,
+          }
+        }
       },
       orderBy: {
         createdAt: 'asc', // Show oldest requests first
       },
     });
 
-    return NextResponse.json(pendingUsers, { status: 200 });
+    // Optional: Transform the data structure if needed for the frontend
+    // e.g., flatten user data into the main object
+    const transformedRequests = pendingRequests.map(req => ({
+        updateRequestId: req.id, // Rename id for clarity
+        userId: req.userId,
+        status: req.status,
+        changes: req.changes,
+        adminNotes: req.adminNotes,
+        submittedAt: req.createdAt,
+        // Flatten user details
+        ...(req.user),
+        // Keep original references separate if needed
+        // currentUserData: { ...req.user }
+    }));
+
+    return NextResponse.json(transformedRequests, { status: 200 });
 
   } catch (error) {
-    console.error("Get KYC Requests Error:", error);
-    return NextResponse.json({ message: 'An error occurred fetching KYC requests.' }, { status: 500 });
+    console.error("Get Pending KYC Update Requests Error:", error);
+    return NextResponse.json({ message: 'An error occurred fetching pending KYC requests.' }, { status: 500 });
   }
 } 

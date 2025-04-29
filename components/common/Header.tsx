@@ -15,8 +15,14 @@ import { usePathname } from "next/navigation";
 import AnimatedButton from "./AnimatedButton";
 import ThemeSwitcher from "../ThemeSwitcher";
 import { useAuth } from "@/context/AuthContext";
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useWallet } from '@solana/wallet-adapter-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import WalletMultiButton with SSR disabled
+const WalletMultiButton = dynamic(
+    async () => (await import('@solana/wallet-adapter-react-ui')).WalletMultiButton,
+    { ssr: false }
+);
 
 const mobileMenuVariants = {
   open: {
@@ -60,6 +66,9 @@ const Header = () => {
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, isVerified, user, logout, isLoading: authLoading } = useAuth();
   const { connected: isWalletConnected } = useWallet();
+
+  // Get isAdmin status from context
+  const { isAdmin } = useAuth(); 
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -126,9 +135,21 @@ const Header = () => {
           <ThemeSwitcher />
           
           <WalletMultiButton 
+            className="
+                !h-auto 
+                !rounded-lg !font-semibold !text-xs !uppercase !transition-colors !duration-200 
+                !border !border-black dark:!border-white 
+                [&>button]:!bg-transparent [&>button]:hover:!bg-black [&>button]:dark:hover:!bg-white
+                [&>button]:!text-text-light [&>button]:dark:!text-text-dark
+                [&>button]:hover:!text-white [&>button]:dark:hover:!text-black
+                [&>button]:!px-3 [&>button]:!py-1.5 
+                [&>button]:!shadow-none
+                [&>button]:!leading-normal
+            "
           />
 
-          {authLoading ? (
+          {/* Show loading placeholder ONLY if loading AND not already authenticated */}
+          {authLoading && !isAuthenticated ? (
             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-700 animate-pulse"></div>
           ) : isAuthenticated ? (
             <div className="relative" ref={accountMenuRef}>
@@ -155,16 +176,27 @@ const Header = () => {
                     variants={accountMenuVariants}
                     className="absolute top-full right-0 mt-2 w-48 origin-top-right rounded-md shadow-lg bg-primary-light dark:bg-primary-dark ring-1 ring-black dark:ring-white ring-opacity-5 dark:ring-opacity-10 focus:outline-none z-10"
                   >
-                    <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                    <div role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
                       <div className="px-4 py-2 border-b border-gray-200 dark:border-zinc-700">
                         <p className="text-sm font-medium text-text-light dark:text-text-dark truncate">
                           {user?.username || "Account"}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {user?.email || user?.solanaPubKey}
+                          {user?.email || user?.solanaPubKey} {isAdmin && <span className="font-bold text-blue-500">(Admin)</span>}
                         </p>
                       </div>
                       <div className="py-1">
+                        {isAdmin ? (
+                          <Link
+                            href="/admin/dashboard"
+                            className="block w-full text-left px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                            role="menuitem"
+                            onClick={() => setIsAccountMenuOpen(false)}
+                          >
+                            Admin Dashboard
+                          </Link>
+                        ) : (
+                          <>
                         {[
                           { name: 'Profile', href: '/profile' },
                           { name: 'Watchlist', href: '/watchlist' },
@@ -180,6 +212,8 @@ const Header = () => {
                             {item.name}
                           </Link>
                         ))}
+                          </>
+                        )}
                       </div>
                       <div className="border-t border-gray-200 dark:border-zinc-700 py-1">
                         <button
@@ -266,7 +300,8 @@ const Header = () => {
                     <WalletMultiButton style={{ width: '100%' }} />
                   </div>
 
-                  {authLoading ? (
+                  {/* Show mobile loading placeholder ONLY if loading AND not already authenticated */}
+                  {authLoading && !isAuthenticated ? (
                     <div className="h-10 bg-gray-200 dark:bg-zinc-700 rounded-md animate-pulse"></div>
                   ) : isAuthenticated ? (
                     <div className="space-y-2">

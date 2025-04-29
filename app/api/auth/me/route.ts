@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
         solanaPubKey: true,
         fullName: true,
         // Add other non-sensitive profile fields you want to return
+        isAdmin: true,
+        kycVerified: true,
         createdAt: true,
         updatedAt: true,
       },

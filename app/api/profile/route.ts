@@ -159,10 +159,9 @@ export async function PUT(request: NextRequest) {
         });
 
         // --- Revoke verification if user was previously verified --- 
-        if (currentUser.kycVerified) {
-            console.log(`[API PUT /profile] User ${userId} was verified, revoking status due to KYC field change.`);
-            nonKycUpdates.kycVerified = false; // Add status reset to the direct update
-        }
+        // if (currentUser.kycVerified) {\n        //     console.log(`[API PUT /profile] User ${userId} was verified, revoking status due to KYC field change.`);\n        //     nonKycUpdates.kycVerified = false; // Add status reset to the direct update
+        // }
+        // New logic: User remains verified while update is PENDING. Status changes only upon admin approval/rejection via KycUpdateRequest.
         // ----------------------------------------------------------
 
         // If non-KYC fields (or kycVerified status) also changed, update them directly
@@ -174,7 +173,7 @@ export async function PUT(request: NextRequest) {
             });
         }
 
-        // Fetch the LATEST profile state (now potentially with kycVerified: false) to return
+        // Fetch the LATEST profile state (note: kycVerified status hasn't changed yet) to return
         const latestUserProfile = await prisma.user.findUnique({ 
             where: { id: userId }, 
             select: profileSelectFields // Use the helper select object
