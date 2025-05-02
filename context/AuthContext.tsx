@@ -101,27 +101,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (username: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
+    // --- ADD LOGGING ---
+    console.log("[AuthContext Login] Attempting login for username:", username);
+    console.log("[AuthContext Login] Password length:", pass.length); // Don't log password itself
+    // --- END LOGGING ---
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password: pass }),
       });
+        // --- ADD LOGGING ---
+        console.log("[AuthContext Login] API Response Status:", response.status);
+        const responseData = await response.json();
+        console.log("[AuthContext Login] API Response Data:", responseData);
+        // --- END LOGGING ---
+
+        // Use responseData instead of parsing again
       if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
+            setUser(responseData.user); // Assuming response includes user data
         setIsAuthenticated(true);
+            // --- ADD LOGGING ---
+            console.log("[AuthContext Login] Login successful for user:", responseData.user?.username, "Is Admin:", responseData.user?.isAdmin);
+            // Check isAdmin flag explicitly
+            if (responseData.user?.isAdmin) {
+                console.log("[AuthContext Login] User is identified as Admin.");
+            } else {
+                console.log("[AuthContext Login] User is NOT identified as Admin.");
+            }
+            // --- END LOGGING ---
         setIsLoading(false);
         return true;
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
-        setError(errorData.message || 'Invalid username or password.');
+            setError(responseData.message || 'Login failed');
         setIsLoading(false);
         return false;
       }
     } catch (err) {
-      console.error("Login API error:", err);
-      setError('An network error occurred during login.');
+        console.error("[AuthContext Login] Login API network/fetch error:", err);
+        // Try to get more specific error info
+        let errorMessage = 'A network error occurred during login.';
+        if (err instanceof Error) {
+            errorMessage = err.message;
+        }
+        setError(errorMessage);
       setIsLoading(false);
       return false;
     }

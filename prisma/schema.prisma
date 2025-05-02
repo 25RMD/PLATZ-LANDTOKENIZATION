@@ -13,7 +13,8 @@
     model Property {
       id         String   @id @default(cuid()) // Use cuid() or uuid()
       name       String
-      creator    String // Consider linking to User ID later
+      userId String   // Foreign key
+      user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
       items      Int      // Number of tokens/shares
       volume     Float    @default(0)
       floorPrice Float
@@ -25,7 +26,7 @@
 
       // Relation to NFTs: A Property can have many NFTs
       nfts       NFT[]
-
+      @@index([userId])
       @@map("properties") // Map to 'properties' table if desired, or remove to use model name
     }
 
@@ -83,6 +84,9 @@
 
       // Optional: Add relations if needed, e.g., to NFTs or Properties
       // nfts NFT[]
+
+      properties Property[]
+
 
       @@map("users") // Maps the model name to the 'users' table name in the DB
       @@index([solanaPubKey], name: "idx_users_solana_pub_key") // Corrected index

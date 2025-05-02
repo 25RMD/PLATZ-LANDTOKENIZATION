@@ -10,6 +10,7 @@ const protectedApiRoutes = [
   '/api/auth/me',
   '/api/profile',
   '/api/admin', // Protect all admin routes
+  '/api/collections', // <<< ADDED: Protect collection creation/management
   // Add other API routes that require login (non-admin)
 ];
 
@@ -109,6 +110,7 @@ export const config = {
     '/api/auth/me',
     '/api/profile/:path*', 
     '/api/admin/:path*', 
+    '/api/collections/:path*', // <<< ADDED: Match collection routes
     // Protected Pages
     '/profile/:path*', // Protect profile page and potential sub-routes
     '/admin/dashboard/:path*', // Protect admin dashboard and potential sub-routes

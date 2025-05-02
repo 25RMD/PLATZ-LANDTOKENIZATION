@@ -12,10 +12,12 @@ const AUTH_COOKIE_NAME = 'auth-token'; // Consistent cookie name
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log("[API /login] Received body:", { username: body?.username, passwordLength: body?.password?.length });
 
     // Validate request body
     const validationResult = LoginSchema.safeParse(body);
     if (!validationResult.success) {
+      console.error("[API /login] Validation failed:", validationResult.error.flatten().fieldErrors);
       return NextResponse.json(
         { message: "Invalid input", errors: validationResult.error.flatten().fieldErrors },
         { status: 400 }
@@ -24,26 +26,35 @@ export async function POST(request: Request) {
 
     // Use validated data
     const { username, password } = validationResult.data;
+    console.log("[API /login] Attempting to find user:", username);
 
     // Find user by username (or email, if you allow login via email)
     const user = await prisma.user.findUnique({
       where: { username: username },
     });
 
+    console.log("[API /login] User found:", user ? { id: user.id, username: user.username, isAdmin: user.isAdmin, hasPasswordHash: !!user.passwordHash } : null);
+
     // Check if user exists and has a password hash
     if (!user || !user.passwordHash) {
+      console.warn("[API /login] Login failed: User not found or no password hash.");
       return NextResponse.json({ message: 'Invalid username or password' }, { status: 401 }); // Unauthorized
     }
 
+    console.log("[API /login] Comparing password for user:", user.username);
     // Compare the provided password with the stored hash
     const passwordMatch = await comparePassword(password, user.passwordHash);
+    console.log("[API /login] Password match result:", passwordMatch);
 
     if (!passwordMatch) {
+      console.warn("[API /login] Login failed: Password mismatch for user:", user.username);
       return NextResponse.json({ message: 'Invalid username or password' }, { status: 401 }); // Unauthorized
     }
 
+    console.log(`[API /login] Password matched. Creating JWT for user: ${user.username}, isAdmin: ${user.isAdmin}`);
     // Passwords match - Create JWT
     const token = await createJwt({ userId: user.id, isAdmin: user.isAdmin });
+    console.log(`[API /login] JWT created. Token length: ${token.length}`);
 
     // Serialize the cookie
     const cookie = serialize(AUTH_COOKIE_NAME, token, {
@@ -69,7 +80,14 @@ export async function POST(request: Request) {
     );
 
   } catch (error) {
-    console.error("Login Error:", error);
+    console.error("[API /login] Caught Error:", error);
+    if (error instanceof Error) {
+        console.error("[API /login] Error Type:", error.constructor.name);
+        console.error("[API /login] Error Message:", error.message);
+        console.error("[API /login] Error Stack:", error.stack);
+    } else {
+        console.error("[API /login] Error is not an instance of Error. Raw error:", JSON.stringify(error));
+    }
     return NextResponse.json({ message: 'An error occurred during login.' }, { status: 500 });
   }
 } 

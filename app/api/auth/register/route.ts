@@ -74,6 +74,14 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("[API /register] Caught Error:", error);
+        // Log type and message specifically, if available
+        if (error instanceof Error) {
+          console.error("[API /register] Error Type:", error.constructor.name);
+          console.error("[API /register] Error Message:", error.message);
+          console.error("[API /register] Error Stack:", error.stack);
+      } else {
+          console.error("[API /register] Error is not an instance of Error. Raw error:", JSON.stringify(error));
+      }
     // Generic error for security
     return NextResponse.json({ message: 'An error occurred during registration.' }, { status: 500 });
   }

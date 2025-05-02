@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma'; // Use the standard alias import
+import prisma from '@/lib/db'; // Use the standard alias import
 // import prisma from '../../../lib/prisma'; // Remove relative path
 import { Collection } from '@/lib/interdace'; // Keep for type hints if needed, Prisma Client is typed
 
@@ -79,27 +79,31 @@ export async function POST(request: NextRequest) {
        return NextResponse.json({ message: 'Invalid number format for items or floor price' }, { status: 400 });
     }
 
-     const collectionData = {
-        name: name,
-        creator: creator,
-        items: items, // Use parsed number
-        floorPrice: floorPrice, // Use parsed number
-        image: imageUrl, // Use the ACTUAL URL from image storage eventually
-        category: category,
-        // volume and verified will use default values from schema
-        // id, createdAt, updatedAt are handled by Prisma/database
-      };
+    const propertyData = {
+      name: name,
+      creator: creator,
+      items: items,
+      floorPrice: floorPrice,
+      image: imageUrl,
+      category: category,
+      userId: userId, // <<< ADD THIS LINE
+      // Add any other required fields for your Property model
+      // volume and verified will use default values from schema
+      // id, createdAt, updatedAt are handled by Prisma/database
+    };
 
-    console.log("API POST /api/collections: Attempting to create collection in DB:", collectionData); // Added log
-    const newCollection = await prisma.collection.create({
-      data: collectionData,
+    console.log("API POST /api/collections: Attempting to create property in DB:", propertyData); // <<< Use propertyData in log
+
+    // --- Use the correct model name 'Property' --- 
+    const newProperty = await prisma.Property.create({ 
+      data: propertyData, // <<< Use propertyData here
     });
-
+    
     console.log('--- API POST /api/collections: New Collection Added (Database) ---');
-    console.log(newCollection);
+    console.log(newProperty);
     console.log('------------------------------------------------------------------');
 
-    return NextResponse.json(newCollection, { status: 201 });
+    return NextResponse.json(newProperty, { status: 201 });
 
   } catch (error) {
     console.error('API POST /api/collections: Error creating collection:', error);
