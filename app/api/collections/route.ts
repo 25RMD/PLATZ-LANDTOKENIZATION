@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db'; // Use the standard alias import
+import { writeFile } from 'fs/promises'; // For writing the file
+import path from 'path';               // For path manipulation
+import { mkdir } from 'fs/promises';   // For creating directory
+
 // import prisma from '../../../lib/prisma'; // Remove relative path
 import { Collection } from '@/lib/interdace'; // Keep for type hints if needed, Prisma Client is typed
 
@@ -61,13 +65,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    // --- Actual Image Upload Needed Here ---
-    // TODO: Implement actual image upload to cloud storage (S3, Cloudinary, Vercel Blob, etc.)
-    // TODO: Get the permanent URL back from the storage service.
-    // Using a placeholder for now:
-    const imageUrl = `/placeholder/uploads/${Date.now()}_${imageFile.name}`;
-    console.log(`API POST /api/collections: TODO: Implement actual image upload for ${imageFile.name}. Using placeholder: ${imageUrl}`);
-    // --------------------------------------
+    // --- Implement actual image upload locally --- 
+    let imageUrl = '';
+    try {
+      const bytes = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      // Generate a unique filename (e.g., timestamp + original name)
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+      const extension = path.extname(imageFile.name);
+      const filename = `${imageFile.name.replace(extension, '').slice(0, 20).replace(/[^a-z0-9]/gi, '_')}_${uniqueSuffix}${extension}`;
+      
+      // Define the upload directory relative to the project root
+      const uploadDir = path.join(process.cwd(), 'public/uploads/properties');
+      const filePath = path.join(uploadDir, filename);
+
+      // Ensure the upload directory exists
+      await mkdir(uploadDir, { recursive: true });
+
+      // Write the file
+      await writeFile(filePath, buffer);
+      console.log(`API POST /api/collections: Uploaded file saved to ${filePath}`);
+
+      // Construct the public URL
+      imageUrl = `/uploads/properties/${filename}`;
+      console.log(`API POST /api/collections: Public image URL: ${imageUrl}`);
+
+    } catch (uploadError) {
+      console.error('API POST /api/collections: Error uploading image:', uploadError);
+      return NextResponse.json({ message: 'Error uploading image file.' }, { status: 500 });
+    }
+    // ---------------------------------------------
 
     // Prepare data for Prisma (ensure correct types)
     const items = parseInt(itemsStr, 10);
@@ -81,7 +109,6 @@ export async function POST(request: NextRequest) {
 
     const propertyData = {
       name: name,
-      creator: creator,
       items: items,
       floorPrice: floorPrice,
       image: imageUrl,

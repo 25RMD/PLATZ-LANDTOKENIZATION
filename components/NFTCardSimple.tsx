@@ -28,7 +28,7 @@ const NFTCardSimple: React.FC<NFTCardSimpleProps> = ({ nft, collectionTotalItems
         </div>
         <div className="flex justify-between items-center text-sm mt-3">
           <p className="text-text-light dark:text-text-dark opacity-60">Price</p>
-          <p className="text-text-light dark:text-text-dark font-medium">{nft.price.toFixed(2)} ETH</p> {/* Format price */}
+          <p className="text-text-light dark:text-text-dark font-medium">{nft.price.toFixed(2)} SOL</p> {/* ETH -> SOL */}
         </div>
         {/* Add Buy Now / Details Button later if needed */}
       </div>

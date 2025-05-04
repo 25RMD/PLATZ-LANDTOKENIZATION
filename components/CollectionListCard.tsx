@@ -33,12 +33,12 @@ const CollectionListCard: React.FC<CollectionListCardProps> = ({ collection }) =
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">by {collection.creator}</p>
           </div>
           <div className="text-right md:text-left">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Floor</p>
-            <p className="text-sm font-medium text-text-light dark:text-text-dark">{collection.floorPrice.toFixed(2)} ETH</p>
+            <p className="text-sm text-text-light dark:text-text-dark opacity-60">Floor</p>
+            <p className="text-sm font-semibold text-text-light dark:text-text-dark">{collection.floorPrice.toFixed(2)} SOL</p>
           </div>
-          <div className="text-right md:text-left">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Volume</p>
-            <p className="text-sm font-medium text-text-light dark:text-text-dark">{collection.volume.toLocaleString()} ETH</p>
+          <div className="hidden sm:block min-w-[80px] text-right">
+            <p className="text-sm text-text-light dark:text-text-dark opacity-60">Volume</p>
+            <p className="text-sm font-semibold text-text-light dark:text-text-dark">{collection.volume.toLocaleString()} SOL</p>
           </div>
           <div className="text-right md:text-left">
             <p className="text-xs text-gray-500 dark:text-gray-400">Items</p>

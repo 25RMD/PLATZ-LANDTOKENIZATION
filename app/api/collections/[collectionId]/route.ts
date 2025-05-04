@@ -1,29 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import prisma from '../../../lib/prisma'; // Previous incorrect relative path
-import prisma from '../../../../lib/prisma'; // Corrected relative path
-import { NFT } from '@prisma/client'; // Import generated NFT type if needed
+import prisma from '../../../../lib/prisma'; 
+import { Property as PrismaProperty, NFT } from '@prisma/client';
 
-// Define the expected structure for the response, including NFTs
-import { Collection } from '@/lib/interdace'; // Assuming this includes basic fields
-interface CollectionWithNFTs extends Collection {
-  nfts: NFT[]; // Use Prisma's generated NFT type
+interface PropertyWithNFTs extends PrismaProperty {
+  nfts: NFT[];
+  ownerCount: number; 
+  listedCount: number; 
+  topOffer: number | null; 
+  volume24h: number; 
+  sales24h: number; 
 }
 
-// Mock NFT Generator Function
-const generateMockNFTs = (collection: Collection): NFT[] => {
+const generateMockNFTs = (property: PrismaProperty, propertyImageUrl: string): NFT[] => {
   const mockNfts: NFT[] = [];
-  for (let i = 1; i <= collection.items; i++) {
+  for (let i = 1; i <= property.items; i++) {
     mockNfts.push({
-      id: `${collection.id}-mock-${i}`, // Simple mock ID
-      name: `${collection.name} #${i}`,
+      id: `${property.id}-mock-${i}`, 
+      name: `${property.name} #${i}`,
       itemNumber: i,
-      // Use a generic placeholder or try to derive from collection image
-      image: `/images/mock-nft-placeholder.png`, // Generic placeholder
-      // Use floor price or a slight variation for mock price
-      price: collection.floorPrice + Math.random() * 0.1 - 0.05, // Slight random variation
-      collectionId: collection.id,
+      image: propertyImageUrl, 
+      price: property.floorPrice + Math.random() * 0.1 - 0.05, 
+      propertyId: property.id, 
       createdAt: new Date(),
       updatedAt: new Date(),
+      ownerId: null, 
+      isListed: false 
     });
   }
   return mockNfts;
@@ -31,58 +32,117 @@ const generateMockNFTs = (collection: Collection): NFT[] => {
 
 export async function GET(
   request: NextRequest,
-  context: { params: { collectionId: string } }
+  context: { params: { collectionId: string } } 
 ) {
-  const collectionId = context.params.collectionId;
+  const { params } = context; 
+  const awaitedParams = await context.params;
+  const propertyId = awaitedParams.collectionId; 
 
-  if (!collectionId) {
-    return NextResponse.json({ message: 'Collection ID is required' }, { status: 400 });
+  if (!propertyId) {
+    return NextResponse.json({ message: 'Property ID is required' }, { status: 400 });
   }
 
   try {
-    console.log(`API GET /api/collections/${collectionId}: Fetching collection with NFTs...`);
+    console.log(`API GET /api/collections/${propertyId}: Fetching property with NFTs...`); 
 
-    const collection = await prisma.collection.findUnique({
+    const property = await prisma.property.findUnique({ 
       where: {
-        id: collectionId,
+        id: propertyId,
       },
       include: {
-        nfts: { // Include the related NFTs
+        nfts: { 
           orderBy: {
-            itemNumber: 'asc', // Order NFTs by their number within the collection
+            itemNumber: 'asc', 
           },
         },
       },
     });
 
-    if (!collection) {
-      console.log(`API GET /api/collections/${collectionId}: Collection not found.`);
-      return NextResponse.json({ message: 'Collection not found' }, { status: 404 });
+    if (!property) {
+      console.log(`API GET /api/collections/${propertyId}: Property not found.`); 
+      return NextResponse.json({ message: 'Property not found' }, { status: 404 }); 
     }
 
-    console.log(`API GET /api/collections/${collectionId}: Found collection. NFT count: ${collection.nfts.length}`);
+    const distinctOwners = await prisma.nFT.findMany({
+      where: {
+        propertyId: propertyId,
+        ownerId: { not: null },
+      },
+      distinct: ['ownerId'],
+      select: { ownerId: true }, 
+    });
+    const distinctOwnerCount = distinctOwners.length;
 
-    // Check if NFTs were included but the array is empty (meaning none exist in DB)
-    // And if the collection expects items (items > 0)
-    if (collection.nfts.length === 0 && collection.items > 0) {
-      console.log(`API GET /api/collections/${collectionId}: No NFTs found in DB, generating mocks for ${collection.items} items...`);
-      // Generate mock NFTs if none are found in the database
-      const mockNfts = generateMockNFTs(collection);
-      // We need to cast the collection to include the mocked nfts field
-      const collectionWithMocks: CollectionWithNFTs = {
-          ...collection,
-          nfts: mockNfts
+    console.log(`API GET /api/collections/${propertyId}: Distinct owner count: ${distinctOwnerCount}`);
+
+    const listedCount = await prisma.nFT.count({
+      where: {
+        propertyId: propertyId,
+        isListed: true, 
+      },
+    });
+    console.log(`API GET /api/collections/${propertyId}: Listed count: ${listedCount}`);
+
+    const topOfferResult = await prisma.offer.aggregate({
+      _max: { price: true },
+      where: {
+        status: 'ACTIVE',
+        nft: { propertyId: propertyId },
+      },
+    });
+    const topOffer = topOfferResult._max.price; 
+    console.log(`API GET /api/collections/${propertyId}: Top offer: ${topOffer}`);
+
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const tradeStats = await prisma.trade.aggregate({
+      _sum: { price: true },
+      _count: { id: true },
+      where: {
+        timestamp: { gte: twentyFourHoursAgo },
+        nft: { propertyId: propertyId },
+      },
+    });
+    const volume24h = tradeStats._sum.price ?? 0;
+    const sales24h = tradeStats._count.id ?? 0;
+    console.log(`API GET /api/collections/${propertyId}: 24h Volume: ${volume24h}, 24h Sales: ${sales24h}`);
+
+    console.log(`API GET /api/collections/${propertyId}: Found property. NFT count: ${property.nfts.length}`);
+
+    if (property.nfts.length === 0 && property.items > 0) {
+      console.log(`API GET /api/collections/${propertyId}: No NFTs found in DB, generating mocks for ${property.items} items...`);
+      const mockNfts = generateMockNFTs(property, property.image); 
+      const propertyWithMocksAndCount: PropertyWithNFTs = {
+          ...property,
+          nfts: mockNfts,
+          ownerCount: 0, 
+          listedCount: 0, 
+          topOffer: null, 
+          volume24h: 0,
+          sales24h: 0
       };
-       console.log(`API GET /api/collections/${collectionId}: Returning collection with ${mockNfts.length} mocked NFTs.`);
-      return NextResponse.json(collectionWithMocks);
+       console.log(`API GET /api/collections/${propertyId}: Returning property with ${mockNfts.length} mocked NFTs.`); 
+      return NextResponse.json(propertyWithMocksAndCount);
     }
 
-    // If real NFTs exist, return the collection as fetched
-    console.log(`API GET /api/collections/${collectionId}: Returning collection with ${collection.nfts.length} real NFTs.`);
-    return NextResponse.json(collection);
+    const nftsWithCorrectImage = property.nfts.map(nft => ({
+      ...nft,
+      image: property.image 
+    }));
+
+    const responseData: PropertyWithNFTs = {
+        ...property,
+        nfts: nftsWithCorrectImage, 
+        ownerCount: distinctOwnerCount, 
+        listedCount: listedCount, 
+        topOffer: topOffer,
+        volume24h: volume24h,
+        sales24h: sales24h
+    }
+    console.log(`API GET /api/collections/${propertyId}: Returning property with ${property.nfts.length} real NFTs, ${distinctOwnerCount} owners, ${listedCount} listed.`); 
+    return NextResponse.json(responseData); 
 
   } catch (error) {
-    console.error(`API GET /api/collections/${collectionId}: Error fetching collection:`, error);
-    return NextResponse.json({ message: 'Internal Server Error fetching collection data' }, { status: 500 });
+    console.error(`API GET /api/collections/${propertyId}: Error fetching property:`, error); 
+    return NextResponse.json({ message: 'Internal Server Error fetching property data' }, { status: 500 }); 
   }
-} 
+}

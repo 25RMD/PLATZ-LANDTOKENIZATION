@@ -40,6 +40,12 @@ export interface Collection {
   image: string;
   category: string;
   verified: boolean;
+  description?: string;
+  ownerCount: number; // ADDED: Count of distinct owners
+  listedCount: number; // ADDED: Count of listed NFTs
+  topOffer: number | null; // ADDED: Highest active offer price
+  volume24h: number; // ADDED: Sum of trade prices in last 24h
+  sales24h: number; // ADDED: Count of trades in last 24h
 }
 
 export interface AnimatedButtonProps {

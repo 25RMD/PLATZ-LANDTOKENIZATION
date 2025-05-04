@@ -35,7 +35,7 @@ const CollectionCard = ({ collection }: { collection: Collection }) => {
           <div className="flex justify-between items-start mb-1 gap-2">
             <h3 className="text-base font-semibold text-text-light dark:text-text-dark flex-shrink truncate" title={collection.name}>{collection.name}</h3>
             <span className="bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-md text-xs font-medium flex-shrink-0 whitespace-nowrap">
-              {collection.floorPrice.toFixed(2)} ETH floor
+              {collection.floorPrice.toFixed(2)} SOL floor
             </span>
           </div>
 
@@ -48,7 +48,7 @@ const CollectionCard = ({ collection }: { collection: Collection }) => {
             <div className="text-right">
               <p className="text-text-light dark:text-text-dark opacity-60">Volume</p>
               <p className="text-text-light dark:text-text-dark font-medium">
-                {collection.volume.toLocaleString()} ETH
+                {collection.volume.toLocaleString()} SOL
               </p>
             </div>
           </div>
