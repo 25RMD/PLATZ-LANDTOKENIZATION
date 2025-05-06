@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial setup
 - Created CHANGELOG.md
 - Added skeleton loaders for NFT card grids.
+- Land Listing Creation Feature:
+  - Renamed frontend component `mainpages/CreateNFTPage.tsx` to `mainpages/CreateLandListingPage.tsx`.
+  - Added `LandListing` model to `prisma/schema.prisma` to store detailed listing data.
+  - Created `POST /api/land-listings` endpoint to receive and save new land listing form data.
+- Component sections for Create Land Listing form: LegalDocs, Registry/Parcel, Owner/KYC, Chain-of-Title, Additional Info.
+- Reusable `FileInputField` component with drag-and-drop and preview.
+- Specific TypeScript interfaces and types for each form section.
+- Placeholder and guidance for custom JWT-based user authentication in the land listing creation API route (`app/api/land-listings/route.ts`).
+- Added `additionalNotes` field to the `LandListing` Prisma schema.
+- New fields to `FormDataInterface` for comprehensive chain-of-title and encumbrance history: `previousDeedFile`, `titleReportFile`, `titleInsuranceFile`, `titleInsuranceCompany`, `titleInsurancePolicyNumber`, `encumbranceDetails`, `encumbranceHistoryFile`, `titleOpinionFile`, `attorneyOpinionProvider`.
+- `NftDetailsFileFieldNames` type in `NftDetailsSection.tsx`.
 
 ### Changed
 - Fixed distinct owner count calculation in API.
@@ -25,7 +36,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redesigned the Collection page header to closely match OpenSea's layout, including banner, logo, title, stats, and action buttons.
 - Updated the loading skeleton for the Collection page header.
 - Fixed collection page data fetching and rendering.
+- Refactored `CreateLandListingPage.tsx` to use the new section components.
+- Moved `useEffect` cleanup hook for file previews inside `CreateLandListingPage` component scope.
+- Implemented multi-file upload capability for `propertyPhotosFile` field:
+  - Updated `initialFormData` and `filePreviews` state in `CreateLandListingPage`.
+  - Modified `handleFileChange`, `handleDrop`, and `handleSubmit` in `CreateLandListingPage` to handle `File[]`.
+  - Added `multiple` prop and multi-preview support to `FileInputField`.
+  - Added `disabled` prop to `FileInputField`.
+  - Updated `filePreviews` prop type in all section components (`LegalDocumentsSection`, `RegistryParcelSection`, `AdditionalInfoSection`, `ChainOfTitleSection`, `OwnerKycSection`).
+  - Passed `multiple` prop to `FileInputField` in `AdditionalInfoSection`.
+- Corrected `FileList` handling in `CreateLandListingPage` handlers using `Array.from()`.
+- Corrected `prismaData` field names (`ownerIdNumber`, `ownerIdFileRef`) in `app/api/land-listings/route.ts` to align with frontend form data, ensuring proper data mapping for `LandListing` creation.
+- Commented out unused date and address proof fields in `prismaData` in `app/api/land-listings/route.ts` as they are not currently sent by the frontend.
+- Reinstated `additionalNotes` in the `prismaData` object in `app/api/land-listings/route.ts` after it was added to the `LandListing` Prisma schema.
+- **Type Safety & Consistency:**
+    - Made several fields in `FormDataInterface` non-optional to align with `initialFormData`.
+    - Renamed `ownerIdNumber` to `govIdNumber` and `ownerIdFile` to `idDocumentFile` in `FormDataInterface`, `CreateLandListingPage.tsx`, and `OwnerKycSection.tsx` for clarity.
+    - Updated `handleDrop` function signature in `CreateLandListingPage.tsx` and consuming components (`NftDetailsSection`, `OwnerKycSection`, etc.) to use more specific `FileFieldNames` types (`keyof FormDataInterface` or component-specific file field name types) instead of generic `string`.
+    - `AdditionalInfoFormData` in `AdditionalInfoSection.tsx`: `propertyPhotosFile` type changed from `File | null` to `File[] | null` to support multiple photo uploads.
+    - `NftDetailsProps` in `NftDetailsSection.tsx`: `handleDrop` now uses `NftDetailsFileFieldNames`; `formData` prop is now more specific using `Pick<>`; `filePreviews` prop now uses `NftDetailsFileFieldNames`.
+- **Component Updates:**
+    - `CreateLandListingPage.tsx`: `initialFormData` updated to reflect all `FormDataInterface` changes.
+    - `OwnerKycSection.tsx`: `OwnerKycFormData` and `OwnerKycFileFieldNames` updated to use `govIdNumber` and `idDocumentFile`.
+    - `NftDetailsSection.tsx`: Corrected `FileInputField` import path and updated its props to align with the common component's API. Styling updated to match other sections.
+- **API & Data Handling:**
+    - Ensured `app/api/land-listings/route.ts` correctly processes new NFT-related fields (`nftTitle`, `nftDescription`, `nftImageFileRef`, `listingPrice`, `priceCurrency`) from `formData` when creating a `LandListing` record. `nftCollectionSize` relies on the schema default.
+    - Ran `npx prisma generate` to update Prisma client after schema changes.
+- Refactored `SingleCollectionPage` and `NFTCardSimple` to use `LandListingWithDetails` and handle new API data.
+- Refactored `SingleCollectionPage.tsx` (`app/collections/[collectionId]/page.tsx`) to use the new `LandListingWithDetails` interface: updated data fetching, state management, and rendering logic for header, stats, 'About' section, and NFT grid to correctly display data from the updated API. Resolved TypeScript lint errors related to `category` and `volume` by adapting to the new model.
+- Updated `NFTCardSimple.tsx` to accept and use a `collectionCurrency` prop for dynamic currency display in NFT prices, resolving a lint error from `SingleCollectionPage`.
 
 ### Fixed
 - Ensured consistent data fetching and display for collection details.
 - Resolved linting errors on the Collection page: removed redundant CSS classes and added missing icon imports.
+- Resolved TypeScript errors related to component prop types after refactoring.
+- Addressed potential memory leaks by ensuring file preview URLs are revoked on unmount and after submission.
+- Corrected implicit 'any' types in `CreateLandListingPage` file handlers.
+- Removed incorrect `getSession` (NextAuth.js specific) call from `app/api/land-listings/route.ts` which was causing a `ReferenceError` as the project uses custom authentication.
+- Resolved `PrismaClientValidationError` in `app/api/land-listings/route.ts` by correctly mapping frontend form field names (e.g., `ownerIdNumber`, `ownerIdFileRef`) to their corresponding Prisma schema field names (`govIdNumber`, `idDocumentFileRef`) in the `prismaData` object. Ensured optional file reference fields are set to `null` instead of `undefined`.
+- Resolved various TypeScript lint errors related to type mismatches in form data, props, and event handlers across `CreateLandListingPage.tsx`, `OwnerKycSection.tsx`, `AdditionalInfoSection.tsx`, and `NftDetailsSection.tsx`.
+- Corrected import path errors in `NftDetailsSection.tsx`.
+- Resolved Prisma client type error in `app/api/land-listings/route.ts` by regenerating the client, allowing `nftTitle` and other new fields to be recognized in `LandListingCreateInput`.
+- Resolved `PrismaClientKnownRequestError` (P2025) in `app/api/land-listings/route.ts` POST handler by ensuring a connectable `userId` is available. This was temporarily addressed by updating the hardcoded `userId` to one present in the database, pending full authentication implementation.
+- Corrected `PrismaClientValidationError` in `app/api/collections/route.ts` GET handler by removing the non-existent `slug` field from the `select` statement in the `prisma.landListing.findMany` query, allowing collections to be fetched successfully.
+
+### Removed
+- Direct form field rendering from `CreateLandListingPage.tsx` (moved to section components).
+
+## [0.1.0] - YYYY-MM-DD
+
+### Added
+- Initial project setup.
+- Basic Next.js structure.
+- Prisma schema definition (placeholder).

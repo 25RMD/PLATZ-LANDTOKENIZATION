@@ -40,9 +40,13 @@ model NFT {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Relation to Property: Each NFT belongs to one Property
-  propertyId String
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  // Relation to Property: Each NFT can optionally belong to one Property
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  // Relation to LandListing: Each NFT can optionally belong to one LandListing
+  landListingId String?    // Foreign key to LandListing
+  landListing   LandListing? @relation("LandListingToNFTs", fields: [landListingId], references: [id], onDelete: Cascade) // Named relation
 
   // Relation to Owner User
   ownerId    String?
@@ -92,12 +96,12 @@ model User {
 
   // Optional: Add relations if needed, e.g., to NFTs or Properties
   // nfts NFT[]
-
   properties Property[]
   nfts       NFT[] // NFTs currently owned by the user
   offersMade Offer[] @relation("OffersMade") 
   tradesBought Trade[] @relation("TradesBought") 
   tradesSold Trade[] @relation("TradesSold") 
+  landListings LandListing[]
 
   @@map("users") // Maps the model name to the 'users' table name in the DB
   @@index([solanaPubKey], name: "idx_users_solana_pub_key") // Corrected index
@@ -158,6 +162,86 @@ model Trade {
   @@index([sellerId])
   @@index([timestamp])
   @@map("trades")
+}
+
+// --- ADDED: LandListing Model ---
+model LandListing {
+  id                     String    @id @default(cuid())
+  userId                 String    // Foreign key to User (creator/owner)
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Core Legal Documents
+  titleDeedFileRef       String?   @map("title_deed_file_ref") // Reference to uploaded file
+  deedNumber             String?
+  deedType               String?
+  grantorName            String?
+  granteeName            String?
+  deedDate               DateTime? @db.Date
+  titleCertFileRef       String?   @map("title_cert_file_ref") // Reference to uploaded file
+  certNumber             String?
+  certIssueDate          DateTime? @db.Date
+  certExpiryDate         DateTime? @db.Date
+  encumbranceFileRef     String?   @map("encumbrance_file_ref") // Reference to uploaded file
+  encumbranceId          String?
+  encumbrancePeriodStart DateTime? @db.Date
+  encumbrancePeriodEnd   DateTime? @db.Date
+
+  // Registry & Parcel Identifiers
+  parcelNumber           String?
+  registryVolume         String?
+  registryPage           String?
+  surveyPlanFileRef      String?   @map("survey_plan_file_ref") // Reference to uploaded file
+  surveyPlanNumber       String?
+  surveyDate             DateTime? @db.Date
+
+  // Geospatial & Boundary Data
+  latitude               String?   // Could use Float or Decimal if precision needed
+  longitude              String?   // Could use Float or Decimal if precision needed
+  gisFileRef             String?   @map("gis_file_ref") // Reference to uploaded file
+
+  // Owner Identity & KYC (Snapshot for the listing)
+  ownerName              String?
+  govIdNumber            String?
+  idIssueDate            DateTime? @db.Date
+  idExpiryDate           DateTime? @db.Date
+  idDocumentFileRef      String?   @map("id_document_file_ref") // Reference to uploaded file
+  addressProofFileRef    String?   @map("address_proof_file_ref") // Reference to uploaded file
+  kycStatus              String?   @default("PENDING") // PENDING, VERIFIED, REJECTED
+
+  // Chain-of-Title & Encumbrance History
+  titleSearchFileRef     String?   @map("title_search_file_ref") // Reference to uploaded file
+  titleOpinionFileRef    String?   @map("title_opinion_file_ref") // Reference to uploaded file
+  recordedInstruments    String?   @db.Text
+
+  // On-Chain Metadata (Placeholders)
+  docHash                String?   // Generated server-side
+  ipfsUri                String?   // Generated server-side
+  mintTimestamp          DateTime? // Generated server-side
+  tokenId                String?   // Generated server-side
+
+  // Status & Timestamps
+  status                 String    @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  // Additional notes
+  additionalNotes        String?
+
+  // NFT Specific Details
+  nftTitle            String?    @map("nft_title")
+  nftDescription      String?    @db.Text @map("nft_description")
+  nftImageFileRef     String?    @map("nft_image_file_ref")
+  listingPrice        Decimal?   @map("listing_price")
+  priceCurrency       String?    @default("SOL") @map("price_currency")
+  nftCollectionSize   Int?       @default(100) @map("nft_collection_size")
+
+  // Relation to individual NFTs that are part of this LandListing's collection
+  individualNfts NFT[] @relation("LandListingToNFTs") // Use the same named relation
+
+  @@index([userId])
+  @@index([status])
+  @@index([kycStatus])
+  @@map("land_listings")
 }
 
 // Add other models like NFT, Property if needed

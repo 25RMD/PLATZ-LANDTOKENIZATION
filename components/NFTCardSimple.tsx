@@ -5,10 +5,11 @@ import { Collection } from '@/lib/interdace'; // To get total items
 interface NFTCardSimpleProps {
   nft: NFT;
   collectionTotalItems: number;
+  collectionCurrency?: string | null; // Add collectionCurrency prop
   index?: number; // Optional index for animation delay
 }
 
-const NFTCardSimple: React.FC<NFTCardSimpleProps> = ({ nft, collectionTotalItems, index }) => {
+const NFTCardSimple: React.FC<NFTCardSimpleProps> = ({ nft, collectionTotalItems, collectionCurrency, index }) => {
   return (
     <div className="bg-primary-light dark:bg-card-dark rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-zinc-800 dark:hover:border-zinc-700">
       <div className="relative h-48 w-full">
@@ -28,7 +29,9 @@ const NFTCardSimple: React.FC<NFTCardSimpleProps> = ({ nft, collectionTotalItems
         </div>
         <div className="flex justify-between items-center text-sm mt-3">
           <p className="text-text-light dark:text-text-dark opacity-60">Price</p>
-          <p className="text-text-light dark:text-text-dark font-medium">{nft.price.toFixed(2)} SOL</p> {/* ETH -> SOL */}
+          <p className="text-text-light dark:text-text-dark font-medium">
+            {nft.price.toFixed(2)}{collectionCurrency ? ` ${collectionCurrency}` : ''}
+          </p>
         </div>
         {/* Add Buy Now / Details Button later if needed */}
       </div>

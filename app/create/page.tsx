@@ -1,8 +1,12 @@
-import CreateNFTPage from "@/mainpages/CreateNFTPage";
+import CreateNFTPage from "@/mainpages/CreateLandListingPage";
 import React from "react";
 
 const Create = () => {
-  return <CreateNFTPage />;
+  return (
+    <div>
+      <CreateNFTPage />
+    </div>
+  );
 };
 
 export default Create;

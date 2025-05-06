@@ -10,22 +10,51 @@ import { Collection } from '@/lib/interdace'; // Keep for type hints if needed, 
 // --- Remove the simulated database array ---
 // let serverCollections: Collection[] = [...initialCollections]; 
 
-// GET Handler - Fetch from Actual Database
+// GET Handler - Fetch LandListings for Collection Display
 export async function GET(request: NextRequest) {
+  console.log("Attempting to GET /api/collections..."); // Added log
   try {
-    console.log("API GET /api/collections: Fetching from database..."); // Added log
-    console.log("API GET /api/collections: Value of prisma before findMany:", prisma);
-    const properties = await prisma.property.findMany({
+    console.log("API GET /api/collections: Fetching LandListings from database...");
+    const landListings = await prisma.landListing.findMany({
+      where: {
+        // Add any filtering conditions if needed, e.g., status: 'ACTIVE'
+        status: 'ACTIVE', // Example: Only fetch active/published listings
+      },
+      select: {
+        id: true,
+        nftTitle: true,
+        nftDescription: true,
+        listingPrice: true,
+        priceCurrency: true,
+        nftImageFileRef: true,
+        nftCollectionSize: true,
+        // slug: true, // REMOVED: Assuming you have a slug for direct navigation - Field does not exist
+        user: { // Include creator details
+          select: {
+            id: true,
+            username: true,
+            solanaPubKey: true, // Or other relevant user identifier
+          }
+        },
+        createdAt: true, // For sorting or display
+        // Add any other fields needed for the collections overview/cards
+      },
       orderBy: {
-        // Example: Order by volume descending by default, or createdAt
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
-    console.log(`API GET /api/collections: Found ${properties.length} properties.`); // Updated log message
-    return NextResponse.json(properties);
+    console.log(`API GET /api/collections: Found ${landListings.length} LandListings.`);
+    return NextResponse.json(landListings);
   } catch (error) {
-    console.error('API GET /api/collections: Error fetching properties:', error); // Updated log message
-    return NextResponse.json({ message: 'Internal Server Error fetching properties' }, { status: 500 }); // Updated error message
+    console.error('API GET /api/collections: Error fetching LandListings. Details:', { 
+        name: (error as any).name,
+        message: (error as any).message,
+        code: (error as any).code, // For Prisma errors
+        meta: (error as any).meta, // For Prisma errors
+        stack: (error as any).stack,
+        errorObject: error // Log the full error object for inspection
+    });
+    return NextResponse.json({ message: 'Internal Server Error fetching collections' }, { status: 500 });
   }
 }
 

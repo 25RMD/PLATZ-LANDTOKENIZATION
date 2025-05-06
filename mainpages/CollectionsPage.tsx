@@ -13,21 +13,37 @@ import {
 } from "react-icons/fi";
 import CollectionCard from "@/components/CollectionCard";
 import CollectionListCard from "@/components/CollectionListCard";
-import { Collection } from "@/lib/interdace";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import CollectionCardSkeleton from '@/components/skeletons/CollectionCardSkeleton';
 import CollectionListCardSkeleton from '@/components/skeletons/CollectionListCardSkeleton';
 
+export interface LandListingForCollection {
+  id: string;
+  nftTitle: string | null; 
+  nftDescription: string | null;
+  listingPrice: number | string | null; 
+  priceCurrency: string | null;
+  nftImageFileRef: string | null;
+  nftCollectionSize: number | null;
+  slug: string | null;
+  user: {
+    id: string;
+    username: string | null;
+    solanaPubKey: string | null;
+  } | null;
+  createdAt: string; 
+  // Add other fields if they were included in GET /api/collections select
+}
+
 const CollectionsPage = () => {
-  const [allCollections, setAllCollections] = useState<Collection[]>([]);
+  const [allCollections, setAllCollections] = useState<LandListingForCollection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("volume");
+  const [sortBy, setSortBy] = useState<string>("volume"); 
 
   useEffect(() => {
     const fetchCollections = async () => {
@@ -38,7 +54,7 @@ const CollectionsPage = () => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data: Collection[] = await response.json();
+        const data: LandListingForCollection[] = await response.json();
         setAllCollections(data);
       } catch (err: any) {
         console.error("Failed to fetch collections:", err);
@@ -53,26 +69,24 @@ const CollectionsPage = () => {
 
   const filteredCollections = allCollections
     .filter((collection) =>
-      collection.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter((collection) =>
-      activeCategory === "all" ? true : collection.category === activeCategory
+      collection.nftTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ?? true
     )
     .sort((a, b) => {
+      const getPriceAsNumber = (price: string | number | null | undefined): number => {
+        if (price === null || price === undefined) return 0;
+        if (typeof price === 'string') return parseFloat(price) || 0;
+        return price;
+      };
+
       switch (sortBy) {
-        case "volume":
-          return b.volume - a.volume;
-        case "floor":
-          return b.floorPrice - a.floorPrice;
-        case "items":
-          return b.items - a.items;
+        case "volume": 
+          return (b.nftCollectionSize ?? 0) - (a.nftCollectionSize ?? 0);
+        case "floor": 
+          return getPriceAsNumber(b.listingPrice) - getPriceAsNumber(a.listingPrice);
+        case "items": 
+          return (b.nftCollectionSize ?? 0) - (a.nftCollectionSize ?? 0);
         case "newest":
-          const idA = parseInt(a.id);
-          const idB = parseInt(b.id);
-          if (!isNaN(idA) && !isNaN(idB)) {
-             return idB - idA;
-          }
-          return b.id.localeCompare(a.id);
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         default:
           return 0;
       }
@@ -183,7 +197,7 @@ const CollectionsPage = () => {
               <div className="p-5">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-medium text-text-light dark:text-text-dark">
-                    Filter by Category
+                    Filter by Category (Temporarily Disabled)
                 </h3>
                    <button 
                       onClick={() => setShowFilters(false)} 
@@ -193,21 +207,7 @@ const CollectionsPage = () => {
                       <FiX className="w-5 h-5" />
                    </button>
                  </div>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => setActiveCategory(category.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 border ${
-                        activeCategory === category.id
-                          ? "bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500"
-                          : "bg-white dark:bg-zinc-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-600 hover:border-gray-400 dark:hover:border-zinc-500"
-                      }`}
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-                </div>
+                 <p className="text-sm text-gray-500 dark:text-gray-400">Category filtering will be re-enabled once categories are added to Land Listings.</p>
               </div>
             </motion.div>
           )}
@@ -250,8 +250,8 @@ const CollectionsPage = () => {
             No properties found
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            {searchTerm || activeCategory !== 'all'
-              ? "Try adjusting your search or filters"
+            {searchTerm 
+              ? "Try adjusting your search"
               : "No properties available. Try creating one!"}
           </p>
         </motion.div>
