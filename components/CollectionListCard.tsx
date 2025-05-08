@@ -1,6 +1,7 @@
 import Link from "next/link";
 import React from "react";
 import { LandListingForCollection } from "@/mainpages/CollectionsPage";
+import { getImageUrl, getPlaceholderImage } from "@/lib/utils/imageUtils";
 
 interface CollectionListCardProps {
   collection: LandListingForCollection;
@@ -13,10 +14,7 @@ const CollectionListCard: React.FC<CollectionListCardProps> = ({ collection }) =
     return `${numericPrice.toFixed(2)} ${currency || 'SOL'}`;
   };
 
-  const getImageUrl = (imageRef: string | null | undefined): string => {
-    if (!imageRef) return '/placeholder-image.png'; 
-    return imageRef; 
-  };
+  // Using the centralized getImageUrl utility function from lib/utils/imageUtils.ts
 
   return (
     <Link href={`/collections/${collection.id}`} passHref legacyBehavior>
@@ -25,7 +23,7 @@ const CollectionListCard: React.FC<CollectionListCardProps> = ({ collection }) =
       >
         <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
           <img
-            src={getImageUrl(collection.nftImageFileRef)}
+            src={getImageUrl(collection.nftImageFileRef, getPlaceholderImage('collection'))}
             alt={collection.nftTitle || 'Collection Image'}
             className="w-full h-full object-cover"
           />

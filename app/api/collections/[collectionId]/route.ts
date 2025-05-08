@@ -19,15 +19,69 @@ interface LandListingWithDetails extends PrismaLandListing {
   verified: boolean;
 }
 
-const generateMockNFTs = (landListing: PrismaLandListing, listingImageUrl: string | null): NFT[] => {
+// Helper function to convert file references to proper URLs
+const getFileUrl = (fileRef: string | null): string => {
+  // Default placeholder for missing images
+  const placeholder = '/placeholder-nft-image.png';
+  
+  if (!fileRef) {
+    console.log('No file reference provided, using placeholder');
+    return placeholder;
+  }
+  
+  console.log(`Processing file reference: ${fileRef}`);
+  
+  // Check if it's already a full URL
+  if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) {
+    console.log(`File reference is already a full URL: ${fileRef}`);
+    return fileRef;
+  }
+  
+  // Check if it's a UUID-based filename (new format)
+  if (fileRef.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i)) {
+    const url = `/api/files/${fileRef}`;
+    console.log(`File reference is a UUID-based filename, using: ${url}`);
+    return url;
+  }
+  
+  // Handle legacy image paths (old format)
+  // Check if it already has a leading slash
+  if (fileRef.startsWith('/')) {
+    console.log(`File reference already has a leading slash: ${fileRef}`);
+    return fileRef;
+  }
+  
+  // Check if it's in the public directory
+  if (fileRef.startsWith('public/')) {
+    const url = `/${fileRef.substring(7)}`;
+    console.log(`File reference is in public directory, using: ${url}`);
+    return url;
+  }
+  
+  // For NFT images, try to use a more reliable source
+  if (fileRef.includes('jpg') || fileRef.includes('jpeg') || fileRef.includes('png') || fileRef.includes('gif')) {
+    // This is likely an NFT image, let's use a placeholder instead of a 404
+    console.log(`File reference appears to be an image but may not exist: ${fileRef}, using placeholder`);
+    return placeholder;
+  }
+  
+  // Default case: assume it's in the public directory
+  const url = `/${fileRef}`;
+  console.log(`Using default path for file reference: ${url}`);
+  return url;
+};
+
+const generateMockNFTs = (landListing: PrismaLandListing, listingImageRef: string | null): NFT[] => {
   const mockNfts: NFT[] = [];
   const collectionSize = landListing.nftCollectionSize || 0;
+  const imageUrl = getFileUrl(listingImageRef);
+  
   for (let i = 1; i <= collectionSize; i++) {
     mockNfts.push({
       id: `${landListing.id}-mock-${i}`,
       name: `${landListing.nftTitle || 'NFT'} #${i}`,
       itemNumber: i,
-      image: listingImageUrl || '/placeholder-nft-image.png',
+      image: imageUrl,
       price: (Number(landListing.listingPrice) || 0) + Math.random() * 0.1 - 0.05,
       landListingId: landListing.id,
       propertyId: null,
@@ -126,7 +180,7 @@ export async function GET(
     } else {
       finalNfts = landListing.individualNfts.map(nft => ({
         ...nft,
-        image: landListing.nftImageFileRef || nft.image || '/placeholder-nft-image.png',
+        image: getFileUrl(landListing.nftImageFileRef) || getFileUrl(nft.image),
       }));
       console.log(`API GET /api/collections/${landListingId}: Returning LandListing with ${finalNfts.length} real NFTs.`);
     }
@@ -143,7 +197,7 @@ export async function GET(
       sales24h: Number(sales24h),
       name: landListing.nftTitle || 'Untitled Collection',
       description: landListing.nftDescription,
-      image: landListing.nftImageFileRef,
+      image: getFileUrl(landListing.nftImageFileRef),
       creator: creatorName,
       floorPrice: landListing.listingPrice ? Number(landListing.listingPrice) : null,
       items: landListing.nftCollectionSize || 0,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import React from "react";
-import { LandListingForCollection } from "@/mainpages/CollectionsPage"; 
+import { LandListingForCollection } from "@/mainpages/CollectionsPage";
+import { getImageUrl, getPlaceholderImage } from "@/lib/utils/imageUtils"; 
 
 const CollectionCard = ({ collection }: { collection: LandListingForCollection }) => {
   const formatPrice = (price: string | number | null | undefined, currency: string | null | undefined): string => {
@@ -9,17 +10,14 @@ const CollectionCard = ({ collection }: { collection: LandListingForCollection }
     return `${numericPrice.toFixed(2)} ${currency || 'SOL'}`;
   };
 
-  const getImageUrl = (imageRef: string | null | undefined): string => {
-    if (!imageRef) return '/placeholder-image.png'; 
-    return imageRef; 
-  };
+  // Using the centralized getImageUrl utility function from lib/utils/imageUtils.ts
 
   return (
     <Link href={`/collections/${collection.id}`} passHref legacyBehavior>
       <a className="block bg-primary-light dark:bg-card-dark rounded-lg overflow-hidden transition-all duration-300 border border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 hover:shadow-md group">
         <div className="relative h-48 w-full overflow-hidden">
           <img
-            src={getImageUrl(collection.nftImageFileRef)}
+            src={getImageUrl(collection.nftImageFileRef, getPlaceholderImage('collection'))}
             alt={collection.nftTitle || 'Collection Image'}
             className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
           />

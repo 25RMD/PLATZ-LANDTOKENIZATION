@@ -1,5 +1,3 @@
-    // prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,135 +7,115 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Renamed from Collection
 model Property {
-  id         String   @id @default(cuid()) // Use cuid() or uuid()
-  name       String
-  userId String   // Foreign key
-  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items      Int      // Number of tokens/shares
-  volume     Float    @default(0)
-  floorPrice Float
-  image      String
-  category   String
-  verified   Boolean  @default(false)
-  description String? // ADDED: Optional description field
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  items       Int
+  volume      Float    @default(0)
+  floorPrice  Float
+  image       String
+  category    String
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  description String?
+  nfts        NFT[]
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relation to NFTs: A Property can have many NFTs
-  nfts       NFT[]
   @@index([userId])
-  @@map("properties") // Map to 'properties' table if desired, or remove to use model name
+  @@map("properties")
 }
 
 model NFT {
-  id           String   @id @default(cuid())
-  name         String
-  itemNumber   Int
-  image        String
-  price        Float
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Relation to Property: Each NFT can optionally belong to one Property
-  propertyId String?
-  property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  // Relation to LandListing: Each NFT can optionally belong to one LandListing
-  landListingId String?    // Foreign key to LandListing
-  landListing   LandListing? @relation("LandListingToNFTs", fields: [landListingId], references: [id], onDelete: Cascade) // Named relation
-
-  // Relation to Owner User
-  ownerId    String?
-  owner      User?    @relation(fields: [ownerId], references: [id])
-
-  isListed   Boolean @default(false) // ADDED: Flag for marketplace listing
-
-  offers     Offer[] 
-  trades     Trade[] 
+  id            String       @id @default(cuid())
+  name          String
+  itemNumber    Int
+  image         String
+  price         Float
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  propertyId    String?
+  ownerId       String?
+  isListed      Boolean      @default(false)
+  landListingId String?      @map("land_listing_id")
+  landListing   LandListing? @relation("LandListingToNFTs", fields: [landListingId], references: [id], onDelete: Cascade)
+  owner         User?        @relation(fields: [ownerId], references: [id])
+  property      Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  offers        Offer[]
+  trades        Trade[]
 
   @@unique([propertyId, itemNumber])
   @@index([propertyId])
   @@index([ownerId])
-  @@index([isListed]) // ADDED: Index for listing status
+  @@index([isListed])
   @@map("nfts")
 }
 
 model User {
-  id            String    @id @default(uuid()) // Use Prisma's uuid()
-  username      String?   @unique @db.VarChar(50)
-  email         String?   @unique @db.VarChar(255)
-  passwordHash  String?   @map("password_hash") @db.VarChar(255)
-  solanaPubKey  String?   @unique @map("solana_pub_key") @db.VarChar(44) // Renamed & Corrected type/map
-  signInNonce   String?   @map("sign_in_nonce") @db.VarChar(255) // Renamed & Corrected map
+  id                String             @id @default(uuid())
+  username          String?            @unique @db.VarChar(50)
+  email             String?            @unique @db.VarChar(255)
+  passwordHash      String?            @map("password_hash") @db.VarChar(255)
+  fullName          String?            @map("full_name") @db.VarChar(100)
+  addressLine1      String?            @map("address_line1") @db.VarChar(255)
+  addressLine2      String?            @map("address_line2") @db.VarChar(255)
+  city              String?            @db.VarChar(100)
+  stateProvince     String?            @map("state_province") @db.VarChar(100)
+  postalCode        String?            @map("postal_code") @db.VarChar(20)
+  country           String?            @db.VarChar(100)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  signInNonce       String?            @map("sign_in_nonce") @db.VarChar(255)
+  solanaPubKey      String?            @unique @map("solana_pub_key") @db.VarChar(44)
+  dateOfBirth       DateTime?          @map("date_of_birth") @db.Date
+  govIdRef          String?            @map("gov_id_ref")
+  govIdType         String?            @map("gov_id_type") @db.VarChar(50)
+  kycVerified       Boolean            @default(false) @map("kyc_verified")
+  phone             String?            @db.VarChar(20)
+  sofDocRef         String?            @map("sof_doc_ref")
+  isAdmin           Boolean            @default(false) @map("is_admin")
+  kycUpdateRequests KycUpdateRequest[]
+  landListings      LandListing[]
+  nfts              NFT[]
+  offersMade        Offer[]            @relation("OffersMade")
+  properties        Property[]
+  tradesBought      Trade[]            @relation("TradesBought")
+  tradesSold        Trade[]            @relation("TradesSold")
+  watchlist         Watchlist[]        @relation("UserWatchlist")
 
-  // Profile/KYC Fields
-  fullName      String?   @map("full_name") @db.VarChar(100)
-  dateOfBirth   DateTime? @map("date_of_birth") @db.Date // Added DOB
-  phone         String?   @db.VarChar(20) // Added Phone
-  // Address Fields (already present)
-  addressLine1  String?   @map("address_line1") @db.VarChar(255)
-  addressLine2  String?   @map("address_line2") @db.VarChar(255)
-  city          String?   @db.VarChar(100)
-  stateProvince String?   @map("state_province") @db.VarChar(100)
-  postalCode    String?   @map("postal_code") @db.VarChar(20)
-  country       String?   @db.VarChar(100)
-  // Document Fields (References/IDs)
-  govIdType     String?   @map("gov_id_type") @db.VarChar(50) // e.g., 'passport', 'drivers_license'
-  govIdRef      String?   @map("gov_id_ref") @db.Text // Reference to uploaded ID (URL/ID)
-  sofDocRef     String?   @map("sof_doc_ref") @db.Text // Reference to Source of Funds doc (URL/ID)
-  kycVerified   Boolean   @default(false) @map("kyc_verified") // Status field
-  isAdmin       Boolean   @default(false) @map("is_admin") // Added Admin flag
-
-  // Timestamps
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-
-  // Optional: Add relations if needed, e.g., to NFTs or Properties
-  // nfts NFT[]
-  properties Property[]
-  nfts       NFT[] // NFTs currently owned by the user
-  offersMade Offer[] @relation("OffersMade") 
-  tradesBought Trade[] @relation("TradesBought") 
-  tradesSold Trade[] @relation("TradesSold") 
-  landListings LandListing[]
-
-  @@map("users") // Maps the model name to the 'users' table name in the DB
-  @@index([solanaPubKey], name: "idx_users_solana_pub_key") // Corrected index
-  @@index([username]) // Removed explicit name if not needed
-  @@index([email])    // Removed explicit name if not needed
-  kycUpdateRequests KycUpdateRequest[] // Add relation to pending requests
+  @@index([solanaPubKey], map: "idx_users_solana_pub_key")
+  @@index([username])
+  @@index([email])
+  @@map("users")
 }
 
-// Add new model for pending KYC updates
 model KycUpdateRequest {
-  id        String   @id @default(cuid())
-  userId    String   // Foreign key to User
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  changes   Json     // Store the proposed { field: newValue } pairs
-  adminNotes String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String
+  status     String   @default("PENDING")
+  changes    Json
+  adminNotes String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
-  @@map("kyc_update_requests") // Explicitly map table name
+  @@map("kyc_update_requests")
 }
 
-// --- ADDED: Offer Model --- 
 model Offer {
-  id        String   @id @default(cuid())
-  nftId     String   // Relation to the NFT being offered on
-  nft       NFT      @relation(fields: [nftId], references: [id], onDelete: Cascade)
-  offererId String   // Relation to the User making the offer
-  offerer   User     @relation("OffersMade", fields: [offererId], references: [id], onDelete: Cascade)
-  price     Float    // The offer amount
-  status    String   @default("ACTIVE") // e.g., ACTIVE, ACCEPTED, REJECTED, CANCELED, EXPIRED
-  expiresAt DateTime? // Optional expiration timestamp
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(cuid())
+  nftId     String
+  offererId String
+  price     Float
+  status    String    @default("ACTIVE")
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  nft       NFT       @relation(fields: [nftId], references: [id], onDelete: Cascade)
+  offerer   User      @relation("OffersMade", fields: [offererId], references: [id], onDelete: Cascade)
 
   @@index([nftId])
   @@index([offererId])
@@ -145,17 +123,16 @@ model Offer {
   @@map("offers")
 }
 
-// --- ADDED: Trade Model --- 
 model Trade {
   id        String   @id @default(cuid())
-  nftId     String   // Relation to the NFT that was traded
-  nft       NFT      @relation(fields: [nftId], references: [id], onDelete: Cascade)
-  buyerId   String   // Relation to the User who bought the NFT
+  nftId     String
+  buyerId   String
+  sellerId  String
+  price     Float
+  timestamp DateTime @default(now())
   buyer     User     @relation("TradesBought", fields: [buyerId], references: [id], onDelete: Cascade)
-  sellerId  String   // Relation to the User who sold the NFT
-  seller    User     @relation("TradesSold", fields: [sellerId], references: [id], onDelete: Cascade) 
-  price     Float    // The sale price
-  timestamp DateTime @default(now()) // Timestamp of the trade
+  nft       NFT      @relation(fields: [nftId], references: [id], onDelete: Cascade)
+  seller    User     @relation("TradesSold", fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@index([nftId])
   @@index([buyerId])
@@ -164,84 +141,79 @@ model Trade {
   @@map("trades")
 }
 
-// --- ADDED: LandListing Model ---
-model LandListing {
-  id                     String    @id @default(cuid())
-  userId                 String    // Foreign key to User (creator/owner)
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Watchlist {
+  id           String      @id @default(cuid())
+  userId       String
+  collectionId String
+  createdAt    DateTime    @default(now())
+  user         User        @relation("UserWatchlist", fields: [userId], references: [id], onDelete: Cascade)
+  collection   LandListing @relation("WatchlistedCollections", fields: [collectionId], references: [id], onDelete: Cascade)
 
-  // Core Legal Documents
-  titleDeedFileRef       String?   @map("title_deed_file_ref") // Reference to uploaded file
+  @@unique([userId, collectionId])
+  @@index([userId])
+  @@index([collectionId])
+  @@map("watchlist")
+}
+
+model LandListing {
+  id                     String      @id @default(cuid())
+  userId                 String
+  titleDeedFileRef       String?     @map("title_deed_file_ref")
   deedNumber             String?
   deedType               String?
   grantorName            String?
   granteeName            String?
-  deedDate               DateTime? @db.Date
-  titleCertFileRef       String?   @map("title_cert_file_ref") // Reference to uploaded file
+  deedDate               DateTime?   @db.Date
+  titleCertFileRef       String?     @map("title_cert_file_ref")
   certNumber             String?
-  certIssueDate          DateTime? @db.Date
-  certExpiryDate         DateTime? @db.Date
-  encumbranceFileRef     String?   @map("encumbrance_file_ref") // Reference to uploaded file
+  certIssueDate          DateTime?   @db.Date
+  certExpiryDate         DateTime?   @db.Date
+  encumbranceFileRef     String?     @map("encumbrance_file_ref")
   encumbranceId          String?
-  encumbrancePeriodStart DateTime? @db.Date
-  encumbrancePeriodEnd   DateTime? @db.Date
-
-  // Registry & Parcel Identifiers
+  encumbrancePeriodStart DateTime?   @db.Date
+  encumbrancePeriodEnd   DateTime?   @db.Date
   parcelNumber           String?
   registryVolume         String?
   registryPage           String?
-  surveyPlanFileRef      String?   @map("survey_plan_file_ref") // Reference to uploaded file
+  surveyPlanFileRef      String?     @map("survey_plan_file_ref")
   surveyPlanNumber       String?
-  surveyDate             DateTime? @db.Date
-
-  // Geospatial & Boundary Data
-  latitude               String?   // Could use Float or Decimal if precision needed
-  longitude              String?   // Could use Float or Decimal if precision needed
-  gisFileRef             String?   @map("gis_file_ref") // Reference to uploaded file
-
-  // Owner Identity & KYC (Snapshot for the listing)
+  surveyDate             DateTime?   @db.Date
+  country                String?     @map("country")
+  state                  String?     @map("state")
+  localGovernmentArea    String?     @map("local_government_area")
+  latitude               String?
+  longitude              String?
+  gisFileRef             String?     @map("gis_file_ref")
   ownerName              String?
   govIdNumber            String?
-  idIssueDate            DateTime? @db.Date
-  idExpiryDate           DateTime? @db.Date
-  idDocumentFileRef      String?   @map("id_document_file_ref") // Reference to uploaded file
-  addressProofFileRef    String?   @map("address_proof_file_ref") // Reference to uploaded file
-  kycStatus              String?   @default("PENDING") // PENDING, VERIFIED, REJECTED
-
-  // Chain-of-Title & Encumbrance History
-  titleSearchFileRef     String?   @map("title_search_file_ref") // Reference to uploaded file
-  titleOpinionFileRef    String?   @map("title_opinion_file_ref") // Reference to uploaded file
-  recordedInstruments    String?   @db.Text
-
-  // On-Chain Metadata (Placeholders)
-  docHash                String?   // Generated server-side
-  ipfsUri                String?   // Generated server-side
-  mintTimestamp          DateTime? // Generated server-side
-  tokenId                String?   // Generated server-side
-
-  // Status & Timestamps
-  status                 String    @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-
-  // Additional notes
+  idIssueDate            DateTime?   @db.Date
+  idExpiryDate           DateTime?   @db.Date
+  idDocumentFileRef      String?     @map("id_document_file_ref")
+  addressProofFileRef    String?     @map("address_proof_file_ref")
+  kycStatus              String?     @default("PENDING")
+  titleSearchFileRef     String?     @map("title_search_file_ref")
+  titleOpinionFileRef    String?     @map("title_opinion_file_ref")
+  recordedInstruments    String?
+  docHash                String?
+  ipfsUri                String?
+  mintTimestamp          DateTime?
+  tokenId                String?
+  status                 String      @default("DRAFT")
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
   additionalNotes        String?
-
-  // NFT Specific Details
-  nftTitle            String?    @map("nft_title")
-  nftDescription      String?    @db.Text @map("nft_description")
-  nftImageFileRef     String?    @map("nft_image_file_ref")
-  listingPrice        Decimal?   @map("listing_price")
-  priceCurrency       String?    @default("SOL") @map("price_currency")
-  nftCollectionSize   Int?       @default(100) @map("nft_collection_size")
-
-  // Relation to individual NFTs that are part of this LandListing's collection
-  individualNfts NFT[] @relation("LandListingToNFTs") // Use the same named relation
+  listingPrice           Decimal?    @map("listing_price")
+  nftCollectionSize      Int?        @default(100) @map("nft_collection_size")
+  nftDescription         String?     @map("nft_description")
+  nftImageFileRef        String?     @map("nft_image_file_ref")
+  nftTitle               String?     @map("nft_title")
+  priceCurrency          String?     @default("SOL") @map("price_currency")
+  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  individualNfts         NFT[]       @relation("LandListingToNFTs")
+  watchlistedBy          Watchlist[] @relation("WatchlistedCollections")
 
   @@index([userId])
   @@index([status])
   @@index([kycStatus])
   @@map("land_listings")
 }
-
-// Add other models like NFT, Property if needed

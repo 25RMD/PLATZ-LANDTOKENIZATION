@@ -51,6 +51,9 @@ const initialFormData: FormDataInterface = { // Explicitly type initialFormData
   surveyPlanNumber: "",
   surveyDate: "",
   // Geospatial & Boundary Data
+  country: "",
+  state: "",
+  localGovernmentArea: "",
   latitude: "",
   longitude: "",
   gisFile: null as File | null,

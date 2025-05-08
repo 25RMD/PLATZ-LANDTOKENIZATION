@@ -8,6 +8,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Watchlist Feature:**
+  - Added `Watchlist` model to Prisma schema to track user's favorite collections
+  - Created watchlist page (`/app/watchlist/page.tsx`) to display saved collections
+  - Implemented API endpoints for watchlist management:
+    - `GET /api/watchlist` - Fetch user's watchlist with collection details
+    - `GET /api/watchlist/check` - Check if a collection is in user's watchlist
+    - `POST /api/watchlist/toggle` - Add/remove collection from watchlist
+  - Enhanced collection page with interactive favorite button that updates watchlist status
+  - Added visual feedback for watchlist status (filled star icon when in watchlist)
+  - Implemented proper authentication checks for all watchlist operations
+  - Updated middleware to protect watchlist API routes and redirect unauthenticated users to login page when accessing the watchlist
+
+### Fixed
+- Fixed TypeScript linting errors in admin dashboard by removing invalid syntax characters and properly typing map function parameters.
+- Added missing auth configuration file to bridge custom JWT authentication with NextAuth for admin API routes.
+- Fixed authentication in admin API routes to properly use HTTP-only cookies instead of Authorization headers.
+- Improved API response handling in dashboard to properly handle both array and object response formats.
+- Fixed database schema issue with NFT-LandListing relationship by properly mapping the `landListingId` field to snake_case column name.
+- Fixed NFT image display on collections page by implementing proper file storage and URL generation.
+- Fixed authentication for watchlist API routes by updating middleware matcher configuration to include `/api/watchlist/:path*` and `/watchlist/:path*` routes.
+- Fixed database query errors in watchlist API routes by updating raw SQL queries to use the correct column names:
+  - Fixed `/api/watchlist/toggle` route to use `"userId"` and `"collectionId"` instead of `user_id` and `collection_id`
+  - Fixed `/api/watchlist` main route to use proper snake_case column names (`nft_title`, `nft_description`, etc.) as defined by the `@map` annotations in the Prisma schema
+  - Fixed `/api/watchlist/check` route to use the correct column name format
+- Fixed horizontal overflow issue in collection page skeleton on large displays by removing problematic CSS classes
+- Fixed currency display spacing in Volume (24h) and Floor Price sections by adding proper spacing between currency symbol and value
+- Fixed collection images not displaying on the main collections page by updating the image URL handling in CollectionCard, CollectionListCard, and individual collection page components to properly use the /api/files/ endpoint
+- Fixed horizontal overflow on the individual collection page by adding overflow control to container elements
+- Fixed watchlist button functionality by implementing proper API integration with status checking and toggle functionality
+- Fixed images not loading properly on the watchlist page by updating it to use the centralized imageUtils utility
+
+### Enhanced
+- **Location Data and Collection Information:**
+  - Added location fields (country, state, local government area) for African countries in the land listing creation form
+  - Enhanced the About section on collection pages to display comprehensive property information including location data
+  - Implemented cascading dropdowns for location selection with data for multiple African countries
+  - Implemented a backward-compatible solution to store location data in additionalNotes until database migration is completed
+
+- **Code Refactoring and Reusability:**
+  - Created a reusable `useWatchlist` hook to centralize watchlist functionality across the application
+  - Improved maintainability by extracting watchlist logic from individual components
+
+- **Admin Dashboard Improvements:**
+  - Added sub-tabs for Land Listing Management: 'Awaiting Review', 'Active Listings', and 'Archived (Rejected/Delisted)'
+  - Implemented status-specific listing views with appropriate data fetching
+  - Added expandable details sections for listings
+  - Implemented listing status management with approve, reject, and delist functionality
+  - Added confirmation modal for delisting active listings
+  - Improved UI with status badges and action buttons
+- **Code Architecture Improvements:**
+  - Centralized image URL handling in a shared utility function for better maintainability and consistency
+  - Enhanced image utility with UUID detection, content-specific placeholders, and debugging support
+  - Implemented consistent image handling across all components with proper fallbacks
+- **Collection Page Enhancements:**
+  - Added URL copy functionality to the copy button with toast notification feedback
+  - Implemented dropdown menu for the "more options" button with sharing options (Twitter, Email, Telegram)
+  - Added blockchain explorer link in the dropdown menu when blockchain reference is available
+  - Improved user experience with visual feedback and proper tooltips
+
+### Added
 - Initial setup
 - Created CHANGELOG.md
 - Added skeleton loaders for NFT card grids.

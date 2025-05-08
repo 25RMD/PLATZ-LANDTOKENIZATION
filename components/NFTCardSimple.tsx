@@ -1,6 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NFT } from '@prisma/client'; // Import the NFT type from Prisma
 import { Collection } from '@/lib/interdace'; // To get total items
+
+// Custom component to handle image loading errors
+const ImageWithFallback = ({ src, alt, className }: { src: string, alt: string, className: string }) => {
+  const [error, setError] = useState(false);
+  const fallbackSrc = '/placeholder-nft-image.png';
+  
+  return (
+    <img
+      src={error ? fallbackSrc : src}
+      alt={alt}
+      className={className}
+      onError={() => setError(true)}
+    />
+  );
+};
 
 interface NFTCardSimpleProps {
   nft: NFT;
@@ -13,8 +28,9 @@ const NFTCardSimple: React.FC<NFTCardSimpleProps> = ({ nft, collectionTotalItems
   return (
     <div className="bg-primary-light dark:bg-card-dark rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-zinc-800 dark:hover:border-zinc-700">
       <div className="relative h-48 w-full">
-        <img
-          src={nft.image} // Use placeholder if needed: src={nft.image || '/images/placeholder.png'}
+        {/* Use state to track image loading errors */}
+        <ImageWithFallback 
+          src={nft.image || '/placeholder-nft-image.png'}
           alt={nft.name}
           className="w-full h-full object-cover"
         />

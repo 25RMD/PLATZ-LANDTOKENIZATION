@@ -11,6 +11,7 @@ const protectedApiRoutes = [
   '/api/profile',
   '/api/admin', // Protect all admin routes
   '/api/collections', // <<< ADDED: Protect collection creation/management
+  '/api/watchlist', // Protect watchlist routes
   // Add other API routes that require login (non-admin)
 ];
 
@@ -20,7 +21,7 @@ const adminApiRoutes = [
 ];
 
 // --- Uncomment and define protected/admin pages --- 
-const protectedPages = ['/profile', '/admin/dashboard']; // Added /admin/dashboard
+const protectedPages = ['/profile', '/admin/dashboard', '/watchlist']; // Added /watchlist to protected pages
 const adminPages = ['/admin/dashboard'];
 // --- End page definitions --- 
 
@@ -111,9 +112,11 @@ export const config = {
     '/api/profile/:path*', 
     '/api/admin/:path*', 
     '/api/collections/:path*', // <<< ADDED: Match collection routes
+    '/api/watchlist/:path*', // <<< ADDED: Match watchlist routes
     // Protected Pages
     '/profile/:path*', // Protect profile page and potential sub-routes
     '/admin/dashboard/:path*', // Protect admin dashboard and potential sub-routes
+    '/watchlist/:path*', // <<< ADDED: Match watchlist page routes
     // Add other protected paths as needed
   ],
 }; 

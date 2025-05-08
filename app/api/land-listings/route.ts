@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to get string value from FormData
 const getString = (formData: FormData, key: string): string | null => {
@@ -12,6 +15,25 @@ const getString = (formData: FormData, key: string): string | null => {
 const getFile = (formData: FormData, key: string): File | null => {
   const value = formData.get(key);
   return value instanceof File ? value : null;
+};
+
+// Helper function to save a file to the uploads directory and return a unique filename
+const saveFile = async (file: File): Promise<string> => {
+  // Create a unique filename to prevent collisions
+  const uniqueFilename = `${uuidv4()}-${file.name}`;
+  
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  
+  // Save the file
+  const filePath = path.join(uploadsDir, uniqueFilename);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  fs.writeFileSync(filePath, buffer);
+  
+  return uniqueFilename;
 };
 
 export async function POST(req: NextRequest) {
@@ -29,7 +51,20 @@ export async function POST(req: NextRequest) {
     const surveyPlanFile = getFile(formData, 'surveyPlanFile');
     const gisFile = getFile(formData, 'gisFile');
     const idDocumentFile = getFile(formData, 'idDocumentFile');
-    const nftImageFile = getFile(formData, 'nftImageFile'); 
+    const nftImageFile = getFile(formData, 'nftImageFile');
+    
+    // --- Save files to uploads directory ---
+    // We'll use async/await to save the files and get the unique filenames
+    const savedFiles: Record<string, string | null> = {};
+    
+    // Process each file and save it if it exists
+    if (titleDeedFile) savedFiles.titleDeedFileRef = await saveFile(titleDeedFile);
+    if (titleCertFile) savedFiles.titleCertFileRef = await saveFile(titleCertFile);
+    if (encumbranceFile) savedFiles.encumbranceFileRef = await saveFile(encumbranceFile);
+    if (surveyPlanFile) savedFiles.surveyPlanFileRef = await saveFile(surveyPlanFile);
+    if (gisFile) savedFiles.gisFileRef = await saveFile(gisFile);
+    if (idDocumentFile) savedFiles.idDocumentFileRef = await saveFile(idDocumentFile);
+    if (nftImageFile) savedFiles.nftImageFileRef = await saveFile(nftImageFile);
 
     // --- Prepare data for Prisma ---
     const prismaData: Prisma.LandListingCreateInput = {
@@ -40,13 +75,14 @@ export async function POST(req: NextRequest) {
       registryPage: getString(formData, 'registryPage'),
       surveyPlanNumber: getString(formData, 'surveyPlanNumber'),
       surveyDate: getString(formData, 'surveyDate') ? new Date(getString(formData, 'surveyDate')!) : null,
+      // Store latitude and longitude directly as they exist in the schema
       latitude: getString(formData, 'latitude'),
       longitude: getString(formData, 'longitude'),
-      gisFileRef: gisFile ? gisFile.name : null,
-      surveyPlanFileRef: surveyPlanFile ? surveyPlanFile.name : null,
+      gisFileRef: savedFiles.gisFileRef || null,
+      surveyPlanFileRef: savedFiles.surveyPlanFileRef || null,
 
       // Title Information
-      titleDeedFileRef: titleDeedFile ? titleDeedFile.name : null,
+      titleDeedFileRef: savedFiles.titleDeedFileRef || null,
       deedNumber: getString(formData, 'deedNumber'),
       deedType: getString(formData, 'deedType'),
       grantorName: getString(formData, 'grantorName'),
@@ -54,13 +90,13 @@ export async function POST(req: NextRequest) {
       deedDate: getString(formData, 'deedDate') ? new Date(getString(formData, 'deedDate')!) : null,
 
       // Title Certificate
-      titleCertFileRef: titleCertFile ? titleCertFile.name : null,
+      titleCertFileRef: savedFiles.titleCertFileRef || null,
       certNumber: getString(formData, 'certNumber'),
       certIssueDate: getString(formData, 'certIssueDate') ? new Date(getString(formData, 'certIssueDate')!) : null,
       certExpiryDate: getString(formData, 'certExpiryDate') ? new Date(getString(formData, 'certExpiryDate')!) : null,
 
       // Encumbrance Details
-      encumbranceFileRef: encumbranceFile ? encumbranceFile.name : null,
+      encumbranceFileRef: savedFiles.encumbranceFileRef || null,
       encumbranceId: getString(formData, 'encumbranceId'),
       encumbrancePeriodStart: getString(formData, 'encumbrancePeriodStart') ? new Date(getString(formData, 'encumbrancePeriodStart')!) : null,
       encumbrancePeriodEnd: getString(formData, 'encumbrancePeriodEnd') ? new Date(getString(formData, 'encumbrancePeriodEnd')!) : null,
@@ -68,7 +104,7 @@ export async function POST(req: NextRequest) {
       // Owner KYC
       ownerName: getString(formData, 'ownerName'),
       govIdNumber: getString(formData, 'govIdNumber'),
-      idDocumentFileRef: idDocumentFile ? idDocumentFile.name : null,
+      idDocumentFileRef: savedFiles.idDocumentFileRef || null,
       kycStatus: getString(formData, 'kycStatus') || 'PENDING',
 
       // Chain-of-Title & Encumbrance History
@@ -79,14 +115,22 @@ export async function POST(req: NextRequest) {
       // NFT Specific Details
       nftTitle: getString(formData, 'nftTitle'),
       nftDescription: getString(formData, 'nftDescription'),
-      nftImageFileRef: nftImageFile ? nftImageFile.name : null,
+      nftImageFileRef: savedFiles.nftImageFileRef || null,
       listingPrice: getString(formData, 'listingPrice') ? parseFloat(getString(formData, 'listingPrice')!) : null,
       priceCurrency: getString(formData, 'priceCurrency') || 'SOL',
       // nftCollectionSize will use the default (100) from Prisma schema
 
       // Additional Info
       status: getString(formData, 'status') || 'DRAFT',
-      additionalNotes: getString(formData, 'additionalNotes'),
+      // Store location data in additionalNotes as JSON until database migration is done
+      additionalNotes: JSON.stringify({
+        locationData: {
+          country: getString(formData, 'country'),
+          state: getString(formData, 'state'),
+          localGovernmentArea: getString(formData, 'localGovernmentArea')
+        },
+        notes: getString(formData, 'additionalNotes') || ''
+      }),
     };
 
     console.log("Prisma Data Before Create:", JSON.stringify(prismaData, null, 2)); // Uncommented for detailed logging

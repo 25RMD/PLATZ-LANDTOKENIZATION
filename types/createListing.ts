@@ -30,6 +30,9 @@ export interface FormDataInterface {
   surveyDate: string;
 
   // Geospatial & Boundary Data (from GeospatialSection and initialFormData)
+  country: string;
+  state: string;
+  localGovernmentArea: string;
   latitude: string;
   longitude: string;
   gisFile: File | null;
