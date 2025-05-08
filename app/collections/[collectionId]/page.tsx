@@ -37,6 +37,7 @@ interface LandListingWithDetails {
   ограниченияОбременения: string | null;
   дополнительнаяИнформация: string | null;
   additionalNotes: string | null;
+  propertyAreaSqm: number | null;
   chainOfTitleId: string | null;
   propertyPhotosFileRef: string[] | null;
   valuationReportFileRef: string | null;
@@ -274,14 +275,16 @@ const SingleCollectionPage = () => {
     const { individualNfts: nfts } = collectionData; // Alias for convenience in NFT grid
     const listedPercentage = collectionData.items > 0 ? (collectionData.listedCount / collectionData.items) * 100 : 0;
     
-    // Extract location data from additionalNotes if available
+    // Extract location data and property area from additionalNotes if available
     let locationData = {
         country: collectionData.country,
         state: collectionData.state,
         localGovernmentArea: collectionData.localGovernmentArea
     };
     
-    if (!locationData.country && collectionData.additionalNotes) {
+    let propertyAreaSqm = collectionData.propertyAreaSqm?.toString() || '';
+    
+    if (collectionData.additionalNotes) {
         try {
             const parsedNotes = JSON.parse(collectionData.additionalNotes);
             if (parsedNotes.locationData) {
@@ -289,6 +292,9 @@ const SingleCollectionPage = () => {
                     ...locationData,
                     ...parsedNotes.locationData
                 };
+            }
+            if (parsedNotes.propertyAreaSqm && !propertyAreaSqm) {
+                propertyAreaSqm = parsedNotes.propertyAreaSqm;
             }
         } catch (e) {
             console.error('Error parsing additionalNotes:', e);
@@ -556,17 +562,20 @@ const SingleCollectionPage = () => {
                         <div className="mb-6">
                             <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-2">Property Details</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {/* Property Area - Always displayed, even if empty */}
+                                <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Property Area</div>
+                                    <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                        {propertyAreaSqm ? `${propertyAreaSqm} sq. meters` : 
+                                         collectionData.площадьУчастка ? `${collectionData.площадьУчастка} sq.m` : 
+                                         'Not specified'}
+                                    </div>
+                                </div>
+                                
                                 {collectionData.propertyType && (
                                     <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
                                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Property Type</div>
                                         <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.propertyType}</div>
-                                    </div>
-                                )}
-                                
-                                {collectionData.площадьУчастка && (
-                                    <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Land Area</div>
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.площадьУчастка} sq.m</div>
                                     </div>
                                 )}
                                 

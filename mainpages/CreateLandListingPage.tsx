@@ -54,6 +54,7 @@ const initialFormData: FormDataInterface = { // Explicitly type initialFormData
   country: "",
   state: "",
   localGovernmentArea: "",
+  propertyAreaSqm: "",
   latitude: "",
   longitude: "",
   gisFile: null as File | null,
@@ -326,10 +327,13 @@ const CreateListingContent = () => {
 
   // Render the actual form if verified
   return (
-    <div className="container mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold text-text-light dark:text-text-dark mb-8">Create New Land Listing</h1> {/* Updated title */}
+    <div className="max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      <div className="mb-10 text-center">
+        <h1 className="text-3xl font-bold text-text-light dark:text-text-dark mb-3">Create New Land Listing</h1>
+        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Complete the form below to create a new land listing. All fields marked with an asterisk (*) are required.</p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-12">
+      <form onSubmit={handleSubmit} className="space-y-10 bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden">
 
         {/* === Core Legal Documents Section === */}
         <LegalDocumentsSection
@@ -417,35 +421,76 @@ const CreateListingContent = () => {
            isSubmitting={isSubmitting}
         />
 
-        {/* Section 6: On-Chain Metadata (Display Only) */}
-         <section>
-            <h2 className="text-2xl font-semibold text-text-light dark:text-text-dark mb-6 border-b border-gray-300 dark:border-zinc-700 pb-2">
-                 On-Chain Metadata (Generated Post-Minting)
-             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">These fields will be populated after the land listing is successfully created and minted on the blockchain.</p>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label htmlFor="docHash" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Document Hashes</label>
-                     <input type="text" id="docHash" name="docHash" value={formData.docHash} readOnly disabled className="input-field-disabled" />
-                 </div>
-                 <div>
-                     <label htmlFor="ipfsUri" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">IPFS / Decentralized URI</label>
-                    <input type="url" id="ipfsUri" name="ipfsUri" value={formData.ipfsUri} readOnly disabled placeholder="e.g., ipfs://..." className="input-field-disabled" />
-                </div>
-                 <div>
-                    <label htmlFor="mintTimestamp" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Minting Timestamp</label>
-                    <input type="datetime-local" id="mintTimestamp" name="mintTimestamp" value={formData.mintTimestamp} readOnly disabled className="input-field-disabled" />
-                 </div>
-                 <div>
-                     <label htmlFor="tokenId" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Token ID</label>
-                    <input type="text" id="tokenId" name="tokenId" value={formData.tokenId} readOnly disabled className="input-field-disabled" />
+        {/* On-Chain Metadata Section */}
+        <div className="pt-8 px-8 pb-6 border-t border-gray-200 dark:border-zinc-800">
+          <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
+            <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">8</span>
+            On-Chain Metadata (Generated Post-Minting)
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">These fields will be populated after the land listing is successfully created and minted on the blockchain.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="docHash" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Document Hashes</label>
+              <input 
+                type="text" 
+                id="docHash" 
+                name="docHash" 
+                value={formData.docHash} 
+                readOnly 
+                disabled 
+                className="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed" 
+              />
+            </div>
+            <div>
+              <label htmlFor="ipfsUri" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">IPFS / Decentralized URI</label>
+              <input 
+                type="url" 
+                id="ipfsUri" 
+                name="ipfsUri" 
+                value={formData.ipfsUri} 
+                readOnly 
+                disabled 
+                placeholder="e.g., ipfs://..." 
+                className="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed" 
+              />
+            </div>
+            <div>
+              <label htmlFor="mintTimestamp" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Minting Timestamp</label>
+              <input 
+                type="datetime-local" 
+                id="mintTimestamp" 
+                name="mintTimestamp" 
+                value={formData.mintTimestamp} 
+                readOnly 
+                disabled 
+                className="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed" 
+              />
+            </div>
+            <div>
+              <label htmlFor="tokenId" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Token ID</label>
+              <input 
+                type="text" 
+                id="tokenId" 
+                name="tokenId" 
+                value={formData.tokenId} 
+                readOnly 
+                disabled 
+                className="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed" 
+              />
+            </div>
           </div>
         </div>
-         </section>
 
         {/* Submit Button */}
-        <div className="text-right pt-6 border-t border-gray-300 dark:border-zinc-700">
-          <AnimatedButton type="submit" disabled={isSubmitting} className="bg-black text-white dark:bg-white dark:text-black px-8 py-3 rounded-lg font-semibold hover:opacity-80 transition-opacity disabled:opacity-50">
+        <div className="px-8 py-6 bg-gray-50 dark:bg-zinc-800/50 border-t border-gray-200 dark:border-zinc-700 flex justify-between items-center">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            <span className="text-red-500">*</span> Required fields
+          </div>
+          <AnimatedButton 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600 px-8 py-3 rounded-md font-medium shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             {isSubmitting ? 'Creating Listing...' : 'Create Land Listing'}
           </AnimatedButton>
         </div>

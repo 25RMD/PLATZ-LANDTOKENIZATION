@@ -33,6 +33,7 @@ export interface FormDataInterface {
   country: string;
   state: string;
   localGovernmentArea: string;
+  propertyAreaSqm: string;
   latitude: string;
   longitude: string;
   gisFile: File | null;

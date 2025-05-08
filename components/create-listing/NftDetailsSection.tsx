@@ -26,8 +26,11 @@ const NftDetailsSection: React.FC<NftDetailsProps> = ({
   isSubmitting,
 }) => {
   return (
-    <div className="space-y-6 bg-primary-light dark:bg-primary-dark p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark border-b border-gray-300 dark:border-zinc-700 pb-2 mb-4">NFT Details</h2>
+    <div className="pt-8 px-8 pb-6 border-t border-gray-200 dark:border-zinc-800">
+      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
+        <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">7</span>
+        NFT Details
+      </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>

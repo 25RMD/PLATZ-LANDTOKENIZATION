@@ -48,9 +48,12 @@ const OwnerKycSection: React.FC<OwnerKycProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }} // Adjust delay
-      className="space-y-6 bg-primary-light dark:bg-primary-dark p-6 rounded-lg shadow-md"
+      className="pt-8 px-8 pb-6 border-t border-gray-200 dark:border-zinc-800"
     >
-      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark border-b border-gray-300 dark:border-zinc-700 pb-2 mb-4">Owner Identity & KYC</h2>
+      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
+        <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">4</span>
+        Owner Identity & KYC
+      </h2>
       
        {/* Display KYC status based on passed prop */}
       <div className="flex items-center space-x-2 mb-4">

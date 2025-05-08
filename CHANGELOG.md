@@ -42,9 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Enhanced
 - **Location Data and Collection Information:**
   - Added location fields (country, state, local government area) for African countries in the land listing creation form
-  - Enhanced the About section on collection pages to display comprehensive property information including location data
+  - Added a required property area field (in square meters) to the Geospatial section of the land listing creation form
+  - Enhanced the About section on collection pages to display comprehensive property information including location data and property dimensions
   - Implemented cascading dropdowns for location selection with data for multiple African countries
-  - Implemented a backward-compatible solution to store location data in additionalNotes until database migration is completed
+  - Implemented a backward-compatible solution to store location data and property area in additionalNotes until database migration is completed
 
 - **Code Refactoring and Reusability:**
   - Created a reusable `useWatchlist` hook to centralize watchlist functionality across the application

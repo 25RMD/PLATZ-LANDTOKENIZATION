@@ -181,6 +181,7 @@ model LandListing {
   country                String?     @map("country")
   state                  String?     @map("state")
   localGovernmentArea    String?     @map("local_government_area")
+  propertyAreaSqm        Float?      @map("property_area_sqm")
   latitude               String?
   longitude              String?
   gisFileRef             String?     @map("gis_file_ref")

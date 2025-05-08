@@ -53,9 +53,12 @@ const LegalDocumentsSection: React.FC<LegalDocumentsProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="space-y-6 bg-primary-light dark:bg-primary-dark p-6 rounded-lg shadow-md"
+      className="pt-8 px-8 pb-6 border-t border-gray-200 dark:border-zinc-800"
     >
-      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark border-b border-gray-300 dark:border-zinc-700 pb-2 mb-4">Core Legal Documents</h2>
+      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
+        <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">1</span>
+        Core Legal Documents
+      </h2>
       
       {/* --- Title Deed --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

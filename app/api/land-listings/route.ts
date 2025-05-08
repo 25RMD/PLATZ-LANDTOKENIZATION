@@ -122,13 +122,14 @@ export async function POST(req: NextRequest) {
 
       // Additional Info
       status: getString(formData, 'status') || 'DRAFT',
-      // Store location data in additionalNotes as JSON until database migration is done
+      // Store location data and property area in additionalNotes as JSON until database migration is done
       additionalNotes: JSON.stringify({
         locationData: {
           country: getString(formData, 'country'),
           state: getString(formData, 'state'),
           localGovernmentArea: getString(formData, 'localGovernmentArea')
         },
+        propertyAreaSqm: getString(formData, 'propertyAreaSqm') || '',
         notes: getString(formData, 'additionalNotes') || ''
       }),
     };

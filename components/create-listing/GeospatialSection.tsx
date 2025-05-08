@@ -11,6 +11,7 @@ export interface GeospatialFormData {
   country: string;
   state: string;
   localGovernmentArea: string;
+  propertyAreaSqm: string;
   latitude: string;
   longitude: string;
   gisFile: File | null;
@@ -70,13 +71,16 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }} // Adjust delay
-      className="space-y-6 bg-primary-light dark:bg-primary-dark p-6 rounded-lg shadow-md"
+      className="pt-8 px-8 pb-6 border-t border-gray-200 dark:border-zinc-800"
     >
-      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark border-b border-gray-300 dark:border-zinc-700 pb-2 mb-4">Geospatial & Boundary Data</h2>
+      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
+        <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">3</span>
+        Geospatial & Boundary Data
+      </h2>
       
-      <div className="mb-6">
-        <h3 className="text-lg font-medium text-text-light dark:text-text-dark mb-3">Location Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="mb-8">
+        <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-100 dark:border-zinc-800/80">Location Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
           {/* Country Dropdown */}
           <div>
             <label htmlFor="country" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Country {<span className="text-red-500">*</span>}</label>
@@ -136,59 +140,92 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Latitude */}
-        <div>
-          <label htmlFor="latitude" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Latitude {<span className="text-red-500">*</span>}</label>
-          {/* TODO: Replace with Map Picker component/button */}
-          <input
-            type="text" // Consider type="number" with step attribute later
-            id="latitude"
-            name="latitude"
-            value={formData.latitude}
-            onChange={handleInputChange}
-            required
-            placeholder="e.g., 34.0522"
-            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
-            disabled={isSubmitting}
-          />
-           {/* <button 
-            type="button" 
-            onClick={onOpenMapPicker} 
-            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
-            disabled={isSubmitting}
-            >
-              <FaMapMarkerAlt />
-              <span>Pick on Map</span>
-          </button> */}          
+      <div className="mb-8">
+        <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-100 dark:border-zinc-800/80">Property Dimensions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+          {/* Property Area in Square Meters */}
+          <div>
+            <label htmlFor="propertyAreaSqm" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Property Area (sq. meters) {<span className="text-red-500">*</span>}</label>
+            <div className="relative">
+              <input
+                type="number"
+                id="propertyAreaSqm"
+                name="propertyAreaSqm"
+                value={formData.propertyAreaSqm}
+                onChange={handleInputChange}
+                required
+                min="0"
+                step="0.01"
+                placeholder="e.g., 1000"
+                className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} focus:ring-blue-500 focus:border-blue-500`}
+                disabled={isSubmitting}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 dark:text-gray-500 text-sm">
+                m²
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">Enter the total area of the property in square meters</p>
+          </div>
         </div>
-        {/* Longitude */}
-        <div>
-          <label htmlFor="longitude" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Longitude {<span className="text-red-500">*</span>}</label>
-          {/* TODO: Replace with Map Picker component/button */}
-          <input
-            type="text" // Consider type="number" with step attribute later
-            id="longitude"
-            name="longitude"
-            value={formData.longitude}
-            onChange={handleInputChange}
-            required
-            placeholder="e.g., -118.2437"
-            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
-            disabled={isSubmitting}
+      </div>
+
+      <div className="mb-8">
+        <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-100 dark:border-zinc-800/80">Coordinates</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Latitude */}
+          <div>
+            <label htmlFor="latitude" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Latitude {<span className="text-red-500">*</span>}</label>
+            <div className="relative">
+              <input
+                type="text" // Consider type="number" with step attribute later
+                id="latitude"
+                name="latitude"
+                value={formData.latitude}
+                onChange={handleInputChange}
+                required
+                placeholder="e.g., 34.0522"
+                className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} focus:ring-blue-500 focus:border-blue-500`}
+                disabled={isSubmitting}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 dark:text-gray-500 text-sm">
+                °N/S
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">Decimal format (e.g., 34.0522)</p>
+          </div>
+          {/* Longitude */}
+          <div>
+            <label htmlFor="longitude" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Longitude {<span className="text-red-500">*</span>}</label>
+            <div className="relative">
+              <input
+                type="text" // Consider type="number" with step attribute later
+                id="longitude"
+                name="longitude"
+                value={formData.longitude}
+                onChange={handleInputChange}
+                required
+                placeholder="e.g., -118.2437"
+                className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} focus:ring-blue-500 focus:border-blue-500`}
+                disabled={isSubmitting}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 dark:text-gray-500 text-sm">
+                °E/W
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">Decimal format (e.g., -118.2437)</p>
+          </div>
+          
+          {/* GIS Data File Upload */}
+          <FileInputField
+            id="gisFile"
+            label="GIS/Boundary Data File (Optional)"
+            accept=".geojson,.kml,.shp,.zip"
+            file={formData.gisFile}
+            previewUrl={filePreviews.gisFile || null}
+            onChange={handleFileChange}
+            onDrop={(e) => handleDrop(e, 'gisFile')}
           />
         </div>
-        
-        {/* GIS Data File Upload */}
-        <FileInputField
-          id="gisFile"
-          label="GIS/Boundary Data File (Optional)"
-          accept=".geojson,.kml,.shp,.zip"
-          file={formData.gisFile}
-          previewUrl={filePreviews.gisFile || null}
-          onChange={handleFileChange}
-          onDrop={(e) => handleDrop(e, 'gisFile')}
-        />
       </div>
     </motion.div>
   );
