@@ -7,20 +7,19 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import AnimatedButton from '@/components/common/AnimatedButton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import toast from 'react-hot-toast';
-import { ProfileUpdateSchema, FieldErrors } from '@/lib/schemas';
-import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi'; // Icons for status
-import { useWallet } from '@solana/wallet-adapter-react'; // Import wallet hooks
-import bs58 from 'bs58'; // For encoding the signature
+import { ProfileUpdateSchema, FieldErrors } from '@/lib/schemas'; 
+import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi'; 
+import { useAccount, useSignMessage } from 'wagmi'; 
+
 import { RegisterSchema } from '@/lib/schemas';
 import { z } from 'zod';
 
-// Update interface to include all fields from schema
 interface ProfileFormData {
     username?: string | null;
     email?: string | null;
-    solanaPubKey?: string | null;
+    evmAddress?: string | null; 
     fullName?: string | null;
-    dateOfBirth?: string | null; // Use string for date input type
+    dateOfBirth?: string | null; 
     phone?: string | null;
     addressLine1?: string | null;
     addressLine2?: string | null;
@@ -33,44 +32,50 @@ interface ProfileFormData {
     sofDocRef?: string | null;
 }
 
-// This component now renders the actual profile content
 const ProfileContent = () => {
   const { user, isVerified, fetchUserProfile, updateUserProfile, error: contextError, clearError: clearContextError, isLoading: actionLoading } = useAuth();
-  const { publicKey, connected, connect, signMessage } = useWallet(); // Get wallet state and functions
+  const { address: connectedEvmAddress, isConnected: isEvmWalletConnected } = useAccount(); 
+  const { 
+    data, 
+    signMessageAsync, 
+    isLoading: isSigningMessage, 
+    isError: isSignMessageError, 
+    error: signMessageHookError, 
+    status: signMessageStatus 
+  } = useSignMessage(); 
+
   const [profileData, setProfileData] = useState<ProfileFormData>({});
   const [isEditing, setIsEditing] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [formErrors, setFormErrors] = useState<FieldErrors>({});
   const [linkWalletLoading, setLinkWalletLoading] = useState(false);
+  const [unlinkWalletLoading, setUnlinkWalletLoading] = useState(false); 
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [setCredsLoading, setSetCredsLoading] = useState(false);
   const [setCredsFormErrors, setSetCredsFormErrors] = useState<FieldErrors>({});
 
-  // Display context error toast when context error changes
   useEffect(() => {
       if (contextError) {
           toast.error(contextError);
-          clearContextError(); // Clear error after displaying
+          clearContextError(); 
       }
   }, [contextError, clearContextError]);
 
-  // Fetch profile data on load (user guaranteed to be authenticated here)
   useEffect(() => {
     setPageLoading(true);
     fetchUserProfile().then(data => {
       if (data) {
-        // Format date for input type='date' (YYYY-MM-DD)
         const dob = data.dateOfBirth ? new Date(data.dateOfBirth).toISOString().split('T')[0] : null;
 
         setProfileData({
           username: data.username,
           email: data.email,
-          solanaPubKey: data.solanaPubKey,
+          evmAddress: data.evmAddress, 
           fullName: data.fullName,
           dateOfBirth: dob,
-          phone: (data as any).phone, // Cast if needed based on API return
+          phone: (data as any).phone, 
           addressLine1: (data as any).addressLine1,
           addressLine2: (data as any).addressLine2,
           city: (data as any).city,
@@ -89,114 +94,200 @@ const ProfileContent = () => {
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
     setProfileData(prev => ({ ...prev, [name]: value }));
-     // Clear error for the field being edited
      if (formErrors[name]) {
          setFormErrors(prev => ({ ...prev, [name]: undefined }));
      }
   };
 
-  // --- Wallet Linking Handler --- 
   const handleLinkWallet = async () => {
-      setLinkWalletLoading(true);
-      console.log("[Profile Page] Initiating wallet link...");
-      clearContextError(); // Clear previous context errors
+    console.log("handleLinkWallet: Function called");
+    setLinkWalletLoading(true);
+    console.log("[Profile Page] Initiating EVM wallet link...");
+    clearContextError();
 
-      // 1. Ensure wallet is connected
-      if (!connected) {
+    if (!isEvmWalletConnected || !connectedEvmAddress) {
+      console.error("handleLinkWallet: EVM Wallet not connected or address not available.");
+      toast.error("Please connect your EVM wallet first using the button in the header.");
+      setLinkWalletLoading(false);
+      return;
+    }
+
+    let nonce = '';
+    try {
+      console.log("[Profile Page] Requesting challenge nonce for EVM... Address:", connectedEvmAddress);
+      const challengeResponse = await fetch('/api/profile/evm/challenge', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: connectedEvmAddress })
+      }); 
+      console.log("handleLinkWallet: Challenge response status:", challengeResponse.status);
+
+      if (!challengeResponse.ok) {
+        const errorData = await challengeResponse.json().catch(() => ({ message: 'Failed to parse error response' }));
+        console.error("handleLinkWallet: Challenge request failed", errorData);
+        throw new Error(errorData.message || `Failed to get verification challenge (status: ${challengeResponse.status})`);
+      }
+      const data = await challengeResponse.json();
+      console.log("handleLinkWallet: Challenge data received:", data);
+      nonce = data.nonce;
+      if (!nonce) {
+        console.error("handleLinkWallet: Nonce missing in challenge response");
+        throw new Error('Nonce not received from server.');
+      }
+      console.log("[Profile Page] Received nonce for EVM:", nonce);
+    } catch (error: any) {  
+      console.error("[Profile Page] Error fetching EVM challenge:", error);
+      toast.error(`Error getting challenge: ${error.message}`);
+      setLinkWalletLoading(false);
+      return;
+    }
+
+    let signature: `0x${string}` | undefined = undefined;
+    try {
+      console.log("[Profile Page] Requesting EVM signature...");
+      const messageToSign = `Please sign this message to link your EVM wallet to your profile.\nNonce: ${nonce}`;
+      console.log(`[Profile Page] Frontend EVM Message to Sign: "${messageToSign}"`);
+      
+      console.log("[Profile Page] useAccount state before signing: address:", connectedEvmAddress, "isConnected?", isEvmWalletConnected);
+      console.log("[Profile Page] signMessageAsync function type:", typeof signMessageAsync);
+      console.log("[Profile Page] useSignMessage hook state BEFORE signing: isLoading?", isSigningMessage, "isError?", isSignMessageError, "error object:", signMessageHookError, "status:", signMessageStatus);
+      
+      // Add a try/catch specifically for the signMessageAsync call
+      try {
+        console.log("[Profile Page] ABOUT TO CALL signMessageAsync with message:", messageToSign);
+        signature = await signMessageAsync({ message: messageToSign });
+        console.log("[Profile Page] AFTER signMessageAsync: Signature received:", signature);
+      } catch (signError) {
+        console.error("[Profile Page] CAUGHT ERROR directly from signMessageAsync:", signError);
+        
+        // Fallback: Try direct Ethereum provider if Wagmi hook fails
+        if (typeof window !== 'undefined' && window.ethereum) {
           try {
-              await connect(); // Prompt connection if not connected
-              // Note: We might need to wait briefly for publicKey to be available after connect?
-              // Or rely on the user clicking the button *again* after connecting.
-              // For simplicity, let's assume connect() makes publicKey available shortly.
-              toast("Wallet connected. Please click Link Wallet again to sign.", { icon: 'ℹ️' });
-              setLinkWalletLoading(false);
-              return;
-          } catch (error) {
-              console.error("[Profile Page] Wallet connection error:", error);
-              toast.error("Failed to connect wallet. Please try again.");
-              setLinkWalletLoading(false);
-              return;
+            console.log("[Profile Page] Attempting FALLBACK with direct ethereum provider");
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            console.log("[Profile Page] FALLBACK - Connected accounts:", accounts);
+            
+            if (accounts && accounts.length > 0) {
+              const from = accounts[0];
+              console.log("[Profile Page] FALLBACK - Using account:", from);
+              
+              // Convert message to hex format
+              const msgHex = '0x' + Buffer.from(messageToSign).toString('hex');
+              console.log("[Profile Page] FALLBACK - Message in hex:", msgHex);
+              
+              // Call personal_sign method
+              const result = await window.ethereum.request({
+                method: 'personal_sign',
+                params: [msgHex, from, 'PLATZ Authentication'],
+              });
+              
+              console.log("[Profile Page] FALLBACK - Signature result:", result);
+              signature = result as `0x${string}`;
+              return; // Continue with the outer function
+            }
+          } catch (fallbackError) {
+            console.error("[Profile Page] FALLBACK signing also failed:", fallbackError);
           }
+        } else {
+          console.error("[Profile Page] No window.ethereum available for fallback");
+        }
+        
+        throw signError; // Re-throw to be caught by outer catch
+      }
+      
+      console.log("[Profile Page] useSignMessage hook state AFTER successful signing: isLoading?", isSigningMessage, "isError?", isSignMessageError, "error object:", signMessageHookError, "status:", signMessageStatus, "data:", data);
+
+    } catch (error: any) {
+      console.error("[Profile Page] Error DURING EVM message signing process. Full error object:", error); 
+      console.error("[Profile Page] useSignMessage hook state IN CATCH BLOCK: isLoading?", isSigningMessage, "isError?", isSignMessageError, "error object from hook:", signMessageHookError, "status:", signMessageStatus);
+      
+      let specificErrorMessage = "Signing failed.";
+      if (signMessageHookError?.message) {
+        specificErrorMessage += ` Details: ${signMessageHookError.message}`;
+      } else if (error?.message) {
+        specificErrorMessage += ` Details: ${error.message}`;
+      } else {
+        specificErrorMessage += " An unknown error occurred during signing.";
+      }
+      toast.error(specificErrorMessage);
+      setLinkWalletLoading(false);
+      return;
+    }
+
+    if (!signature) {
+      console.error("[Profile Page] Signature not obtained after signing attempt, stopping wallet link.");
+      toast.error("Failed to obtain signature. Please try again.");
+      setLinkWalletLoading(false);
+      return;
+    }
+
+    try {
+      console.log("[Profile Page] Sending EVM signature for verification...");
+      const linkResponse = await fetch('/api/profile/evm/link-wallet', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: connectedEvmAddress, signature: signature }),
+      });
+      console.log("handleLinkWallet: Link wallet response status:", linkResponse.status);
+
+      if (!linkResponse.ok) {
+        const errorData = await linkResponse.json().catch(() => ({ message: 'Failed to parse error response' }));
+        console.error("handleLinkWallet: Link wallet request failed", errorData);
+        throw new Error(errorData.message || 'Failed to link EVM wallet.');
       }
 
-      // 2. Check if publicKey is available AND wallet supports signing
-      if (!publicKey || !signMessage) {
-          toast.error('Wallet key not available or wallet does not support signing. Please try connecting again.');
-          setLinkWalletLoading(false);
-          return;
+      const linkData = await linkResponse.json();
+      console.log("handleLinkWallet: Wallet linked successfully:", linkData);
+      toast.success('EVM Wallet linked successfully!');
+      if (linkData.user && linkData.user.evmAddress) {
+        setProfileData(prev => ({...prev, evmAddress: linkData.user.evmAddress }));
+      } else {
+        const updatedProfile = await fetchUserProfile(); 
+        if (updatedProfile) {
+          setProfileData(prev => ({...prev, evmAddress: updatedProfile.evmAddress }));
+        }
       }
-
-      // 3. Request challenge nonce from the new profile challenge endpoint
-      let nonce = '';
-      try {
-          console.log("[Profile Page] Requesting challenge nonce...");
-          const challengeResponse = await fetch('/api/profile/challenge', { method: 'GET' });
-          if (!challengeResponse.ok) {
-              const errorData = await challengeResponse.json().catch(() => ({}));
-              throw new Error(errorData.message || 'Failed to get verification challenge.');
-          }
-          const data = await challengeResponse.json();
-          nonce = data.nonce;
-          console.log("[Profile Page] Received nonce:", nonce);
-      } catch (error: any) {  
-          console.error("[Profile Page] Error fetching challenge:", error);
-          toast.error(`Error getting challenge: ${error.message}`);
-          setLinkWalletLoading(false);
-          return;
-      }
-
-      // 4. Request signature
-      let signature: Uint8Array | undefined = undefined;
-      try {
-          console.log("[Profile Page] Requesting signature...");
-          const message = `Please sign this message to link your wallet.\nNonce: ${nonce}`;
-          console.log(`[Profile Page] Frontend Message to Sign: "${message}"`);
-          const messageBytes = new TextEncoder().encode(message);
-          // Ensure signMessage is available before calling
-          if (!signMessage) throw new Error('Signing not supported by wallet.'); 
-          signature = await signMessage(messageBytes);
-          console.log("[Profile Page] Signature received.");
-      } catch (error: any) {
-          console.error("[Profile Page] Error signing message:", error);
-          toast.error(`Signing failed: ${error.message || 'User rejected the request.'}`);
-          setLinkWalletLoading(false);
-          return;
-      }
-
-      // 5. Send signature to backend for verification and linking
-      try {
-          console.log("[Profile Page] Sending signature for verification...");
-          const linkResponse = await fetch('/api/profile/link-wallet', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ solanaPubKey: publicKey.toBase58(), signature: bs58.encode(signature) }),
-          });
-
-          const linkData = await linkResponse.json();
-          if (!linkResponse.ok) {
-              throw new Error(linkData.message || 'Failed to link wallet.');
-          }
-
-          console.log("[Profile Page] Wallet linked successfully!");
-          toast.success('Wallet linked successfully!');
-          // Refresh user profile data to show the linked wallet
-          await fetchUserProfile(); 
-      } catch (error: any) {
-          console.error("[Profile Page] Error linking wallet:", error);
-          toast.error(`Linking failed: ${error.message}`);
-      } finally {
-          setLinkWalletLoading(false);
-      }
+    } catch (error: any) {
+      console.error("[Profile Page] Error linking EVM wallet:", error);
+      toast.error(`Linking failed: ${error.message}`);
+    } finally {
+      console.log("handleLinkWallet: Function finished.");
+      setLinkWalletLoading(false);
+    }
   };
 
-  // --- Set Credentials Handler --- 
+  const handleUnlinkWallet = async () => {
+    setUnlinkWalletLoading(true);
+    console.log("[Profile Page] Initiating EVM wallet unlink...");
+    clearContextError();
+    const loadingToastId = toast.loading("Unlinking EVM wallet...");
+
+    try {
+      const success = await updateUserProfile({ evmAddress: null }); 
+
+      if (success) {
+        toast.success('EVM Wallet unlinked successfully!', { id: loadingToastId });
+        const updatedProfile = await fetchUserProfile();
+        if (updatedProfile) {
+          setProfileData(prev => ({ ...prev, evmAddress: updatedProfile.evmAddress }));
+        }
+      } else {
+        throw new Error(contextError || 'Failed to unlink EVM wallet. Check console for details.');
+      }
+    } catch (error: any) {
+      console.error("[Profile Page] Error unlinking EVM wallet:", error);
+      toast.error(`Unlinking failed: ${error.message}`, { id: loadingToastId });
+    } finally {
+      setUnlinkWalletLoading(false);
+    }
+  };
+
   const handleSetCredentials = async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      setSetCredsFormErrors({}); // Clear previous errors
+      setSetCredsFormErrors({}); 
       clearContextError();
       console.log("[Profile Page] Attempting to set credentials...");
 
-      // 1. Frontend Validation (similar to signup)
       const validationSchema = RegisterSchema.pick({ username: true, password: true }).extend({
           confirmPassword: z.string().min(1, { message: "Please confirm your password" })
       }).refine(data => data.password === data.confirmPassword, {
@@ -216,7 +307,6 @@ const ProfileContent = () => {
           return;
       }
 
-      // 2. Call API
       setSetCredsLoading(true);
       const loadingToastId = toast.loading("Setting credentials...");
       try {
@@ -233,79 +323,61 @@ const ProfileContent = () => {
               throw new Error(data.message || 'Failed to set credentials.');
           }
           toast.success('Credentials set successfully!');
-          // Reset form fields
           setNewUsername('');
           setNewPassword('');
           setConfirmNewPassword('');
-          // Refresh user profile data to show the new username
           await fetchUserProfile(); 
-
       } catch (error: any) {
           console.error("[Profile Page] Error setting credentials:", error);
           toast.error(`Failed: ${error.message}`);
-          // Potentially set context error if needed, though toast might suffice
-          // setError(error.message);
       } finally {
           setSetCredsLoading(false);
           toast.dismiss(loadingToastId);
       }
   };
-  // --- END Added Handlers --- 
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setFormErrors({}); // Clear previous form errors
-    // clearContextError(); // Handled by useEffect
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormErrors({}); 
+    clearContextError();
+    console.log("[Profile Page] Attempting to update profile with data:", profileData);
 
-    // Prepare data for validation (handle potential empty date string)
-    const dataToValidate = {
-        ...profileData,
-        dateOfBirth: profileData.dateOfBirth || null,
-    };
-
-    const validationResult = ProfileUpdateSchema.safeParse(dataToValidate);
+    const validationResult = ProfileUpdateSchema.safeParse(profileData);
 
     if (!validationResult.success) {
-        setFormErrors(validationResult.error.flatten().fieldErrors);
+        const newErrors: FieldErrors = {};
+        validationResult.error.errors.forEach(err => {
+            if (err.path.length > 0) {
+                newErrors[String(err.path[0])] = [err.message]; 
+            }
+        });
+        setFormErrors(newErrors);
+        toast.error("Please correct the errors in the form.");
         return;
     }
-
-    // Validation passed, proceed with update
-    const loadingToastId = toast.loading("Saving profile...");
-    
-    // Prepare data for the API call, ensuring dateOfBirth is string | null
-    const updateData = {
-        ...validationResult.data,
-        // Explicitly format Date object back to string if it exists
-        dateOfBirth: validationResult.data.dateOfBirth instanceof Date 
-                      ? validationResult.data.dateOfBirth.toISOString().split('T')[0] 
-                      : validationResult.data.dateOfBirth, // Keep null as null
-    };
-
-    // Now updateData should match Partial<User> expected by updateUserProfile
-    const success = await updateUserProfile(updateData);
-    toast.dismiss(loadingToastId);
-    if (success) {
-      // Remove this redundant toast. Success feedback is handled in updateUserProfile.
-      // toast.success('Profile updated successfully!'); 
-      setIsEditing(false); // Exit edit mode
+        
+    const dataToSend = { ...validationResult.data };
+    if (profileData.evmAddress) {
+        (dataToSend as any).evmAddress = profileData.evmAddress;
     } else {
-      // Context error handles API errors
-      console.error("Profile update failed (toast displayed by context)");
+        delete (dataToSend as any).evmAddress; 
+    }
+
+    try {
+        const success = await updateUserProfile(dataToSend as ProfileFormData);
+        if (success) {
+            toast.success('Profile updated successfully!');
+            setIsEditing(false);
+            await fetchUserProfile(); 
+        } else {
+            toast.error(contextError || 'Failed to update profile.');
+        }
+    } catch (err: any) {
+        console.error("[Profile Page] Error calling updateUserProfile:", err);
+        toast.error(err.message || 'An unexpected error occurred during update.');
     }
   };
 
-  // Loading state specific to fetching profile data
-  if (pageLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <LoadingSpinner size="lg" />
-        <p className="ml-4 text-text-light dark:text-text-dark">Loading profile data...</p>
-      </div>
-    );
-  }
-
-  // Helper function to render form fields with consistent styles
   const renderField = (label: string, name: keyof ProfileFormData, type: string = 'text', disabled: boolean = false, options?: {value: string, label: string}[]) => {
     const hasError = !!formErrors[name];
     const isDisabled = disabled || !isEditing || actionLoading;
@@ -323,7 +395,7 @@ const ProfileContent = () => {
                 id={name}
                 name={name}
                 value={profileData[name] ?? ''}
-                onChange={handleInputChange as any} // Cast might be needed for select
+                onChange={handleInputChange as any} 
                 disabled={isDisabled}
                 className={`${commonClasses} ${errorClasses} ${disabledClasses} appearance-none`}
             >
@@ -348,7 +420,6 @@ const ProfileContent = () => {
     );
   };
 
-  // Helper function needs to be accessible to the form
   const inputClasses = (hasError: boolean) =>
       `w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-150 ${
         hasError
@@ -356,7 +427,15 @@ const ProfileContent = () => {
           : 'border-gray-300 dark:border-zinc-700 focus:border-transparent dark:focus:border-transparent'
       }`;
 
-  // Main return for the profile content
+  if (pageLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <LoadingSpinner size="lg" />
+        <p className="ml-4 text-text-light dark:text-text-dark">Loading profile data...</p>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -381,7 +460,7 @@ const ProfileContent = () => {
            <AnimatedButton
              onClick={() => {
                  setIsEditing(!isEditing);
-                 if (isEditing) setFormErrors({}); // Clear errors when exiting edit mode
+                 if (isEditing) setFormErrors({}); 
              }}
              className={`px-5 py-2 text-sm rounded-lg border transition-colors duration-150 ${isEditing
                 ? 'bg-gray-200 dark:bg-zinc-700 border-gray-400 dark:border-zinc-600 text-text-light dark:text-text-dark hover:bg-gray-300 dark:hover:bg-zinc-600'
@@ -408,20 +487,43 @@ const ProfileContent = () => {
              Account Information
          </h2>
         {renderField('Username', 'username', 'text', true)}
-        {renderField('Solana Wallet', 'solanaPubKey', 'text', true)}
+        {renderField('EVM Wallet', 'evmAddress', 'text', true)}
 
-        {/* Button to Link Wallet (shown if no wallet linked) */}
-        {!profileData.solanaPubKey && (
-            <div className="mt-4 mb-6">
-                <AnimatedButton onClick={handleLinkWallet} disabled={actionLoading || linkWalletLoading}>
-                    {linkWalletLoading ? 'Linking Wallet...' : 'Link Solana Wallet'}
-                </AnimatedButton>
-                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Link your wallet to enable seamless logins and potential future features.</p>
+        {/* EVM Wallet Section */}
+        <div className="mb-6 p-4 border border-gray-700 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2 text-primary-accent">EVM Wallet</h3>
+          {profileData.evmAddress ? (
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <p className="text-gray-300 break-all">
+                Linked Address: <span className="font-mono text-secondary-accent">{profileData.evmAddress}</span>
+              </p>
+              <AnimatedButton 
+                onClick={handleUnlinkWallet}
+                disabled={unlinkWalletLoading || actionLoading}
+                className="mt-2 sm:mt-0 sm:ml-4 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Unlink EVM Wallet
+              </AnimatedButton>
             </div>
-        )}
+          ) : (
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <p className="text-gray-400">No EVM wallet linked.</p>
+              <AnimatedButton 
+                onClick={handleLinkWallet}
+                disabled={!isEvmWalletConnected || linkWalletLoading || actionLoading}
+                className="mt-2 sm:mt-0 sm:ml-4"
+              >
+                Link EVM Wallet
+              </AnimatedButton>
+            </div>
+          )}
+          {!isEvmWalletConnected && !profileData.evmAddress && (
+              <p className="text-sm text-yellow-500 mt-2">Please connect your wallet (in the header) to link it.</p>
+          )}
+        </div>
 
         {/* Section/Form to Set Credentials (shown if no username/password) */}
-        {!profileData.username && profileData.solanaPubKey && (
+        {!profileData.username && profileData.evmAddress && (
              <div className="mt-6 pt-6 border-t border-gray-300 dark:border-zinc-700">
                 <h2 className="text-xl font-medium text-text-light dark:text-text-dark mb-4">
                     Set Username & Password
@@ -440,7 +542,7 @@ const ProfileContent = () => {
                              name="newUsername"
                              type="text"
                              required
-                             className={inputClasses(!!setCredsFormErrors.username)} // Use specific error state
+                             className={inputClasses(!!setCredsFormErrors.username)} 
                              value={newUsername}
                              onChange={(e) => {
                                  setNewUsername(e.target.value);
@@ -508,9 +610,9 @@ const ProfileContent = () => {
                Personal Details
            </h2>
           {renderField('Full Legal Name', 'fullName', 'text')}
-          {renderField('Date of Birth', 'dateOfBirth', 'date')} {/* Changed type to date */}
+          {renderField('Date of Birth', 'dateOfBirth', 'date')} 
           {renderField('Email', 'email', 'email')}
-          {renderField('Phone Number', 'phone', 'tel')} {/* Changed type to tel */}
+          {renderField('Phone Number', 'phone', 'tel')} 
 
            {/* Section 3: Address (Editable) */}
            <h2 className="text-xl font-medium text-text-light dark:text-text-dark pt-5 pb-3 border-b border-gray-300 dark:border-zinc-700 mb-4">
@@ -543,7 +645,7 @@ const ProfileContent = () => {
           {isEditing && (
             <div className="pt-6 text-right border-t border-gray-300 dark:border-zinc-700 mt-8">
                <AnimatedButton
-                 type="submit" // Use type="submit" to trigger form onSubmit
+                 type="submit" 
                  disabled={actionLoading || !isEditing}
                  className="inline-flex justify-center py-2.5 px-6 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60"
                >
@@ -551,13 +653,12 @@ const ProfileContent = () => {
                </AnimatedButton>
             </div>
           )}
-        </form> { /* Close the form */}
+        </form> 
       </div>
     </motion.div>
   );
 };
 
-// Wrap the ProfileContent with ProtectedRoute
 const ProfilePage = () => {
     return (
         <ProtectedRoute>

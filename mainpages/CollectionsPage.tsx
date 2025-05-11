@@ -25,7 +25,6 @@ export interface LandListingForCollection {
   priceCurrency: string | null;
   nftImageFileRef: string | null;
   nftCollectionSize: number | null;
-  slug: string | null;
   user: {
     id: string;
     username: string | null;

@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
 import AnimatedButton from '@/components/common/AnimatedButton';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'; // Wallet connect button
+/*
+import CustomWalletButton from '@/components/common/CustomWalletButton'; // Custom wallet button
 import { useWallet } from '@solana/wallet-adapter-react';
+*/
 import { FaWallet } from 'react-icons/fa'; // Icon for wallet button
 import toast from 'react-hot-toast'; // Import toast
 import { LoginSchema, FieldErrors } from '@/lib/schemas'; // Import schema and error type
@@ -15,9 +17,9 @@ import { LoginSchema, FieldErrors } from '@/lib/schemas'; // Import schema and e
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { user, login, connectAndLoginWallet, isLoading, error: contextError, clearError: clearContextError, isAuthenticated } = useAuth();
+  const { user, login, isLoading, error: contextError, clearError: clearContextError, isAuthenticated } = useAuth();
   const [formErrors, setFormErrors] = useState<FieldErrors>({}); // State for validation errors
-  const { connected, publicKey } = useWallet(); // Get wallet connection status
+  // const { connected, publicKey } = useWallet(); // Get wallet connection status
   const router = useRouter();
 
   // Display context error toast when it changes
@@ -63,6 +65,7 @@ const LoginPage = () => {
     }
   };
 
+  /*
   const handleWalletLogin = async () => {
     // clearContextError(); // Handled by useEffect
     if (!connected || !publicKey) {
@@ -71,12 +74,13 @@ const LoginPage = () => {
       return;
     }
     const loadingToastId = toast.loading("Requesting signature...");
-    const success = await connectAndLoginWallet();
+    const success = await connectAndLoginWallet(); // This function in AuthContext might also need adjustment if it's Solana specific
     toast.dismiss(loadingToastId);
     if (!success) {
       console.error("Wallet sign-in failed (toast displayed by context)");
     }
   };
+  */
 
   // Helper for input classes (same as signup)
   const inputClasses = (hasError: boolean) =>
@@ -159,18 +163,18 @@ const LoginPage = () => {
         </span>
       </div>
 
-       {/* Solana Wallet Login Section */}
+       {/* Solana Wallet Login Section - Commented Out
       <div className="space-y-4">
          <p className="text-sm text-center text-gray-500 dark:text-gray-400">
             Connect and sign in with your Solana wallet.
          </p>
-         {/* Button to connect/disconnect wallet (uses wallet-adapter-react-ui styles) */}
+         
          <div className="flex justify-center">
-             {/* Apply custom styling or keep default wallet adapter styles */}
-             <WalletMultiButton />
+             
+             {/* <CustomWalletButton /> * /} // Also comment out the usage if CustomWalletButton itself is Solana-specific
          </div>
-          {/* Button to trigger sign-in message (only visible if connected) */}
-         {connected && (
+          
+         {/* {connected && (
              <AnimatedButton
                 onClick={handleWalletLogin}
                 disabled={isLoading || !publicKey} // Disable if auth loading or no public key
@@ -179,8 +183,9 @@ const LoginPage = () => {
                  <FaWallet className="w-4 h-4"/>
                  {isLoading ? 'Verifying...' : 'Sign In with Wallet'}
              </AnimatedButton>
-         )}
+         )} * /}
       </div>
+      */}
 
       {/* Link to Sign Up */}
       <div className="mt-8 text-center">

@@ -1,0 +1,23 @@
+DATABASE_URL="postgresql://postgres:Deezy*1925@localhost:5432/NFTm?schema=public"
+JWT_SECRET="3ab4fbad710c531ccf4471a607859f9841f3f558208159a08f1847bb135a7773e48520be87174b3903adf12dc572de5cab6a0d85271f299c3523c714f2d4e6db"
+
+
+# Ethereum Sepolia Configuration
+NEXT_PUBLIC_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/-9NA8V25gEEn6DZokD_cuOxFRFVzf5qo"
+RPC_URL="https://eth-sepolia.g.alchemy.com/v2/-9NA8V25gEEn6DZokD_cuOxFRFVzf5qo"
+SEPOLIA_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/-9NA8V25gEEn6DZokD_cuOxFRFVzf5qo"
+
+NEXT_PUBLIC_SERVER_WALLET_PRIVATE_KEY="8d442fd15cc758fa0bf73cfb9e8db6f757bd8c65f95792e80751cfc75a2c3a94"
+SERVER_WALLET_PRIVATE_KEY="8d442fd15cc758fa0bf73cfb9e8db6f757bd8c65f95792e80751cfc75a2c3a94"
+SEPOLIA_PRIVATE_KEY="8d442fd15cc758fa0bf73cfb9e8db6f757bd8c65f95792e80751cfc75a2c3a94"
+
+ETHERSCAN_API_KEY="Y8TRVV1DYE62ZT2UZ9X25MYKYUD2DG8CWBQ"
+
+# Irys (formerly Bundlr) Configuration
+IRYS_NODE_URL="https://devnet.irys.xyz" # For Irys devnet; use https://node1.irys.xyz or https://node2.irys.xyz for mainnet
+IRYS_TOKEN_NAME="ethereum" # Changed from "solana" to "ethereum"
+
+
+# Fallback RPC URLs
+FALLBACK_RPC_URL_1="https://rpc.sepolia.org"
+FALLBACK_RPC_URL_2="https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161" 

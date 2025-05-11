@@ -391,8 +391,9 @@ export const footerLinks = [
 ];
 
 export const navItems = [
-  { name: "Explore", path: "/collections" },
+  { name: "Explore", path: "/explore" },
   { name: "Create", path: "/create" },
+  { name: "My Listings", path: "/my-listings" },
 ];
 
 export const socialShare = [

@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { Prisma } from '@prisma/client';
 
-// Removed kycFieldsToClear as we are not modifying the User record directly
-
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: { updateRequestId: string } } // Changed param name
-) {
+/**
+ * Reject a KYC update request
+ */
+export async function DELETE(request: Request) {
+    // Extract updateRequestId from URL
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const updateRequestId = pathParts[pathParts.length - 2]; // Get the ID from the URL path
+    
     // 1. Check Admin Status
     const isAdmin = request.headers.get('x-user-is-admin') === 'true';
     const requestingAdminId = request.headers.get('x-user-id');
@@ -16,8 +18,6 @@ export async function DELETE(
     if (!isAdmin) {
         return NextResponse.json({ message: 'Forbidden: Admin access required' }, { status: 403 });
     }
-
-    const { updateRequestId } = params; // Use the correct param name
 
     if (!updateRequestId) {
         return NextResponse.json({ message: 'KYC Update Request ID is required' }, { status: 400 });

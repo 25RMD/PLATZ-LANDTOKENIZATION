@@ -1,0 +1,9 @@
+Phase 1 Completed: Smart Contract Development (Solidity - ERC-721)
+[x] Set up the development environment (Hardhat).
+[x] Create PlatzLandNFT.sol (ERC-721).
+[x] Create LandMarketplace.sol.
+[x] Write extensive unit tests.
+[x] Deploy contracts on the Sepolia testnet.
+PlatzLandNFT: `0x3634a1Da3bb8f2F81D7c7db37aF99A2E4F788190`
+LandMarketplace: `0xfa53a6702cdD781B775Ebd8E50409e1Bdcd716aE`
+Verification is pending a check on the ETHERSCAN_API_KEY if you wish to proceed with that.

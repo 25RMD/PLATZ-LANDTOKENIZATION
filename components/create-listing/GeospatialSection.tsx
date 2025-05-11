@@ -22,7 +22,7 @@ interface GeospatialProps {
   handleInputChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleDrop: (event: React.DragEvent<HTMLDivElement>, fieldName: GeospatialFileFieldNames) => void;
-  filePreviews: Record<string, string>;
+  filePreviews: Record<string, string | string[]>;
   inputFieldStyles: string;
   inputFieldDisabledStyles: string;
   isSubmitting: boolean;

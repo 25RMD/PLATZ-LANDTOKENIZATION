@@ -15,14 +15,8 @@ import { usePathname } from "next/navigation";
 import AnimatedButton from "./AnimatedButton";
 import ThemeSwitcher from "../ThemeSwitcher";
 import { useAuth } from "@/context/AuthContext";
-import { useWallet } from '@solana/wallet-adapter-react';
-import dynamic from 'next/dynamic';
-
-// Dynamically import WalletMultiButton with SSR disabled
-const WalletMultiButton = dynamic(
-    async () => (await import('@solana/wallet-adapter-react-ui')).WalletMultiButton,
-    { ssr: false }
-);
+import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
+import { injected } from '@wagmi/connectors';
 
 const mobileMenuVariants = {
   open: {
@@ -65,7 +59,11 @@ const Header = () => {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, isVerified, user, logout, isLoading: authLoading } = useAuth();
-  const { connected: isWalletConnected } = useWallet();
+
+  const { address, isConnected, connector } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { data: ensName } = useEnsName({ address });
 
   // Get isAdmin status from context
   const { isAdmin } = useAuth(); 
@@ -134,19 +132,30 @@ const Header = () => {
         <div className="hidden md:flex items-center space-x-4">
           <ThemeSwitcher />
           
-          <WalletMultiButton 
-            className="
-                !h-auto 
-                !rounded-lg !font-semibold !text-xs !uppercase !transition-colors !duration-200 
-                !border !border-black dark:!border-white 
-                [&>button]:!bg-transparent [&>button]:hover:!bg-black [&>button]:dark:hover:!bg-white
-                [&>button]:!text-text-light [&>button]:dark:!text-text-dark
-                [&>button]:hover:!text-white [&>button]:dark:hover:!text-black
-                [&>button]:!px-3 [&>button]:!py-1.5 
-                [&>button]:!shadow-none
-                [&>button]:!leading-normal
-            "
-          />
+          {isConnected ? (
+            <div className="flex items-center space-x-2 p-2 border border-gray-300 dark:border-gray-700 rounded-lg">
+              <FaWallet className="text-text-light dark:text-text-dark" />
+              <span className="text-xs text-text-light dark:text-text-dark truncate max-w-[100px]">
+                {ensName ? `${ensName} (${address?.slice(0,4)}...${address?.slice(-4)})` : `${address?.slice(0,6)}...${address?.slice(-4)}`}
+              </span>
+              {connector && <span className="text-xs text-gray-500">({connector.name})</span>}
+              <button 
+                onClick={() => disconnect()} 
+                className="ml-2 text-xs text-red-500 hover:text-red-700"
+                title="Disconnect Wallet"
+              >
+                <FaSignOutAlt />
+              </button>
+            </div>
+          ) : (
+            <AnimatedButton 
+              onClick={() => connect({ connector: injected() })} 
+              className="flex items-center space-x-2"
+            >
+              <FaWallet />
+              <span>Connect Wallet</span>
+            </AnimatedButton>
+          )}
 
           {/* Show loading placeholder ONLY if loading AND not already authenticated */}
           {authLoading && !isAuthenticated ? (
@@ -182,7 +191,7 @@ const Header = () => {
                           {user?.username || "Account"}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {user?.email || user?.solanaPubKey} {isAdmin && <span className="font-bold text-blue-500">(Admin)</span>}
+                          {user?.email || (isConnected ? `${address?.slice(0,6)}...${address?.slice(-4)}` : 'No wallet')} {isAdmin && <span className="font-bold text-blue-500">(Admin)</span>}
                         </p>
                       </div>
                       <div className="py-1">
@@ -199,6 +208,7 @@ const Header = () => {
                           <>
                         {[
                           { name: 'Profile', href: '/profile' },
+                          { name: 'My Listings', href: '/my-listings' },
                           { name: 'Watchlist', href: '/watchlist' },
                           { name: 'Orders', href: '/orders' },
                         ].map((item) => (
@@ -297,7 +307,30 @@ const Header = () => {
                     <ThemeSwitcher />
                   </div>
                   <div className="mt-2">
-                    <WalletMultiButton style={{ width: '100%' }} />
+                    {isConnected ? (
+                      <div className="flex items-center space-x-2 p-2 border border-gray-300 dark:border-gray-700 rounded-lg">
+                        <FaWallet className="text-text-light dark:text-text-dark" />
+                        <span className="text-xs text-text-light dark:text-text-dark truncate max-w-[100px]">
+                          {ensName ? `${ensName} (${address?.slice(0,4)}...${address?.slice(-4)})` : `${address?.slice(0,6)}...${address?.slice(-4)}`}
+                        </span>
+                        {connector && <span className="text-xs text-gray-500">({connector.name})</span>}
+                        <button 
+                          onClick={() => disconnect()} 
+                          className="ml-2 text-xs text-red-500 hover:text-red-700"
+                          title="Disconnect Wallet"
+                        >
+                          <FaSignOutAlt />
+                        </button>
+                      </div>
+                    ) : (
+                      <AnimatedButton 
+                        onClick={() => connect({ connector: injected() })} 
+                        className="flex items-center space-x-2"
+                      >
+                        <FaWallet />
+                        <span>Connect Wallet</span>
+                      </AnimatedButton>
+                    )}
                   </div>
 
                   {/* Show mobile loading placeholder ONLY if loading AND not already authenticated */}
@@ -315,7 +348,7 @@ const Header = () => {
                               <FaUser className="text-white dark:text-black" />
                             </div>
                           </div>
-                          <span className="text-sm font-medium">{user?.username || user?.solanaPubKey?.substring(0,6) || 'Profile'}</span>
+                          <span className="text-sm font-medium">{user?.username || user?.email || (isConnected ? `${address?.slice(0,6)}...${address?.slice(-4)}` : 'Profile')}</span>
                         </div>
                       </Link>
                       <button

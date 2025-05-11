@@ -8,63 +8,23 @@ import { getImageUrl, getPlaceholderImage } from '@/lib/utils/imageUtils';
 import { FiAlertCircle, FiArrowLeft, FiStar, FiInfo, FiCopy, FiX, FiMoreHorizontal, FiCheckCircle, FiTwitter, FiMail, FiShare2, FiExternalLink, FiLoader } from 'react-icons/fi';
 import Link from 'next/link';
 
-import { NFT, User as PrismaUser } from '@prisma/client'; 
-import NFTCardSimple from '@/components/NFTCardSimple';
+import { LandListing as PrismaLandListing, User as PrismaUser } from '@prisma/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import NFTCardSimpleSkeleton from '@/components/skeletons/NFTCardSimpleSkeleton';
 
-interface LandListingWithDetails {
-  id: string;
-  createdAt: string; 
-  updatedAt: string;
-  titleDeedId: string;
-  propertyAddress: string;
-  propertyType: string;
-  ownerId: string;
-  кадастральныйНомер: string | null;
-  разрешенноеИспользование: string | null;
-  площадьУчастка: number | null; 
-  описаниеМестоположения: string | null;
-  документыОснования: string[];
-  координаты: string | null;
-  статусЗаписиЕГРН: string | null;
-  формаСобственности: string | null;
-  country: string | null;
-  state: string | null;
-  localGovernmentArea: string | null;
-  latitude: string | null;
-  longitude: string | null;
-  ограниченияОбременения: string | null;
-  дополнительнаяИнформация: string | null;
-  additionalNotes: string | null;
-  propertyAreaSqm: number | null;
-  chainOfTitleId: string | null;
-  propertyPhotosFileRef: string[] | null;
-  valuationReportFileRef: string | null;
-  otherDocumentsFileRef: string[] | null;
-  nftTitle: string | null;
-  nftDescription: string | null;
-  listingPrice: number | null; 
-  priceCurrency: string | null;
-  nftImageFileRef: string | null;
-  nftCollectionSize: number | null;
-  blockchainRef: string | null;
-  
-  individualNfts: NFT[];
-  user: PrismaUser | null; 
-  ownerCount: number;
-  listedCount: number;
-  topOffer: number | null;
-  volume24h: number;
-  sales24h: number;
-  name: string; 
-  description: string | null; 
-  image: string | null; 
-  creator: string; 
-  floorPrice: number | null;
-  items: number; 
-  verified: boolean; 
-  chain?: string | null; 
+// Updated interface to include full stats and correct derived counts
+interface LandListingWithCollectionStats extends PrismaLandListing {
+  user: PrismaUser | null;
+  processedNftImageUrl: string | null;
+  derivedCreatorName: string;
+  derivedItemsCount: number;    // Calculated on backend
+  derivedListedCount: number;   // Calculated on backend
+  derivedOwnerCount: number;    // Calculated on backend
+  stats: {
+    topOffer: string | null;    // Prisma Decimal is serialized to string
+    volume24h: string | null;   // Prisma Decimal is serialized to string
+    sales24h: number | null;
+  };
+  // Note: PrismaLandListing already includes fields like listingPrice (Decimal?), priceCurrency, createdAt, etc.
 }
 
 const SingleCollectionPage = () => {
@@ -72,7 +32,7 @@ const SingleCollectionPage = () => {
     const router = useRouter();
     const collectionId = params?.collectionId as string;
 
-    const [collectionData, setCollectionData] = useState<LandListingWithDetails | null>(null);
+    const [collectionData, setCollectionData] = useState<LandListingWithCollectionStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showFullDescription, setShowFullDescription] = useState(false); // For 'About' section
@@ -118,7 +78,7 @@ const SingleCollectionPage = () => {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const data: LandListingWithDetails = await response.json();
+                const data: LandListingWithCollectionStats = await response.json();
                 setCollectionData(data);
                 
                 // Check watchlist status using the hook function
@@ -167,9 +127,9 @@ const SingleCollectionPage = () => {
         return getImageUrl(imageRef, getPlaceholderImage('banner'));
     };
     
-    // Helper for collection logo images
+    // Helper for collection logo images (now NFT image)
     const getLogoImageUrl = (imageRef: string | null | undefined): string => {
-        return getImageUrl(imageRef, getPlaceholderImage('collection'));
+        return getImageUrl(imageRef, getPlaceholderImage('collection')); // 'collection' placeholder seems fine for NFT logo too
     };
 
     if (isLoading) {
@@ -212,7 +172,7 @@ const SingleCollectionPage = () => {
                                 </div>
                                 {/* Stats Bar Skeleton */}
                                 <div className="flex items-center overflow-hidden md:gap-8 w-full justify-between flex-wrap">
-                                    {[...Array(5)].map((_, i) => (
+                                    {[...Array(7)].map((_, i) => (
                                         <div key={i} className="flex flex-col items-start gap-1 whitespace-nowrap select-text py-2">
                                             <div className="h-4 bg-gray-300 dark:bg-zinc-600 rounded w-16 mb-1"></div>
                                             <div className="h-5 bg-gray-400 dark:bg-zinc-500 rounded w-20"></div>
@@ -232,7 +192,7 @@ const SingleCollectionPage = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                         {[...Array(10)].map((_, i) => (
-                           <NFTCardSimpleSkeleton key={i} />
+                           <div key={i} className="bg-gray-300 dark:bg-zinc-600 p-4 rounded-lg"></div>
                         ))}
                     </div>
                 </main>
@@ -240,435 +200,313 @@ const SingleCollectionPage = () => {
         );
     }
 
-    if (error) {
+    if (error || !collectionData) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen text-center px-4">
+            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] p-4 text-center">
                 <FiAlertCircle className="w-16 h-16 text-red-500 mb-4" />
-                <h1 className="text-2xl font-semibold mb-2">Error loading collection</h1>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-                <Link href="/collections" legacyBehavior>
-                    <a className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <FiArrowLeft className="mr-2 -ml-1 h-5 w-5" />
-                        Back to Collections
-                    </a>
-                </Link>
+                <h2 className="text-2xl font-semibold text-text-light dark:text-text-dark mb-2">
+                    {error ? "Error Loading Property" : "Property Not Found"}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    {error || "The property you are looking for does not exist or could not be loaded."}
+                </p>
+                <button
+                    onClick={() => router.back()}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                    <FiArrowLeft /> Go Back
+                </button>
             </div>
         );
     }
 
-    if (!collectionData) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen text-center px-4">
-                <FiAlertCircle className="w-16 h-16 text-yellow-500 mb-4" />
-                <h1 className="text-2xl font-semibold">Collection not found</h1>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">The requested collection could not be found or loaded.</p>
-                <Link href="/collections" legacyBehavior>
-                    <a className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <FiArrowLeft className="mr-2 -ml-1 h-5 w-5" />
-                        Back to Collections
-                    </a>
-                </Link>
-            </div>
-        );
-    }
+    // --- Main content rendering adjustments ---
+    const bannerImage = getBannerImageUrl(collectionData.processedNftImageUrl); // Use processedNftImageUrl for banner
+    const nftLogoImage = getLogoImageUrl(collectionData.processedNftImageUrl);  // Use processedNftImageUrl for logo
 
-    const { individualNfts: nfts } = collectionData; // Alias for convenience in NFT grid
-    const listedPercentage = collectionData.items > 0 ? (collectionData.listedCount / collectionData.items) * 100 : 0;
-    
-    // Extract location data and property area from additionalNotes if available
-    let locationData = {
-        country: collectionData.country,
-        state: collectionData.state,
-        localGovernmentArea: collectionData.localGovernmentArea
+    const nftTitle = collectionData.nftTitle || "Untitled Property";
+    const creatorName = collectionData.derivedCreatorName;
+    // const itemsCount = collectionData.derivedItemsCount; // This is 1, may not need to display explicitly as "1 item"
+    // const listedStatus = collectionData.derivedListedCount === 1 ? "Listed" : "Not Listed";
+    // const ownerCountDisplay = collectionData.derivedOwnerCount; // This is 1
+
+    // Parse decimal strings to numbers for formatting
+    const price = collectionData.listingPrice ? parseFloat(String(collectionData.listingPrice)) : null;
+    const topOffer = collectionData.stats?.topOffer ? parseFloat(collectionData.stats.topOffer) : null;
+    const volume24h = collectionData.stats?.volume24h ? parseFloat(collectionData.stats.volume24h) : null;
+
+    // Watchlist button specific to this NFT (using collectionData.id which is the LandListing ID)
+    const WatchlistButton = () => (
+        <button 
+            onClick={(e) => { 
+                e.stopPropagation(); // Prevent dropdown from closing if this button is inside it
+                toggleWatchlist(collectionData.id);
+            }}
+            disabled={isWatchlistLoading} 
+            className={`p-2 rounded-full transition-colors duration-150 
+                        ${isWatchlisted ? 'text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20' 
+                                       : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-zinc-700'}`}
+            aria-label={isWatchlisted ? "Remove from Watchlist" : "Add to Watchlist"}
+        >
+            {isWatchlistLoading ? <FiLoader className="animate-spin w-5 h-5" /> : <FiStar className="w-5 h-5" />}
+        </button>
+    );
+
+    const copyLinkToClipboard = () => {
+        navigator.clipboard.writeText(window.location.href);
+        setToastMessage('Link copied to clipboard!');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+    };
+
+    const shareOnTwitter = () => {
+        const text = `Check out this awesome property: ${nftTitle}`;
+        const url = window.location.href;
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
     };
     
-    let propertyAreaSqm = collectionData.propertyAreaSqm?.toString() || '';
-    
-    if (collectionData.additionalNotes) {
-        try {
-            const parsedNotes = JSON.parse(collectionData.additionalNotes);
-            if (parsedNotes.locationData) {
-                locationData = {
-                    ...locationData,
-                    ...parsedNotes.locationData
-                };
-            }
-            if (parsedNotes.propertyAreaSqm && !propertyAreaSqm) {
-                propertyAreaSqm = parsedNotes.propertyAreaSqm;
-            }
-        } catch (e) {
-            console.error('Error parsing additionalNotes:', e);
-        }
-    }
+    const shareViaEmail = () => {
+        const subject = `Check out: ${nftTitle}`;
+        const body = `I found this interesting property and wanted to share it with you: ${window.location.href}`;
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
 
     return (
-        <div className="overflow-x-hidden min-h-screen pb-16 relative">
-            {/* Toast Notification */}
-            {showToast && (
-                <motion.div 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg flex items-center space-x-2"
-                >
-                    <FiCheckCircle className="h-5 w-5" />
-                    <span>{toastMessage}</span>
-                </motion.div>
-            )}
-            {/* Header Section */}
-            <header className="bg-gray-50 dark:bg-zinc-900/80 relative w-full overflow-hidden">
-                {/* Banner Image Container with Gradient */}
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-zinc-900/80 dark:to-black/90 z-[2]"></div>
-                    {collectionData.image && (
-                        <img
-                            src={getBannerImageUrl(collectionData.image)} // Mapped from nftImageFileRef
-                            alt={`${collectionData.name || 'Collection'} banner`}
-                            decoding="async"
-                            className="h-full w-full object-cover object-center"
-                            style={{ position: 'absolute', height: '100%', width: '100%', inset: '0px', color: 'transparent' }}
-                        />
-                    )}
-                    {!collectionData.image && (
-                        <div className="absolute inset-0 bg-gray-300 dark:bg-zinc-700 z-[1]"></div> // Fallback placeholder
-                    )}
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="overflow-x-hidden"
+        >
+            {/* Banner Section */}  
+            <div className="bg-gradient-to-b from-gray-100 to-transparent dark:from-zinc-800 dark:to-transparent relative w-full">
+                <div className="pointer-events-none relative aspect-4/3 md:aspect-16/9 lg:aspect-[7/2] xl:h-[min(550px,_100vh_-_270px)] w-full">
+                    <img 
+                        src={bannerImage}
+                        alt={`${nftTitle} Banner`}
+                        className="absolute inset-0 w-full h-full object-cover opacity-80 dark:opacity-70"
+                        onError={(e) => e.currentTarget.src = getPlaceholderImage('banner')} // Fallback if processed image fails
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary-light via-primary-light/50 to-transparent dark:from-primary-dark dark:via-primary-dark/50 dark:to-transparent"></div>
                 </div>
-
-                <div className="pointer-events-none relative aspect-4/3 md:aspect-16/9 lg:aspect-[7/2] xl:h-[min(550px,_100vh_-_270px)] xl:min-w-full"></div>
-
+                
+                {/* Content */} 
                 <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1] mx-auto min-h-0 min-w-0 max-w-7xl px-4 pb-4 lg:px-6 xl:pb-5">
                     <div className="flex w-full min-w-0 flex-col lg:grid lg:grid-cols-[1fr_auto] lg:items-end lg:justify-between xl:gap-4">
-                        {/* Left Side: Logo, Title, Creator, Meta Tags */}
+                        {/* Left Side */} 
                         <div className="flex w-full items-end gap-3 p-0 min-w-0 select-text">
-                            <div className="relative mb-0 mr-0 mt-[-10%] w-[clamp(64px,12vw,128px)] shrink-0 grow-0 select-none overflow-hidden rounded-xl border-4 border-white dark:border-black aspect-square bg-gray-200 dark:bg-zinc-700 flex items-center justify-center">
-                                {collectionData.image ? (
-                                    <img
-                                        src={getLogoImageUrl(collectionData.nftImageFileRef)}
-                                        alt={`${collectionData.name || 'Collection'} logo`}
-                                        className="h-full w-full object-cover"
-                                    />
-                                ) : (
-                                    <span className="text-gray-500 dark:text-gray-400 text-xs">No Logo</span>
-                                )}
+                            {/* NFT Logo Image */} 
+                            <div className="relative mb-0 mr-0 mt-[-10%] w-[clamp(64px,12vw,128px)] shrink-0 grow-0 select-none overflow-hidden rounded-xl border-4 border-white dark:border-black aspect-square">
+                                <img 
+                                    src={nftLogoImage}
+                                    alt={`${nftTitle} Logo`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => e.currentTarget.src = getPlaceholderImage('collection')} // Fallback
+                                />
                             </div>
+                            {/* Info Column */} 
                             <div className="flex flex-col w-full min-w-0">
-                                <div className="flex items-center min-w-0">
-                                    <h1 className="text-2xl lg:text-3xl font-bold text-white truncate select-all" title={collectionData.name || 'Untitled Collection'}>
-                                        {collectionData.name || 'Untitled Collection'} 
-                                    </h1>
-                                    {collectionData.verified && (
-                                        <FiCheckCircle className="ml-2 h-5 w-5 shrink-0 text-blue-400" title="Verified Creator" />
-                                    )}
+                                {/* Row 1: Title & Verified Badge (Removed verified badge) */} 
+                                <div className="flex items-center min-w-0 mb-1">
+                                    <h1 className="text-2xl md:text-3xl font-bold text-text-light dark:text-text-dark truncate" title={nftTitle}>{nftTitle}</h1>
+                                    {/* Verified badge logic removed as 'verified' field is gone */}
                                 </div>
-                                <div className="mt-1 flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-300 lg:text-sm">
-                                    <span>By <a href="#" className="font-medium text-blue-400 hover:text-blue-300">{collectionData.creator || 'Unknown Creator'}</a></span>
-                                    <span className="text-gray-500">•</span>
-                                    <span>{formatStat(collectionData.items)} items</span>
-                                    <span className="text-gray-500">•</span>
-                                    <span>Created {formatDate(collectionData.createdAt)}</span>
-                                    {/* Display chain if available (from blockchainRef) */}
-                                    {collectionData.chain && <span className="text-gray-500">•</span>}
-                                    {collectionData.chain && <span>{collectionData.chain}</span>}
-                                    {/* Display propertyType if available and chain is not, as a fallback for 'category' */}
-                                    {!collectionData.chain && collectionData.propertyType && <span className="text-gray-500">•</span>}
-                                    {!collectionData.chain && collectionData.propertyType && <span>{collectionData.propertyType}</span>}
+                                {/* Row 2: Meta Tags */} 
+                                <div className="flex w-full gap-2 flex-wrap md:flex-nowrap text-xs text-gray-600 dark:text-gray-400">
+                                    <span>By <Link href={`/users/${collectionData.user?.id || '#'}`} className="text-blue-600 dark:text-blue-400 hover:underline">{creatorName}</Link></span>
+                                    <span>·</span>
+                                    <span>Created {formatDate(collectionData.createdAt.toISOString())}</span>
+                                    {/* Removed Chain and Category tags */}
                                 </div>
                             </div>
                         </div>
-                        {/* Right Side: Action Buttons & Stats Bar */}
-                        <div className="flex min-w-0 flex-col items-end gap-4 pt-4 lg:pt-0">
-                            <div className="flex h-8 items-center justify-end gap-3">
+                        
+                        {/* Right Side Actions (Top) */} 
+                        <div className="mt-3 flex w-full flex-wrap items-center justify-start gap-2 lg:mt-0 lg:w-auto lg:justify-end">
+                           {collectionData.mintAddress && (
+                             <Link href={`https://explorer.solana.com/address/${collectionData.mintAddress}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-4 py-2 border rounded-lg text-sm bg-transparent border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 transition-colors">
+                                <FiExternalLink /> View on Explorer
+                            </Link>
+                           )}
+                            <WatchlistButton />
+                            {/* More Options Dropdown */} 
+                            <div className="relative" ref={dropdownRef}>
                                 <button 
-                                    onClick={async () => {
-                                        const result = await toggleWatchlist(collectionId);
-                                        // Show toast message
-                                        setToastMessage(result.message);
-                                        setShowToast(true);
-                                        setTimeout(() => setShowToast(false), 3000);
-                                    }}
-                                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${isWatchlisted ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-black/20 hover:bg-black/30'} text-white backdrop-blur-md transition`}
-                                    title={isWatchlisted ? 'Remove from watchlist' : 'Add to watchlist'}
-                                    disabled={isWatchlistLoading}
+                                    onClick={() => setShowMoreOptions(!showMoreOptions)}
+                                    className="p-2.5 rounded-lg border bg-transparent border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                                    aria-label="More options"
                                 >
-                                    <FiStar className={`h-4 w-4 ${isWatchlisted ? 'fill-white' : ''}`} />
-                                    {isWatchlistLoading && <span className="sr-only">Loading...</span>}
+                                    <FiMoreHorizontal className="w-4 h-4" />
                                 </button>
-                                <button 
-                                    onClick={() => {
-                                        const url = window.location.href;
-                                        navigator.clipboard.writeText(url)
-                                            .then(() => {
-                                                setToastMessage('Collection URL copied to clipboard!');
-                                                setShowToast(true);
-                                                setTimeout(() => setShowToast(false), 3000);
-                                            })
-                                            .catch(err => console.error('Failed to copy URL:', err));
-                                    }}
-                                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/20 text-white backdrop-blur-md transition hover:bg-black/30"
-                                    title="Copy collection URL"
-                                >
-                                    <FiCopy className="h-4 w-4" />
-                                </button>
-                                <div className="relative" ref={dropdownRef}>
-                                    <button 
-                                        onClick={() => setShowMoreOptions(!showMoreOptions)}
-                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/20 text-white backdrop-blur-md transition hover:bg-black/30"
-                                        title="More options"
+                                {showMoreOptions && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="absolute right-0 mt-2 w-48 bg-primary-light dark:bg-card-dark rounded-md shadow-lg z-20 border border-gray-200 dark:border-zinc-700"
                                     >
-                                        <FiMoreHorizontal className="h-4 w-4" />
-                                    </button>
-                                    {showMoreOptions && (
-                                        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-zinc-800 ring-1 ring-black ring-opacity-5 z-10">
-                                            <div className="py-1" role="menu" aria-orientation="vertical">
-                                                <button
-                                                    onClick={() => {
-                                                        window.open(`https://twitter.com/intent/tweet?text=Check out this NFT collection: ${collectionData.name}&url=${window.location.href}`, '_blank');
-                                                        setShowMoreOptions(false);
-                                                    }}
-                                                    className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 w-full text-left"
-                                                    role="menuitem"
-                                                >
-                                                    <FiTwitter className="mr-2 h-4 w-4" />
-                                                    Share on Twitter
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        window.open(`mailto:?subject=Check out this NFT collection: ${collectionData.name}&body=I found this amazing NFT collection: ${window.location.href}`);
-                                                        setShowMoreOptions(false);
-                                                    }}
-                                                    className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 w-full text-left"
-                                                    role="menuitem"
-                                                >
-                                                    <FiMail className="mr-2 h-4 w-4" />
-                                                    Share via Email
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        window.open(`https://t.me/share/url?url=${window.location.href}&text=Check out this NFT collection: ${collectionData.name}`, '_blank');
-                                                        setShowMoreOptions(false);
-                                                    }}
-                                                    className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 w-full text-left"
-                                                    role="menuitem"
-                                                >
-                                                    <FiShare2 className="mr-2 h-4 w-4" />
-                                                    Share on Telegram
-                                                </button>
-                                                {collectionData.blockchainRef && (
-                                                    <button
-                                                        onClick={() => {
-                                                            window.open(`https://solscan.io/token/${collectionData.blockchainRef}`, '_blank');
-                                                            setShowMoreOptions(false);
-                                                        }}
-                                                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 w-full text-left"
-                                                        role="menuitem"
-                                                    >
-                                                        <FiExternalLink className="mr-2 h-4 w-4" />
-                                                        View on Explorer
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            {/* Stats Bar using LandListingWithDetails fields */}
-                            <div className="grid grid-cols-3 sm:grid-cols-5 items-center overflow-hidden rounded-lg border border-white/10 bg-black/20 backdrop-blur-md text-white md:gap-0 w-full">
-                                <StatItem title="Volume (24h)" value={formatCurrency(collectionData.volume24h, collectionData.priceCurrency)} />
-                                <StatItem title="Floor Price" value={formatCurrency(collectionData.floorPrice, collectionData.priceCurrency)} />
-                                <StatItem title="Listed" value={`${formatStat(listedPercentage, 0)}%`} />
-                                <StatItem title="Owners" value={formatStat(collectionData.ownerCount)} />
-                                <StatItem title="Top Offer" value={formatCurrency(collectionData.topOffer, collectionData.priceCurrency)} isLast={true} />
+                                        <ul className="py-1">
+                                            <li><button onClick={copyLinkToClipboard} className="w-full text-left px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-700 flex items-center gap-2"><FiCopy/> Copy Link</button></li>
+                                            <li><button onClick={shareOnTwitter} className="w-full text-left px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-700 flex items-center gap-2"><FiTwitter/> Share on Twitter</button></li>
+                                            <li><button onClick={shareViaEmail} className="w-full text-left px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-700 flex items-center gap-2"><FiMail/> Share via Email</button></li>
+                                            {/* Add more options here if needed */}
+                                        </ul>
+                                    </motion.div>
+                                )}
                             </div>
                         </div>
                     </div>
-                </div>
-            </header>
+                </div> 
+            </div>
 
-            {/* Main Content Section */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 overflow-hidden">
-                {/* About Section */}
-                <section className="mb-10 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-                    <div className="p-6">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">About "{collectionData.name || 'this collection'}"</h2>
-                        
-                        {/* Description */}
-                        {collectionData.description && (
-                            <div className="mb-6">
-                                <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-2">Description</h3>
-                                <motion.div 
-                                    initial={false}
-                                    animate={{ height: showFullDescription ? 'auto' : '60px' }} // Approx 3 lines
-                                    transition={{ duration: 0.3 }}
-                                    className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed overflow-hidden relative whitespace-pre-line"
-                                >
-                                    {collectionData.description}
-                                </motion.div>
-                                {/* Show 'Show more/less' button if description is long or has many newlines */}
-                                {(collectionData.description.length > 150 || (collectionData.description.split('\n').length > 3)) && (
+            {/* Main Content Area */} 
+            <div className="max-w-7xl mx-auto px-4 py-8 lg:px-6">
+                {/* Stats Bar - Updated for full collection stats */} 
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-px overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-200 dark:bg-zinc-700 mb-8 shadow">
+                    <StatItem title="Price" value={formatCurrency(price, collectionData.priceCurrency)} />
+                    <StatItem title="Top Offer" value={formatCurrency(topOffer, collectionData.priceCurrency)} />
+                    <StatItem title="Volume (24h)" value={formatCurrency(volume24h, collectionData.priceCurrency)} />
+                    <StatItem title="Sales (24h)" value={formatStat(collectionData.stats?.sales24h)} />
+                    <StatItem title="Items" value={formatStat(collectionData.derivedItemsCount)} /> 
+                    <StatItem title="Listed" value={formatStat(collectionData.derivedListedCount)} />
+                    <StatItem title="Owners" value={formatStat(collectionData.derivedOwnerCount)} />
+                </div>
+
+                {/* About this Property & Details (Tabs or sections) */} 
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                    {/* Left Column: About */} 
+                    <div className="md:col-span-2">
+                        <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-3">About this Property</h2>
+                        {collectionData.nftDescription ? (
+                            <div className="text-gray-700 dark:text-gray-300 space-y-3 text-sm leading-relaxed">
+                                <p className={`${!showFullDescription && 'max-h-24 overflow-hidden relative'} `}>
+                                    {collectionData.nftDescription}
+                                    {!showFullDescription && collectionData.nftDescription.length > 150 && (
+                                        <span className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-primary-light dark:from-primary-dark to-transparent"></span>
+                                    )}
+                                </p>
+                                {collectionData.nftDescription.length > 150 && (
                                     <button 
                                         onClick={() => setShowFullDescription(!showFullDescription)}
-                                        className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium mt-2 inline-block"
+                                        className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
                                     >
-                                        {showFullDescription ? 'Show less' : 'Show more'}
+                                        {showFullDescription ? 'Show Less' : 'Show More'}
                                     </button>
                                 )}
                             </div>
+                        ) : (
+                            <p className="text-gray-500 dark:text-gray-400 italic">No description available for this property.</p>
                         )}
-                        
-                        {/* Location Information */}
-                        {(locationData.country || locationData.state || locationData.localGovernmentArea || collectionData.latitude || collectionData.longitude) && (
-                            <div className="mb-6">
-                                <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-2">Location Information</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {locationData.country && (
-                                        <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Country</div>
-                                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{locationData.country}</div>
-                                        </div>
-                                    )}
-                                    
-                                    {locationData.state && (
-                                        <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">State/Province</div>
-                                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{locationData.state}</div>
-                                        </div>
-                                    )}
-                                    
-                                    {locationData.localGovernmentArea && (
-                                        <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Local Government Area</div>
-                                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{locationData.localGovernmentArea}</div>
-                                        </div>
-                                    )}
-                                    
-                                    {collectionData.latitude && (
-                                        <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Latitude</div>
-                                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.latitude}</div>
-                                        </div>
-                                    )}
-                                    
-                                    {collectionData.longitude && (
-                                        <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Longitude</div>
-                                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.longitude}</div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* Property Details */}
-                        <div className="mb-6">
-                            <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-2">Property Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {/* Property Area - Always displayed, even if empty */}
-                                <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Property Area</div>
-                                    <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                                        {propertyAreaSqm ? `${propertyAreaSqm} sq. meters` : 
-                                         collectionData.площадьУчастка ? `${collectionData.площадьУчастка} sq.m` : 
-                                         'Not specified'}
-                                    </div>
-                                </div>
-                                
-                                {collectionData.propertyType && (
-                                    <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Property Type</div>
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.propertyType}</div>
-                                    </div>
-                                )}
-                                
-                                {collectionData.разрешенноеИспользование && (
-                                    <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Permitted Use</div>
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.разрешенноеИспользование}</div>
-                                    </div>
-                                )}
-                                
-                                {collectionData.кадастральныйНомер && (
-                                    <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Cadastral Number</div>
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.кадастральныйНомер}</div>
-                                    </div>
-                                )}
-                                
-                                {collectionData.формаСобственности && (
-                                    <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Ownership Form</div>
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.формаСобственности}</div>
-                                    </div>
-                                )}
-                                
-                                {collectionData.статусЗаписиЕГРН && (
-                                    <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Registration Status</div>
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.статусЗаписиЕГРН}</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        
-                        {/* NFT Details */}
-                        <div>
-                            <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-2">NFT Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Collection Size</div>
-                                    <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{collectionData.nftCollectionSize || collectionData.items} NFTs</div>
-                                </div>
-                                
-                                {collectionData.listingPrice && (
-                                    <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Initial Listing Price</div>
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatCurrency(collectionData.listingPrice, collectionData.priceCurrency)}</div>
-                                    </div>
-                                )}
-                                
-                                {collectionData.blockchainRef && (
-                                    <div className="bg-gray-50 dark:bg-zinc-700/30 p-3 rounded-md">
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Blockchain Reference</div>
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate" title={collectionData.blockchainRef}>
-                                            {collectionData.blockchainRef.substring(0, 10)}...{collectionData.blockchainRef.substring(collectionData.blockchainRef.length - 6)}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                        {/* Displaying some core LandListing fields */} 
+                        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
+                            <h3 className="text-lg font-medium text-text-light dark:text-text-dark mb-3">Property Details</h3>
+                            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                                {/* Removed propertyAddress and propertyType as they are not in the schema */}
+                                {collectionData.propertyAreaSqm && <DetailItem label="Area (sq m)" value={collectionData.propertyAreaSqm ? `${collectionData.propertyAreaSqm.toLocaleString()} sqm` : null} />}
+                                {collectionData.cadastralNumber && <DetailItem label="Cadastral No." value={collectionData.cadastralNumber} />}
+                                {collectionData.permittedUse && <DetailItem label="Permitted Use" value={collectionData.permittedUse} />}
+                                {collectionData.ownershipForm && <DetailItem label="Ownership Form" value={collectionData.ownershipForm} />}
+                                {collectionData.egrnRecordStatus && <DetailItem label="EGRN Status" value={collectionData.egrnRecordStatus} />}
+                                {/* Add more LandListing fields here as desired */}
+                            </dl>
                         </div>
                     </div>
-                </section>
 
-                {/* NFTs Grid Section */}
-                <section className="overflow-hidden">
-                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
-                        Items ({formatStat(nfts?.length || 0)})
-                    </h2>
-                    {(nfts && nfts.length > 0) ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 w-full">
-                            {nfts.map((nft) => (
-                                // Pass collection's priceCurrency to NFTCardSimple if it needs it
-                                <NFTCardSimple key={nft.id} nft={nft} collectionCurrency={collectionData.priceCurrency} collectionTotalItems={collectionData.items} />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-10">
-                            <FiInfo className="mx-auto h-12 w-12 text-gray-400" />
-                            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No NFTs found</h3>
-                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">This collection currently has no NFTs listed or available.</p>
-                        </div>
-                    )}
-                </section>
-            </main>
-        </div>
+                    {/* Right Column: Key Info / Actions - Simplified */} 
+                    <div className="md:col-span-1 space-y-6">
+                        {/* Price Info Box (if listed) */}
+                        {collectionData.isListedForSale && collectionData.listingPrice && (
+                            <div className="bg-gray-50 dark:bg-zinc-800 p-5 rounded-lg border border-gray-200 dark:border-zinc-700">
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Price</p>
+                                <p className="text-3xl font-bold text-text-light dark:text-text-dark mb-3">
+                                    {formatCurrency(collectionData.listingPrice ? collectionData.listingPrice.toNumber() : null, collectionData.priceCurrency)}
+                                </p>
+                                <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors text-sm">
+                                    Buy Now (Action TBD)
+                                </button>
+                                {/* Offer button can be added here if offer system is in place for single NFTs */}
+                            </div>
+                        )}
+                        
+                        {/* NFT Mint Info */} 
+                        {collectionData.mintAddress && (
+                            <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg border border-gray-200 dark:border-zinc-700">
+                                <h3 className="text-md font-semibold text-text-light dark:text-text-dark mb-2">Blockchain Details</h3>
+                                <div className="text-xs space-y-1.5 text-gray-600 dark:text-gray-400 break-all">
+                                    <p><strong>Mint Address:</strong> <CopyableText text={collectionData.mintAddress} /></p>
+                                    {collectionData.metadataUri && <p><strong>Metadata:</strong> <Link href={collectionData.metadataUri} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View Arweave</Link></p>}
+                                    {collectionData.onChainOwnerPublicKey && <p><strong>Owner Public Key:</strong> <CopyableText text={collectionData.onChainOwnerPublicKey} /></p>}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Item Activity / History Section - Placeholder for now */}
+                <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-4">Item Activity</h2>
+                    <div className="p-6 bg-gray-50 dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700 text-center">
+                        <FiInfo className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                        <p className="text-gray-500 dark:text-gray-400">Item activity and transaction history will be displayed here.</p>
+                    </div>
+                </div>
+                
+                {/* Removed: Section for displaying individual NFTs (NFTCardSimple) */}
+
+            </div>
+
+            {/* Toast Notification for Copy Link */} 
+            {showToast && (
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="fixed bottom-5 right-5 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50"
+                >
+                    <FiCheckCircle className="text-green-500"/> {toastMessage}
+                </motion.div>
+            )}
+        </motion.div>
     );
 };
 
 // Helper component for stats bar items
-const StatItem: React.FC<{ title: string; value: string; isLast?: boolean }> = ({ title, value, isLast }) => (
-    <div className={`flex flex-col items-start gap-0 whitespace-nowrap select-text p-3 ${isLast ? '' : 'sm:border-r sm:border-white/10'}`}>
-        <span className="text-xs text-gray-400 dark:text-gray-300">{title}</span>
-        <span className="text-sm lg:text-base font-semibold text-white">{value}</span>
+const StatItem = ({ title, value }: { title: string; value: string | number; }) => (
+    <div className={`bg-primary-light dark:bg-card-dark p-4`}>
+        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">{title}</p>
+        <p className="text-xl font-semibold text-text-light dark:text-text-dark truncate" title={String(value)}>{value}</p>
     </div>
 );
+
+// Helper for Detail Items
+const DetailItem = ({ label, value }: { label: string; value: string | number | null }) => {
+    if (!value) return null;
+    return (
+        <div>
+            <dt className="text-gray-500 dark:text-gray-400 font-medium">{label}</dt>
+            <dd className="text-text-light dark:text-text-dark mt-0.5">{value}</dd>
+        </div>
+    );
+};
+
+// Helper for Copyable Text
+const CopyableText = ({ text }: { text: string }) => {
+    const [copied, setCopied] = useState(false);
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000); 
+    };
+
+    return (
+        <span className="inline-flex items-center gap-1.5">
+            <span className="truncate max-w-[150px] sm:max-w-[200px]" title={text}>{text}</span>
+            <button onClick={copyToClipboard} title="Copy to clipboard" className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+                {copied ? <FiCheckCircle className="w-3 h-3 text-green-500" /> : <FiCopy className="w-3 h-3" />}
+            </button>
+        </span>
+    );
+};
 
 export default SingleCollectionPage;

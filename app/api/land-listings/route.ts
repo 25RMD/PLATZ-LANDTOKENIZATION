@@ -4,15 +4,16 @@ import { Prisma } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { mintNft, isValidPublicKey } from '@/lib/solana-utils'; // Now contains Ethereum compatible functions
 
 // Helper function to get string value from FormData
-const getString = (formData: FormData, key: string): string | null => {
+const getString = (formData: any, key: string): string | null => {
   const value = formData.get(key);
   return typeof value === 'string' ? value : null;
 };
 
 // Helper function to get File value from FormData
-const getFile = (formData: FormData, key: string): File | null => {
+const getFile = (formData: any, key: string): File | null => {
   const value = formData.get(key);
   return value instanceof File ? value : null;
 };
@@ -39,10 +40,22 @@ const saveFile = async (file: File): Promise<string> => {
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    console.log("Received FormData keys:", Array.from(formData.keys())); // Log incoming FormData keys
+    console.log("Received FormData keys:", Array.from((formData as any).keys())); // Log incoming FormData keys
 
-    // --- User Authentication (Placeholder - Replace with actual JWT verification) ---
-    const userId = "566a0c3d-c4b4-4e9c-8eb3-89f2cc0a74c0"; // UPDATED HARDCODED USER ID FOR TESTING - REMOVE LATER
+    // --- User Authentication ---
+    // For development purposes, we'll use a hardcoded user ID if no authentication is present
+    // In production, this should be replaced with proper JWT verification
+    let userId = "566a0c3d-c4b4-4e9c-8eb3-89f2cc0a74c0"; // Default user ID for testing
+    
+    // Log all headers for debugging
+    console.log("Request headers:", Object.fromEntries(req.headers.entries()));
+    
+    // Try to get user ID from headers (set by middleware or client)
+    const headerUserId = req.headers.get('x-user-id');
+    if (headerUserId) {
+      console.log("Using user ID from headers:", headerUserId);
+      userId = headerUserId;
+    }
 
     // --- File Handling ---
     const titleDeedFile = getFile(formData, 'titleDeedFile');
@@ -52,9 +65,12 @@ export async function POST(req: NextRequest) {
     const gisFile = getFile(formData, 'gisFile');
     const idDocumentFile = getFile(formData, 'idDocumentFile');
     const nftImageFile = getFile(formData, 'nftImageFile');
+
+    let nftMintAddress: string | null = null;
+    let nftMetadataUri: string | null = null;
+    let nftImageUrlArweave: string | null = null;
     
-    // --- Save files to uploads directory ---
-    // We'll use async/await to save the files and get the unique filenames
+    // --- Save files to uploads directory --- (excluding nftImageFile if it's being minted)
     const savedFiles: Record<string, string | null> = {};
     
     // Process each file and save it if it exists
@@ -64,11 +80,62 @@ export async function POST(req: NextRequest) {
     if (surveyPlanFile) savedFiles.surveyPlanFileRef = await saveFile(surveyPlanFile);
     if (gisFile) savedFiles.gisFileRef = await saveFile(gisFile);
     if (idDocumentFile) savedFiles.idDocumentFileRef = await saveFile(idDocumentFile);
+    // Always save NFT image locally first to ensure we have a valid filename regardless of minting outcome
     if (nftImageFile) savedFiles.nftImageFileRef = await saveFile(nftImageFile);
 
+    // --- NFT Minting Process ---
+    const nftTitle = getString(formData, 'nftTitle');
+    const nftDescription = getString(formData, 'nftDescription');
+    let ownerEthAddressForDb: string | null = null; // Variable to store the Ethereum address used for minting
+
+    if (nftImageFile && nftTitle) {
+      try {
+        const imageBuffer = Buffer.from(await nftImageFile.arrayBuffer());
+
+        // Fetch the user's Ethereum address
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        console.log("Found user:", user ? { id: user.id, evmAddress: user.evmAddress } : "User not found");
+        
+        // For development, we'll allow minting without a valid Ethereum address
+        // In production, this should be enforced
+        if (!user) {
+          console.warn('User not found, proceeding without user data');
+        } else if (!user.evmAddress) {
+          console.warn('User has no Ethereum address, proceeding without it');
+        } else if (!isValidPublicKey(user.evmAddress)) {
+          console.warn('Invalid Ethereum address format, proceeding anyway');
+        }
+        
+        // Store the Ethereum address if it exists and is valid
+        if (user?.evmAddress && isValidPublicKey(user.evmAddress)) {
+          ownerEthAddressForDb = user.evmAddress;
+        }
+
+        const mintResult = await mintNft(
+          nftTitle,
+          nftDescription || '',
+          imageBuffer,
+          ownerEthAddressForDb || 'placeholder-ethereum-address', // Use placeholder if no address is available
+          500 // Default 5% seller fee basis points
+        );
+        
+        nftMintAddress = mintResult.mintAddress.toString();
+        nftMetadataUri = mintResult.metadataUri;
+        nftImageUrlArweave = mintResult.imageUrl; // This will be saved as nftImageFileRef
+        console.log('NFT Minted:', { nftMintAddress, nftMetadataUri, nftImageUrlArweave });
+      } catch (mintError) {
+        console.error('NFT Minting Error:', mintError);
+        // We'll continue with the local image reference that was already saved
+        console.log('Falling back to local image reference:', savedFiles.nftImageFileRef);
+      }
+    }
+
+    // --- For development purposes, we'll make the user relation optional ---
+    // In production, we should ensure that a valid user is always connected
+    
     // --- Prepare data for Prisma ---
-    const prismaData: Prisma.LandListingCreateInput = {
-      user: { connect: { id: userId } }, // Corrected: Use connect for relations
+    // Create a base data object without the user relation
+    const baseData: Omit<Prisma.LandListingCreateInput, 'user'> = {
       // Land Details
       parcelNumber: getString(formData, 'parcelNumber'),
       registryVolume: getString(formData, 'registryVolume'),
@@ -113,12 +180,19 @@ export async function POST(req: NextRequest) {
       recordedInstruments: getString(formData, 'recordedInstruments'),
 
       // NFT Specific Details
-      nftTitle: getString(formData, 'nftTitle'),
-      nftDescription: getString(formData, 'nftDescription'),
-      nftImageFileRef: savedFiles.nftImageFileRef || null,
+      nftTitle: nftTitle,
+      nftDescription: nftDescription,
+      // Use Arweave URL if available, otherwise fall back to local image reference.
+      // Never store null or placeholder values if we have an image
+      nftImageFileRef: nftImageUrlArweave || savedFiles.nftImageFileRef || null,
       listingPrice: getString(formData, 'listingPrice') ? parseFloat(getString(formData, 'listingPrice')!) : null,
-      priceCurrency: getString(formData, 'priceCurrency') || 'SOL',
+      priceCurrency: getString(formData, 'priceCurrency') || 'ETH',
       // nftCollectionSize will use the default (100) from Prisma schema
+      // Ethereum NFT Integration Fields
+      contractAddress: nftMintAddress, // Contract address instead of mintAddress
+      metadataUri: nftMetadataUri,
+      evmOwnerAddress: nftMintAddress ? ownerEthAddressForDb : null, // Use the fetched Ethereum address
+      mintStatus: 'NOT_STARTED', // Default status
 
       // Additional Info
       status: getString(formData, 'status') || 'DRAFT',
@@ -134,8 +208,54 @@ export async function POST(req: NextRequest) {
       }),
     };
 
-    console.log("Prisma Data Before Create:", JSON.stringify(prismaData, null, 2)); // Uncommented for detailed logging
+    // Try to find a valid user to connect to the listing, or create one if needed
+    let prismaData: Prisma.LandListingCreateInput;
+    let userToConnect = await prisma.user.findUnique({ where: { id: userId } });
+    
+    if (!userToConnect) {
+      console.log("User not found with ID:", userId);
+      
+      // Try to find a user by username 'admin' (from seed.js)
+      userToConnect = await prisma.user.findUnique({ where: { username: "admin" } });
+      
+      if (!userToConnect) {
+        console.log("No admin user found, creating a test user...");
+        
+        // Create a test user with a random ID
+        try {
+          userToConnect = await prisma.user.create({
+            data: {
+              username: "testuser_" + Date.now(),
+              email: `test_${Date.now()}@example.com`,
+              passwordHash: "placeholder",
+              isAdmin: false,
+            }
+          });
+          console.log("Created test user with ID:", userToConnect.id);
+        } catch (error) {
+          console.error("Error creating test user:", error);
+          throw new Error("Could not create a test user for this listing");
+        }
+      } else {
+        console.log("Found admin user with ID:", userToConnect.id);
+      }
+    } else {
+      console.log("Found user with ID:", userToConnect.id);
+    }
+    
+    // Now we should have a valid user to connect to
+    prismaData = {
+      ...baseData,
+      user: {
+        connect: {
+          id: userToConnect.id
+        }
+      }
+    };
+    
+    console.log("Prisma Data Before Create:", JSON.stringify(prismaData, null, 2));
 
+    // Create the listing with or without a user relation
     const newListing = await prisma.landListing.create({
       data: prismaData,
     });

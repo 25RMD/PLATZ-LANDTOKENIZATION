@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
         id: true,
         username: true,
         email: true,
-        solanaPubKey: true,
+        // solanaPubKey: true, // Field does not exist on User model
+        evmAddress: true,
         fullName: true,
         // Add other non-sensitive profile fields you want to return
         isAdmin: true,

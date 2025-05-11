@@ -70,12 +70,12 @@ const NftDetailsSection: React.FC<NftDetailsProps> = ({
           <select
             name="priceCurrency"
             id="priceCurrency"
-            value={formData.priceCurrency || 'SOL'}
+            value={formData.priceCurrency || 'ETH'}
             onChange={handleInputChange}
             className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
             disabled={isSubmitting}
           >
-            <option value="SOL">SOL</option>
+            <option value="ETH">ETH</option>
             <option value="USDC">USDC</option>
             
           </select>

@@ -30,6 +30,7 @@ export const ProfileUpdateSchema = z.object({
   fullName: z.string().min(1, { message: "Full name cannot be empty" }).max(100).optional().or(z.literal('').nullable()),
   email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal('').nullable()), // Allow empty or null
   phone: z.string().max(20, {message: "Phone number too long"}).optional().or(z.literal('').nullable()),
+  evmAddress: z.string().length(42).regex(/^0x[a-fA-F0-9]{40}$/, { message: "Invalid EVM address format" }).optional().nullable(),
   dateOfBirth: z.preprocess((arg) => {
      if (arg === "" || arg === null || arg === undefined) return null;
      if (typeof arg === "string" || arg instanceof Date) return new Date(arg);

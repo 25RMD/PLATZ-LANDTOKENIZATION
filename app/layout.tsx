@@ -4,14 +4,11 @@ import { GeistSans } from 'geist/font/sans';
 import "@/styles/globals.css";
 import Footer from "@/components/common/Footer";
 import Header from "@/components/common/Header";
-import { ThemeProvider } from 'next-themes';
-import { WalletContextProvider } from '@/components/providers/WalletContextProvider';
+import { ThemeProvider } from 'next-themes'; 
+import { WagmiProvider } from '@/components/providers/WagmiProvider';
 import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { Inter } from "next/font/google";
-// Import Solana Wallet Adapter default styles HERE (BEFORE globals.css)
-import '@solana/wallet-adapter-react-ui/styles.css'; 
-import Providers from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
   title: "NFT Marketplace",
@@ -26,11 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body 
-        className={`${
-          GeistSans.variable
-        } ${
-          GeistMono.variable
-        } font-mono bg-secondary-light dark:bg-primary-dark text-text-light dark:text-text-dark transition-colors duration-300`}
+        className={`${GeistSans.variable} ${GeistMono.variable} font-mono bg-secondary-light dark:bg-primary-dark text-text-light dark:text-text-dark transition-colors duration-300`}
       >        
         <ThemeProvider 
           attribute="class" 
@@ -38,45 +31,41 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <WalletContextProvider>
+          <WagmiProvider>
             <AuthProvider>
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex-grow container mx-auto px-4 py-8 pt-24">
-              {children}
-            </main>
-            <Footer />
-          </div>
+              <div className="flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-grow container mx-auto px-4 py-8 pt-24">
+                  {children}
+                </main>
+                <Footer />
+              </div>
               <Toaster 
-                 position="bottom-right"
-                 toastOptions={{
-                     className: '',
-                     duration: 5000,
-                     style: {
-                       background: '#363636',
-                       color: '#fff',
-                     },
-                     success: {
-                       duration: 3000,
-                       theme: {
-                         primary: 'green',
-                         secondary: 'black',
-                       },
-                      style: {
-                           background: '#10B981',
-                           color: 'white',
-                       }
-                     },
-                     error: {
-                        style: {
-                           background: '#EF4444',
-                           color: 'white',
-                       },
-                     }
-                 }}
-               />
+                position="bottom-right"
+                toastOptions={{
+                  className: '',
+                  duration: 5000,
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
+                  },
+                  success: {
+                    duration: 3000,
+                    style: {
+                      background: '#10B981',
+                      color: 'white',
+                    }
+                  },
+                  error: {
+                    style: {
+                      background: '#EF4444',
+                      color: 'white',
+                    },
+                  }
+                }}
+              />
             </AuthProvider>
-          </WalletContextProvider>
+          </WagmiProvider>
         </ThemeProvider>
       </body>
     </html>

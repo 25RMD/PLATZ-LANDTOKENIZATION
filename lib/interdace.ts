@@ -58,4 +58,8 @@ export interface AnimatedButtonProps {
   className?: string;
   fullWidth?: boolean;
   isConnect?: boolean;
+  /** Show loading state */
+  loading?: boolean;
+  /** Text to display when loading */
+  loadingText?: string;
 }

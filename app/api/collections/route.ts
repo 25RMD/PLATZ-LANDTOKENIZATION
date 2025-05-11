@@ -1,60 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db'; // Use the standard alias import
-import { writeFile } from 'fs/promises'; // For writing the file
-import path from 'path';               // For path manipulation
-import { mkdir } from 'fs/promises';   // For creating directory
+import prisma from '@/lib/db';
+import path from 'path';
+import { mkdir, writeFile } from 'fs/promises';
 
-// import prisma from '../../../lib/prisma'; // Remove relative path
-import { Collection } from '@/lib/interdace'; // Keep for type hints if needed, Prisma Client is typed
-
-// --- Remove the simulated database array ---
-// let serverCollections: Collection[] = [...initialCollections]; 
-
-// GET Handler - Fetch LandListings for Collection Display
+// GET Handler - Fetch active land listings
 export async function GET(request: NextRequest) {
-  console.log("Attempting to GET /api/collections..."); // Added log
+  console.log("API GET /api/collections: Starting request...");
+  
   try {
-    console.log("API GET /api/collections: Fetching LandListings from database...");
-    const landListings = await prisma.landListing.findMany({
+    console.log("API GET /api/collections: Testing database connection...");
+    try {
+      // Simple query to test database connection
+      await prisma.$queryRaw`SELECT 1 as test`;
+      console.log("API GET /api/collections: Database connection successful");
+    } catch (dbConnError: any) {
+      console.error("API GET /api/collections: Database connection error:", {
+        name: dbConnError.name,
+        message: dbConnError.message,
+        code: dbConnError.code,
+      });
+      return NextResponse.json({ 
+        message: "Database connection error", 
+        error: dbConnError.message 
+      }, { status: 500 });
+    }
+    
+    // Now fetch the actual land listings
+    console.log("API GET /api/collections: Fetching land listings intended for collection display...");
+    const collections = await prisma.landListing.findMany({
       where: {
-        // Add any filtering conditions if needed, e.g., status: 'ACTIVE'
-        status: 'ACTIVE', // Example: Only fetch active/published listings
+        // We should only show listings that have been successfully minted
+        // and have the necessary contract/collection details.
+        mintStatus: 'SUCCESS', // Verify this value for successful mints
+        contractAddress: {
+          not: null, // Ensure contractAddress is set
+        },
+        collectionId: {
+          not: null, // Ensure collectionId is set
+        },
+        // Optionally, add other statuses like 'ACTIVE' if you have a general status field
+        // status: 'ACTIVE',
       },
       select: {
         id: true,
         nftTitle: true,
         nftDescription: true,
-        listingPrice: true,
+        listingPrice: true, 
         priceCurrency: true,
         nftImageFileRef: true,
         nftCollectionSize: true,
-        // slug: true, // REMOVED: Assuming you have a slug for direct navigation - Field does not exist
-        user: { // Include creator details
+        createdAt: true, 
+        user: {
           select: {
             id: true,
             username: true,
-            solanaPubKey: true, // Or other relevant user identifier
-          }
+            evmAddress: true, // Changed from solanaPubKey for Ethereum context
+          },
         },
-        createdAt: true, // For sorting or display
-        // Add any other fields needed for the collections overview/cards
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: 'desc', // Default sort by newest
       },
     });
-    console.log(`API GET /api/collections: Found ${landListings.length} LandListings.`);
-    return NextResponse.json(landListings);
-  } catch (error) {
-    console.error('API GET /api/collections: Error fetching LandListings. Details:', { 
-        name: (error as any).name,
-        message: (error as any).message,
-        code: (error as any).code, // For Prisma errors
-        meta: (error as any).meta, // For Prisma errors
-        stack: (error as any).stack,
-        errorObject: error // Log the full error object for inspection
+
+    console.log(`API GET /api/collections: Found ${collections.length} collections.`);
+    return NextResponse.json(collections);
+
+  } catch (error: any) {
+    console.error('API GET /api/collections: Unexpected error:', { 
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
     });
-    return NextResponse.json({ message: 'Internal Server Error fetching collections' }, { status: 500 });
+    
+    return NextResponse.json({ 
+      message: "Internal Server Error",
+      error: error.message
+    }, { status: 500 });
   }
 }
 
@@ -82,12 +104,12 @@ export async function POST(request: NextRequest) {
     // 2. Proceed with Collection/Property Creation
     console.log("API POST /api/collections: Received request..."); // Added log
     const formData = await request.formData();
-    const name = formData.get('name') as string;
-    const creator = formData.get('creator') as string;
-    const itemsStr = formData.get('items') as string;
-    const floorPriceStr = formData.get('floorPrice') as string;
-    const category = formData.get('category') as string;
-    const imageFile = formData.get('imageFile') as File | null;
+    const name = (formData as any).get('name') as string;
+    const creator = (formData as any).get('creator') as string;
+    const itemsStr = (formData as any).get('items') as string;
+    const floorPriceStr = (formData as any).get('floorPrice') as string;
+    const category = (formData as any).get('category') as string;
+    const imageFile = (formData as any).get('imageFile') as File | null;
 
     if (!name || !creator || !itemsStr || !floorPriceStr || !category || !imageFile) {
       console.log("API POST /api/collections: Missing required fields."); // Added log
@@ -151,7 +173,7 @@ export async function POST(request: NextRequest) {
     console.log("API POST /api/collections: Attempting to create property in DB:", propertyData); // <<< Use propertyData in log
 
     // --- Use the correct model name 'Property' --- 
-    const newProperty = await prisma.Property.create({ 
+    const newProperty = await prisma.property.create({ 
       data: propertyData, // <<< Use propertyData here
     });
     

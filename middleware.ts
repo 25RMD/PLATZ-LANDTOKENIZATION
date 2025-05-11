@@ -10,9 +10,13 @@ const protectedApiRoutes = [
   '/api/auth/me',
   '/api/profile',
   '/api/admin', // Protect all admin routes
-  '/api/collections', // <<< ADDED: Protect collection creation/management
   '/api/watchlist', // Protect watchlist routes
   // Add other API routes that require login (non-admin)
+];
+
+// API routes that should be protected only for certain methods (e.g., POST, PUT, DELETE)
+const methodProtectedApiRoutes = [
+  { path: '/api/collections', methods: ['POST', 'PUT', 'DELETE'] }, // Allow GET for public viewing
 ];
 
 // Specific list of admin routes for role checking
@@ -27,6 +31,7 @@ const adminPages = ['/admin/dashboard'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const method = request.method;
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
 
   const isProtectedApi = protectedApiRoutes.some(route => pathname.startsWith(route));
@@ -35,15 +40,24 @@ export async function middleware(request: NextRequest) {
   const isProtectedPage = protectedPages.some(page => pathname.startsWith(page));
   const isAdminPage = adminPages.some(page => pathname.startsWith(page));
   // --- End using page definitions --- 
+  
+  // Check if this is a method-protected route
+  const methodProtectedRoute = methodProtectedApiRoutes.find(route => pathname.startsWith(route.path));
+  const isMethodProtectedApi = methodProtectedRoute && methodProtectedRoute.methods.includes(method);
+  
+  // Log for debugging
+  if (methodProtectedRoute) {
+    console.log(`Middleware: Route ${pathname} is method-protected. Request method: ${method}. Protected methods: ${methodProtectedRoute.methods.join(', ')}`);
+  }
 
   // Deny access to protected API routes if no token
-  if (isProtectedApi && !token) {
+  if ((isProtectedApi || isMethodProtectedApi) && !token) {
     console.log(`Middleware: Denying access to API ${pathname} (no token)`);
     return new NextResponse(JSON.stringify({ message: 'Authentication required' }), { status: 401 });
   }
 
   // Verify token for protected API routes
-  if (isProtectedApi && token) {
+  if ((isProtectedApi || isMethodProtectedApi) && token) {
     const decoded = await verifyJwt(token);
 
     // Deny if token is invalid
@@ -111,12 +125,12 @@ export const config = {
     '/api/auth/me',
     '/api/profile/:path*', 
     '/api/admin/:path*', 
-    '/api/collections/:path*', // <<< ADDED: Match collection routes
-    '/api/watchlist/:path*', // <<< ADDED: Match watchlist routes
+    // We're handling collections in the middleware based on HTTP method, so we don't include it here
+    '/api/watchlist/:path*', // Match watchlist routes
     // Protected Pages
     '/profile/:path*', // Protect profile page and potential sub-routes
     '/admin/dashboard/:path*', // Protect admin dashboard and potential sub-routes
-    '/watchlist/:path*', // <<< ADDED: Match watchlist page routes
+    '/watchlist/:path*', // Match watchlist page routes
     // Add other protected paths as needed
   ],
 }; 

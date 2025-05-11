@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const JWT_SECRET_KEY = process.env.JWT_SECRET;
 const JWT_EXPIRATION = process.env.JWT_EXPIRES_IN || '7d';
@@ -48,6 +49,6 @@ export const verifyJwt = async (token: string): Promise<{ userId: string; isAdmi
 export const generateNonce = (): string => {
    // Generate a more robust nonce using crypto if available in your environment
    // For example, in Node.js:
-   // return require('crypto').randomBytes(16).toString('hex');
-   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+   return crypto.randomBytes(16).toString('hex');
+   // return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 } 

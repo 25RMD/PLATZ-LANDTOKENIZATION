@@ -1,97 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
-import { LandListing as PrismaLandListing, NFT, User } from '@prisma/client';
+import { LandListing as PrismaLandListing, User, NFT, Offer, Trade, Prisma } from '@prisma/client'; 
+import { Decimal } from '@prisma/client/runtime/library'; 
 
-interface LandListingWithDetails extends PrismaLandListing {
-  individualNfts: NFT[];
+interface LandListingWithStats extends PrismaLandListing {
   user: User | null;
-  ownerCount: number;
-  listedCount: number;
-  topOffer: number | null;
-  volume24h: number;
-  sales24h: number;
-  name: string;
-  description: string | null;
-  image: string | null;
-  creator: string;
-  floorPrice: number | null;
-  items: number;
-  verified: boolean;
+  processedNftImageUrl: string | null;
+  derivedCreatorName: string;
+  derivedOwnerCount: number;   
+  derivedListedCount: number;  
+  derivedItemsCount: number;   
+  stats: {
+    topOffer: Decimal | number | null; 
+    volume24h: Decimal | number | null;
+    sales24h: number | null;
+  };
 }
 
-// Helper function to convert file references to proper URLs
 const getFileUrl = (fileRef: string | null): string => {
-  // Default placeholder for missing images
   const placeholder = '/placeholder-nft-image.png';
-  
-  if (!fileRef) {
-    console.log('No file reference provided, using placeholder');
-    return placeholder;
-  }
-  
-  console.log(`Processing file reference: ${fileRef}`);
-  
-  // Check if it's already a full URL
-  if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) {
-    console.log(`File reference is already a full URL: ${fileRef}`);
-    return fileRef;
-  }
-  
-  // Check if it's a UUID-based filename (new format)
+  if (!fileRef) return placeholder;
+  if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) return fileRef;
   if (fileRef.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i)) {
-    const url = `/api/files/${fileRef}`;
-    console.log(`File reference is a UUID-based filename, using: ${url}`);
-    return url;
+    return `/api/files/${fileRef}`;
   }
-  
-  // Handle legacy image paths (old format)
-  // Check if it already has a leading slash
-  if (fileRef.startsWith('/')) {
-    console.log(`File reference already has a leading slash: ${fileRef}`);
-    return fileRef;
-  }
-  
-  // Check if it's in the public directory
-  if (fileRef.startsWith('public/')) {
-    const url = `/${fileRef.substring(7)}`;
-    console.log(`File reference is in public directory, using: ${url}`);
-    return url;
-  }
-  
-  // For NFT images, try to use a more reliable source
-  if (fileRef.includes('jpg') || fileRef.includes('jpeg') || fileRef.includes('png') || fileRef.includes('gif')) {
-    // This is likely an NFT image, let's use a placeholder instead of a 404
-    console.log(`File reference appears to be an image but may not exist: ${fileRef}, using placeholder`);
-    return placeholder;
-  }
-  
-  // Default case: assume it's in the public directory
-  const url = `/${fileRef}`;
-  console.log(`Using default path for file reference: ${url}`);
-  return url;
-};
-
-const generateMockNFTs = (landListing: PrismaLandListing, listingImageRef: string | null): NFT[] => {
-  const mockNfts: NFT[] = [];
-  const collectionSize = landListing.nftCollectionSize || 0;
-  const imageUrl = getFileUrl(listingImageRef);
-  
-  for (let i = 1; i <= collectionSize; i++) {
-    mockNfts.push({
-      id: `${landListing.id}-mock-${i}`,
-      name: `${landListing.nftTitle || 'NFT'} #${i}`,
-      itemNumber: i,
-      image: imageUrl,
-      price: (Number(landListing.listingPrice) || 0) + Math.random() * 0.1 - 0.05,
-      landListingId: landListing.id,
-      propertyId: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ownerId: null,
-      isListed: false,
-    });
-  }
-  return mockNfts;
+  if (fileRef.startsWith('/')) return fileRef;
+  if (fileRef.startsWith('public/')) return `/${fileRef.substring(7)}`;
+  return placeholder;
 };
 
 export async function GET(
@@ -106,109 +41,104 @@ export async function GET(
   }
 
   try {
-    console.log(`API GET /api/collections/${landListingId}: Fetching LandListing with NFTs...`);
+    console.log(`API GET /api/collections/${landListingId}: Fetching LandListing and associated NFT data...`);
 
-    const landListing = await prisma.landListing.findUnique({
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const landListingWithNfts = await prisma.landListing.findUnique({
       where: {
         id: landListingId,
       },
       include: {
-        individualNfts: {
-          orderBy: {
-            itemNumber: 'asc',
+        user: true, 
+        individualNfts: {     // Changed from 'nfts' to 'individualNfts'
+          include: {
+            owner: true, // To count unique owners
+            offers: {
+              where: {
+                status: 'ACTIVE', 
+              },
+              orderBy: {
+                price: 'desc',
+              },
+            },
+            trades: {
+              where: {
+                timestamp: {
+                  gte: twentyFourHoursAgo,
+                },
+              },
+            },
           },
         },
-        user: true,
       },
     });
 
-    if (!landListing) {
+    if (!landListingWithNfts) { 
       console.log(`API GET /api/collections/${landListingId}: LandListing not found.`);
       return NextResponse.json({ message: 'LandListing not found' }, { status: 404 });
     }
 
-    const distinctOwners = await prisma.nFT.findMany({
-      where: {
-        landListingId: landListingId,
-        ownerId: { not: null },
-      },
-      distinct: ['ownerId'],
-      select: { ownerId: true },
+    const nftsInCollection = landListingWithNfts.individualNfts || []; // Changed from .nfts
+    
+    const derivedItemsCount = nftsInCollection.length;
+    
+    const derivedListedCount = nftsInCollection.filter(nft => nft.isListed).length;
+    
+    const uniqueOwnerIds = new Set(nftsInCollection.map(nft => nft.ownerId).filter(id => id !== null));
+    const derivedOwnerCount = uniqueOwnerIds.size;
+
+    let topOffer: Prisma.Decimal | null = null;
+    nftsInCollection.forEach(nft => {
+      if (nft.offers && nft.offers.length > 0) {
+        const nftTopOfferPrice = typeof nft.offers[0].price === 'number' ? new Prisma.Decimal(nft.offers[0].price) : nft.offers[0].price; 
+        if (nftTopOfferPrice !== null) { 
+            if (topOffer === null || nftTopOfferPrice.greaterThan(topOffer)) {
+                topOffer = nftTopOfferPrice;
+            }
+        }
+      }
     });
-    const distinctOwnerCount = distinctOwners.length;
-    console.log(`API GET /api/collections/${landListingId}: Distinct owner count: ${distinctOwnerCount}`);
-
-    const listedCount = await prisma.nFT.count({
-      where: {
-        landListingId: landListingId,
-        isListed: true,
-      },
+    
+    let volume24h = new Prisma.Decimal(0);
+    let sales24h = 0;
+    nftsInCollection.forEach(nft => {
+      nft.trades.forEach(trade => {
+        const tradePrice = typeof trade.price === 'number' ? new Prisma.Decimal(trade.price) : trade.price; 
+        if (tradePrice !== null) { 
+            volume24h = volume24h.plus(tradePrice);
+            sales24h++;
+        }
+      });
     });
-    console.log(`API GET /api/collections/${landListingId}: Listed count: ${listedCount}`);
 
-    const topOfferResult = await prisma.offer.aggregate({
-      _max: { price: true },
-      where: {
-        status: 'ACTIVE',
-        nft: { landListingId: landListingId },
+    const derivedCreatorName = landListingWithNfts.user?.username || landListingWithNfts.user?.solanaPubKey || landListingWithNfts.user?.email || 'Unknown Creator';
+    const processedNftImageUrl = getFileUrl(landListingWithNfts.nftImageFileRef);
+
+    const responseData: LandListingWithStats = {
+      ...landListingWithNfts,
+      user: landListingWithNfts.user,
+      processedNftImageUrl: processedNftImageUrl,
+      derivedCreatorName: derivedCreatorName,
+      derivedOwnerCount: derivedOwnerCount,
+      derivedListedCount: derivedListedCount,
+      derivedItemsCount: derivedItemsCount,
+      stats: {
+        topOffer: topOffer, 
+        volume24h: volume24h, 
+        sales24h: sales24h,
       },
-    });
-    const topOffer = topOfferResult._max.price;
-    console.log(`API GET /api/collections/${landListingId}: Top offer: ${topOffer}`);
-
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const tradeStats = await prisma.trade.aggregate({
-      _sum: { price: true },
-      _count: { id: true },
-      where: {
-        timestamp: { gte: twentyFourHoursAgo },
-        nft: { landListingId: landListingId },
-      },
-    });
-    const volume24h = tradeStats._sum.price ?? 0;
-    const sales24h = tradeStats._count.id ?? 0;
-    console.log(`API GET /api/collections/${landListingId}: 24h Volume: ${volume24h}, 24h Sales: ${sales24h}`);
-
-    console.log(`API GET /api/collections/${landListingId}: Found LandListing. NFT count from DB: ${landListing.individualNfts.length}`);
-
-    let finalNfts = landListing.individualNfts;
-
-    if (finalNfts.length === 0 && (landListing.nftCollectionSize || 0) > 0) {
-      console.log(`API GET /api/collections/${landListingId}: No NFTs found in DB, generating mocks for ${landListing.nftCollectionSize} items...`);
-      finalNfts = generateMockNFTs(landListing, landListing.nftImageFileRef);
-      console.log(`API GET /api/collections/${landListingId}: Returning LandListing with ${finalNfts.length} mocked NFTs.`);
-    } else {
-      finalNfts = landListing.individualNfts.map(nft => ({
-        ...nft,
-        image: getFileUrl(landListing.nftImageFileRef) || getFileUrl(nft.image),
-      }));
-      console.log(`API GET /api/collections/${landListingId}: Returning LandListing with ${finalNfts.length} real NFTs.`);
-    }
-
-    const creatorName = landListing.user?.username || landListing.user?.solanaPubKey || landListing.user?.email || 'Unknown Creator';
-
-    const responseData: LandListingWithDetails = {
-      ...landListing,
-      individualNfts: finalNfts,
-      ownerCount: distinctOwnerCount,
-      listedCount: listedCount,
-      topOffer: topOffer ? Number(topOffer) : null,
-      volume24h: Number(volume24h),
-      sales24h: Number(sales24h),
-      name: landListing.nftTitle || 'Untitled Collection',
-      description: landListing.nftDescription,
-      image: getFileUrl(landListing.nftImageFileRef),
-      creator: creatorName,
-      floorPrice: landListing.listingPrice ? Number(landListing.listingPrice) : null,
-      items: landListing.nftCollectionSize || 0,
-      verified: (landListing.user as any)?.kycStatus === 'VERIFIED' || false,
     };
 
+    console.log(`API GET /api/collections/${landListingId}: Returning LandListing details with calculated stats.`);
     return NextResponse.json(responseData);
 
   } catch (error) {
-    console.error(`API GET /api/collections/${landListingId}: Error fetching LandListing:`, error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error fetching LandListing data';
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    console.error(`API GET /api/collections/${landListingId}: Error:`, error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        console.error("Prisma Error Code:", error.code);
+        console.error("Prisma Error Meta:", error.meta);
+    }
+    return NextResponse.json({ message: 'Internal Server Error', details: (error as Error).message }, { status: 500 });
   }
 }

@@ -12,7 +12,10 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   className = "",
   fullWidth = false,
   isConnect = false,
+  loading = false,
+  loadingText = "",
 }) => {
+  const isDisabled = disabled || loading;
   const baseStyles = "font-semibold rounded-lg transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
 
   const sizeStyles = {
@@ -43,13 +46,13 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   return (
     <motion.button
       type={type}
-      onClick={onClick ? () => onClick(isConnect) : undefined}
-      disabled={disabled}
+      onClick={isDisabled ? undefined : () => onClick?.(isConnect)}
+      disabled={isDisabled}
       className={buttonClasses.trim()}
-      whileHover={{ scale: disabled ? 1 : 1.03, y: disabled ? 0 : -2 }}
-      whileTap={{ scale: disabled ? 1 : 0.98 }}
+      whileHover={{ scale: isDisabled ? 1 : 1.03, y: isDisabled ? 0 : -2 }}
+      whileTap={{ scale: isDisabled ? 1 : 0.98 }}
     >
-      {children}
+      {loading ? loadingText : children}
     </motion.button>
   );
 };

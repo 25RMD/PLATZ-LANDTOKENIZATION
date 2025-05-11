@@ -14,7 +14,8 @@ import GeospatialSection from '@/components/create-listing/GeospatialSection';
 import OwnerKycSection from '@/components/create-listing/OwnerKycSection';
 import ChainOfTitleSection from '@/components/create-listing/ChainOfTitleSection';
 import AdditionalInfoSection from '@/components/create-listing/AdditionalInfoSection';
-import NftDetailsSection from '@/components/create-listing/NftDetailsSection'; 
+import NftDetailsSection from '@/components/create-listing/NftDetailsSection';
+import NftMintingSection from '@/components/nft/NftMintingSection'; 
 
 // Import types from the child component
 import { type LegalDocumentsFormData, type LegalDocumentsFileFieldNames } from '@/components/create-listing/LegalDocumentsSection';
@@ -94,7 +95,7 @@ const initialFormData: FormDataInterface = { // Explicitly type initialFormData
   nftDescription: "",
   nftImageFile: null as File | null,
   listingPrice: "",
-  priceCurrency: "SOL",
+  priceCurrency: "ETH",
   nftCollectionSize: 100, // Default, display as read-only
   status: "DRAFT", // Default status
   additionalNotes: "", // Default additional notes
@@ -107,7 +108,11 @@ const CreateListingContent = () => {
   // State for the form using the new initial state
   const [formData, setFormData] = useState(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [titleDeedError, setTitleDeedError] = useState<string | null>(null);
+  const [idDocumentError, setIdDocumentError] = useState<string | null>(null);
+  const [savedListingId, setSavedListingId] = useState<string | undefined>(undefined);
+  const [isEditMode, setIsEditMode] = useState(false);
   // State for file previews (using a map for scalability)
   const [filePreviews, setFilePreviews] = useState<Record<string, string | string[]>>({});
 
@@ -225,18 +230,23 @@ const CreateListingContent = () => {
     event.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setTitleDeedError(null);
+    setIdDocumentError(null);
 
     // --- Manual Validation for Required Files ---
+    let isValid = true;
     if (!formData.titleDeedFile) {
-      alert('Please upload the Title Deed document.');
-      setIsSubmitting(false);
-      setError('Title Deed document is required.'); // Optional: Set error state
-      return; // Stop submission
+      setTitleDeedError(() => "Title Deed document is required.");
+      isValid = false;
     }
+
     if (!formData.idDocumentFile) {
-      alert('Please upload the ID Document Scan/Upload.');
+      setIdDocumentError(() => "ID Document is required.");
+      isValid = false;
+    }
+
+    if (!isValid) {
       setIsSubmitting(false);
-      setError('ID Document is required.'); // Optional: Set error state
       return; // Stop submission
     }
     // --- End Manual Validation ---
@@ -265,10 +275,10 @@ const CreateListingContent = () => {
         }
     });
 
-    // console.log("Submitting FormData:"); // For debugging
-    // for (let pair of data.entries()) { // More detailed FormData logging
-    //    console.log(pair[0]+ ', ', pair[1]); 
-    // }
+    console.log("Submitting FormData:"); // For debugging
+    for (let pair of data.entries()) { // More detailed FormData logging
+       console.log(pair[0]+ ', ', pair[1]); 
+    }
 
     try {
       // TODO: Update API endpoint for land listings
@@ -285,18 +295,21 @@ const CreateListingContent = () => {
       }
 
       const newListing = await response.json(); // Assuming API returns the created listing
-      alert(`Land Listing '${newListing.parcelNumber || 'Unknown Parcel'}' created successfully!`); // Adjust success message
-
-      // Reset form and previews
-      setFormData(initialFormData);
-      Object.values(filePreviews).forEach(preview => {
-        if (typeof preview === 'string') {
-          URL.revokeObjectURL(preview);
-        } else if (Array.isArray(preview)) {
-          preview.forEach(URL.revokeObjectURL);
+      
+      // Set the saved listing ID to enable NFT minting
+      setSavedListingId(newListing.id);
+      setIsEditMode(true);
+      
+      alert(`Land Listing '${newListing.parcelNumber || 'Unknown Parcel'}' created successfully! You can now mint NFTs for this listing.`);
+      
+      // Don't reset the form in edit mode
+      // Instead, scroll to the NFT minting section
+      setTimeout(() => {
+        const mintingSection = document.getElementById('nft-minting-section');
+        if (mintingSection) {
+          mintingSection.scrollIntoView({ behavior: 'smooth' });
         }
-      });
-      setFilePreviews({});
+      }, 500);
 
     } catch (error: any) {
       console.error("Error creating land listing:", error);
@@ -479,6 +492,18 @@ const CreateListingContent = () => {
               />
             </div>
           </div>
+        </div>
+        
+        {/* NFT Minting Section */}
+        <div id="nft-minting-section">
+          <NftMintingSection
+            landListingId={savedListingId}
+            formData={formData}
+            isSubmitting={isSubmitting}
+            isEditMode={isEditMode}
+            inputFieldStyles={inputFieldStyles}
+            inputFieldDisabledStyles={inputFieldDisabledStyles}
+          />
         </div>
 
         {/* Submit Button */}
