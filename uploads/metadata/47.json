@@ -1,0 +1,24 @@
+{
+  "name": "tset - Plot 47",
+  "description": "test - Sub-plot 47 of the collection.",
+  "image": "https://a1ea-185-107-56-151.ngrok-free.app/uploads/01c42d9e-99e8-4121-b751-c57f4b7c999f-nft-image-cmaudkbcy0000czeb4val9y4g.jpeg",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmaudkbcy0000czeb4val9y4g"
+    },
+    {
+      "trait_type": "Token Type",
+      "value": "Child Token"
+    },
+    {
+      "trait_type": "Plot Number",
+      "value": 47
+    },
+    {
+      "trait_type": "Parent Collection",
+      "value": "tset Collection"
+    }
+  ],
+  "external_url": "https://a1ea-185-107-56-151.ngrok-free.app/listings/cmaudkbcy0000czeb4val9y4g"
+}

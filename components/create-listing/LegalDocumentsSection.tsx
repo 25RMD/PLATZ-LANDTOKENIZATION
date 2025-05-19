@@ -64,7 +64,7 @@ const LegalDocumentsSection: React.FC<LegalDocumentsProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div> 
           <label htmlFor="titleDeedFile" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">
-            Title Deed Upload <span className='text-red-500'>*</span>
+            Title Deed Upload
           </label>
           <FileInputField
             id="titleDeedFile"
@@ -77,7 +77,7 @@ const LegalDocumentsSection: React.FC<LegalDocumentsProps> = ({
           />
         </div>
         <div>
-          <label htmlFor="deedNumber" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Deed Number {<span className="text-red-500">*</span>}</label>
+          <label htmlFor="deedNumber" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Deed Number</label>
           <input
             type="text"
             id="deedNumber"
@@ -86,7 +86,6 @@ const LegalDocumentsSection: React.FC<LegalDocumentsProps> = ({
             onChange={handleInputChange}
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
             placeholder="e.g., TD12345678"
-            required
             disabled={isSubmitting}
           />
         </div>

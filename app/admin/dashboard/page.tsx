@@ -10,6 +10,8 @@ import ConfirmationModal from '@/components/common/ConfirmationModal';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { FiUserCheck, FiXCircle, FiInfo, FiGrid, FiCheckSquare, FiEdit3, FiEye } from 'react-icons/fi'; // Added FiEdit3, FiEye
+import { HiOutlineClipboardCheck, HiCheck, HiX } from 'react-icons/hi';
+import { Button } from '@/components/ui/button';
 
 // Interface for the data expected from /api/admin/kyc-requests (now fetching KycUpdateRequests)
 interface KycUpdateRequest {
@@ -111,7 +113,13 @@ const AdminDashboardContent = () => {
     const fetchKycRequests = useCallback(async () => {
         setLoadingKycRequests(true);
         try {
-            const response = await fetch('/api/admin/kyc-requests');
+            const response = await fetch('/api/admin/kyc-requests', {
+                credentials: 'include', // Include auth cookies
+                headers: {
+                    'x-user-is-admin': 'true' // Explicitly set admin header
+                }
+            });
+            
             if (!response.ok) {
                 // Try to parse error message from backend
                 let errorMsg = 'Failed to fetch KYC requests';
@@ -119,10 +127,20 @@ const AdminDashboardContent = () => {
                     const errorData = await response.json();
                     errorMsg = errorData.message || errorMsg;
                 } catch (parseError) { /* Ignore if response is not JSON */ }
+                console.error(`KYC Request API returned status ${response.status}: ${errorMsg}`);
                 throw new Error(errorMsg);
             }
-            const data: KycUpdateRequest[] = await response.json(); // Updated type
+            
+            const data = await response.json();
+            
+            // Ensure data is an array
+            if (!Array.isArray(data)) {
+                console.error('KYC Request API returned unexpected data format:', data);
+                throw new Error('Received invalid data format from server');
+            }
+            
             setKycRequests(data);
+            console.log(`Successfully loaded ${data.length} KYC requests`);
         } catch (err: any) {
             toast.error(err.message || 'Could not load KYC requests.');
             console.error("Fetch KYC Requests Error:", err);
@@ -218,8 +236,17 @@ const AdminDashboardContent = () => {
 
     // Fetch requests on initial load & tab/sub-tab change
     useEffect(() => {
-        if (isAdmin) { 
+        if (!isAdmin) {
+            console.log('Not admin - skipping fetch operations');
+            return;
+        }
+        
+        console.log(`Current tab: ${currentTab}, sub-tab: ${currentListingSubTab}`);
+        
+        // Add a delay to ensure auth state is properly initialized
+        const timer = setTimeout(() => {
             if (currentTab === 'kyc') {
+                console.log('Fetching KYC requests...');
                 fetchKycRequests();
             } else if (currentTab === 'listings') {
                 if (currentListingSubTab === 'review') {
@@ -230,7 +257,9 @@ const AdminDashboardContent = () => {
                     fetchArchivedListings();
                 }
             }
-        }
+        }, 500); // 500ms delay to ensure auth is established
+        
+        return () => clearTimeout(timer);
     }, [isAdmin, fetchKycRequests, fetchLandListings, fetchActiveListings, fetchArchivedListings, currentTab, currentListingSubTab]);
 
     // Renamed from handleVerify to handleApprove, uses updateRequestId
@@ -347,6 +376,111 @@ const AdminDashboardContent = () => {
     };
     // --- END: Toggle Expanded Details ---
 
+    // Updated logic for rendering KYC requests with more robust data handling
+    const renderKycRequests = () => {
+        if (loadingKycRequests) {
+            return (
+                <div className="flex justify-center py-8">
+                    <LoadingSpinner size="lg" />
+                </div>
+            );
+        }
+
+        if (kycRequests.length === 0) {
+            return (
+                <div className="text-center py-16 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <HiOutlineClipboardCheck className="mx-auto text-4xl text-gray-400" />
+                    <p className="mt-2 text-gray-500 dark:text-gray-400">No pending KYC requests to review</p>
+                </div>
+            );
+        }
+
+        // Convert single flat request object to an array if needed
+        const requestsArray = Array.isArray(kycRequests) ? kycRequests : [kycRequests];
+
+        return (
+            <div className="space-y-6">
+                {requestsArray.map((request) => {
+                    // Safely extract userId from request, defaulting to a substring of updateRequestId if missing
+                    const userId = request.userId || (request.updateRequestId ? request.updateRequestId.substring(0, 8) : 'unknown');
+                    const userIdSubstring = userId.substring(0, 8); // First 8 chars for display
+                    
+                    // Extract changes or default to empty object
+                    const changes = request.changes || {};
+                    
+                    // Get details about the user's current state
+                    const username = request.username || 'N/A';
+                    const email = request.email || 'N/A';
+                    
+                    // Log the request structure for debugging
+                    console.log('Processing KYC request:', request);
+
+                    return (
+                        <div key={request.updateRequestId} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm">
+                            <div className="flex flex-col md:flex-row md:justify-between">
+                                <div>
+                                    <p className="font-bold text-lg mb-2">User Update Request</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Username</p>
+                                            <p>{username}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
+                                            <p>{email}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">User ID</p>
+                                            <p title={userId}>{userIdSubstring}...</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Submitted</p>
+                                            <p>{formatDate(request.submittedAt)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-4 md:mt-0 md:text-right">
+                                    <div className="flex space-x-2 justify-start md:justify-end">
+                                        <Button
+                                            variant="success"
+                                            onClick={() => handleApprove(request.updateRequestId, userIdSubstring)}
+                                            disabled={actionLoadingKyc[request.updateRequestId]}
+                                            icon={actionLoadingKyc[request.updateRequestId] ? <LoadingSpinner size="sm" /> : <HiCheck />}
+                                        >
+                                            Approve
+                                        </Button>
+                                        <Button
+                                            variant="danger"
+                                            onClick={() => handleReject(request.updateRequestId, userIdSubstring)}
+                                            disabled={actionLoadingKyc[request.updateRequestId]}
+                                            icon={actionLoadingKyc[request.updateRequestId] ? <LoadingSpinner size="sm" /> : <HiX />}
+                                        >
+                                            Reject
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="font-semibold text-md mb-2 mt-4">Requested Changes</p>
+                            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {Object.entries(changes).map(([key, value]) => (
+                                        <div key={key}>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                            </p>
+                                            <p>{value as React.ReactNode}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     if (authLoading || (currentTab === 'kyc' && loadingKycRequests)) {
         return (
           <div className="flex justify-center items-center min-h-[60vh]">
@@ -407,76 +541,7 @@ const AdminDashboardContent = () => {
             {currentTab === 'kyc' && (
                 <>
                     <h2 className="text-2xl font-semibold text-text-light dark:text-text-dark mb-4">Pending KYC Updates</h2>
-                    {kycRequests.length === 0 && !loadingKycRequests ? (
-                        <p className="text-center text-gray-500 dark:text-gray-400 py-10">No pending KYC requests found.</p>
-                    ) : loadingKycRequests ? (
-                        <div className="flex justify-center items-center py-10"><LoadingSpinner /> <span className='ml-2'>Loading KYC requests...</span></div>
-                    ) : (
-                        <div className="space-y-6">
-                            {kycRequests.map((req) => (
-                                <div key={req.updateRequestId} className="p-4 border border-gray-300 dark:border-zinc-700 rounded-lg bg-secondary-light dark:bg-zinc-800 shadow-md">
-                                    <h3 className="text-lg font-medium mb-3 text-text-light dark:text-text-dark">Update Request ID: <code className="text-base bg-gray-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded">{req.updateRequestId}</code></h3>
-                                    <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                                        {/* Column 1: Current User Info */}
-                                        <div className="flex-grow space-y-1 text-sm w-full md:w-1/2 border-r md:pr-4 border-gray-300 dark:border-zinc-600">
-                                            <h4 className="text-base font-medium mb-2 underline">Current User Data</h4>
-                                            <p><strong>User ID:</strong> <code className="text-xs bg-gray-200 dark:bg-zinc-700 px-1 py-0.5 rounded">{req.userId}</code></p>
-                                            <p><strong>Username:</strong> {req.username || 'N/A'}</p>
-                                            <p><strong>Email:</strong> {req.email || 'N/A'}</p>
-                                            <p><strong>Current Status:</strong> {req.kycVerified ? <span className="text-green-600 dark:text-green-400 font-medium">(Verified)</span> : <span className="text-yellow-600 dark:text-yellow-400 font-medium">(Not Verified)</span>}</p>
-                                            <hr className="my-2 border-gray-300 dark:border-zinc-600"/>
-                                            <p><strong>Full Name:</strong> {req.fullName || 'N/A'}</p>
-                                            <p><strong>DOB:</strong> {formatDate(req.dateOfBirth)}</p>
-                                            <p><strong>Phone:</strong> {req.phone || 'N/A'}</p>
-                                            <p><strong>Address 1:</strong> {req.addressLine1 || 'N/A'}</p>
-                                            <p><strong>Address 2:</strong> {req.addressLine2 || 'N/A'}</p>
-                                            <p><strong>City:</strong> {req.city || 'N/A'}</p>
-                                            <p><strong>State/Province:</strong> {req.stateProvince || 'N/A'}</p>
-                                            <p><strong>Postal Code:</strong> {req.postalCode || 'N/A'}</p>
-                                            <p><strong>Country:</strong> {req.country || 'N/A'}</p>
-                                            <p><strong>Gov ID Type:</strong> {req.govIdType || 'N/A'}</p>
-                                            <p><strong>Gov ID Ref:</strong> {req.govIdRef || 'N/A'}</p>
-                                            <p><strong>SoF Doc Ref:</strong> {req.sofDocRef || 'N/A'}</p>
-                                            <p><strong>Submitted:</strong> {new Date(req.submittedAt).toLocaleString()}</p>
-                                        </div>
-
-                                        {/* Column 2: Proposed Changes & Actions */}
-                                        <div className="flex-grow space-y-1 text-sm w-full md:w-1/2 md:pl-4">
-                                             <h4 className="text-base font-medium mb-2 underline">Proposed Changes</h4>
-                                             {Object.entries(req.changes).length > 0 ? (
-                                                 Object.entries(req.changes).map(([key, value]) => (
-                                                     <p key={key} className="bg-yellow-50 dark:bg-yellow-900/30 px-2 py-1 rounded border border-yellow-200 dark:border-yellow-800">
-                                                         <strong>{key}:</strong> <span className="text-yellow-700 dark:text-yellow-300">{value === null ? 'N/A' : (key === 'dateOfBirth' ? formatDate(value as string) : String(value))}</span>
-                                                     </p>
-                                                 ))
-                                             ) : (
-                                                 <p className="text-gray-500 dark:text-gray-400 italic">No changes submitted in this request (likely initial submission or error).</p>
-                                             )}
-
-                                            {/* Action Buttons */}
-                                            <div className="flex flex-col md:items-end space-y-2 mt-4 pt-4 border-t border-gray-300 dark:border-zinc-600">
-                                             <AnimatedButton
-                                                 onClick={() => handleApprove(req.updateRequestId, req.userId.substring(0, 6))}
-                                                 disabled={actionLoadingKyc[req.updateRequestId]}
-                                                 className="w-full md:w-auto flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50"
-                                             >
-                                                 <FiUserCheck/> {actionLoadingKyc[req.updateRequestId] ? 'Approving...' : 'Approve Changes'}
-                                              </AnimatedButton>
-                                              {/* Reject Button */}
-                                              <AnimatedButton
-                                                 onClick={() => handleReject(req.updateRequestId, req.userId.substring(0, 6))}
-                                                 disabled={actionLoadingKyc[req.updateRequestId]}
-                                                 className="w-full md:w-auto flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50"
-                                              >
-                                                 <FiXCircle/> {actionLoadingKyc[req.updateRequestId] ? 'Rejecting...' : 'Reject Changes'}
-                                             </AnimatedButton>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    {renderKycRequests()}
                 </>
             )}
 

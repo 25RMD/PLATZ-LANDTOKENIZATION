@@ -51,7 +51,9 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
           {/* Column 1: Company Info */}
           <div className="md:col-span-2 lg:col-span-2 space-y-4">
-            <Link href="/" className="inline-flex items-center space-x-2 group mb-1">
+            <Link
+              href="/"
+              className="inline-flex items-center space-x-2 group mb-1">
               <IoMapOutline className="text-text-light dark:text-text-dark text-2xl group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
               <span className="text-xl font-bold text-text-light dark:text-text-dark group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 Platz
@@ -73,8 +75,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <Link
                     href={link.url}
-                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                  >
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     {link.name}
                   </Link>
                 </li>
@@ -90,8 +91,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <Link
                     href={link.url}
-                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                  >
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     {link.name}
                   </Link>
                 </li>
@@ -107,8 +107,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <Link
                     href={link.url}
-                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                  >
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     {link.name}
                   </Link>
                 </li>

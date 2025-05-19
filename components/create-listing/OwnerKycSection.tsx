@@ -75,14 +75,13 @@ const OwnerKycSection: React.FC<OwnerKycProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Owner Full Name */}
         <div>
-          <label htmlFor="ownerName" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Owner Full Name {<span className="text-red-500">*</span>}</label>
+          <label htmlFor="ownerName" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Owner Full Name</label>
           <input
             type="text"
             id="ownerName"
             name="ownerName"
             value={formData.ownerName}
             onChange={handleInputChange}
-            required
             placeholder="As per official documents"
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
             disabled={isSubmitting}
@@ -90,14 +89,13 @@ const OwnerKycSection: React.FC<OwnerKycProps> = ({
         </div>
         {/* Owner Contact Info (Phone/Email) */}
         <div>
-          <label htmlFor="ownerContact" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Owner Contact (Phone/Email) {<span className="text-red-500">*</span>}</label>
+          <label htmlFor="ownerContact" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Owner Contact (Phone/Email)</label>
           <input
-            type="text" // Could be 'tel' or 'email' depending on validation preference
+            type="text"
             id="ownerContact"
             name="ownerContact"
             value={formData.ownerContact}
             onChange={handleInputChange}
-            required
             placeholder="e.g., +1-555-123-4567 or owner@example.com"
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
             disabled={isSubmitting}
@@ -105,15 +103,13 @@ const OwnerKycSection: React.FC<OwnerKycProps> = ({
         </div>
         {/* ID Type */}
         <div>
-          <label htmlFor="ownerIdType" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">ID Type {<span className="text-red-500">*</span>}</label>
-          {/* Replace with a Select dropdown for better UX */}
+          <label htmlFor="ownerIdType" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">ID Type</label>
           <select 
              id="ownerIdType" 
              name="ownerIdType" 
              value={formData.ownerIdType} 
              onChange={handleInputChange} 
-             required 
-             className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`} // Add appearance-none
+             className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
              disabled={isSubmitting}
             >
               <option value="" disabled>Select ID Type</option>
@@ -125,14 +121,13 @@ const OwnerKycSection: React.FC<OwnerKycProps> = ({
         </div>
         {/* ID Number */}
         <div>
-          <label htmlFor="govIdNumber" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">ID Number {<span className="text-red-500">*</span>}</label>
+          <label htmlFor="govIdNumber" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">ID Number</label>
           <input
             type="text"
             id="govIdNumber"
             name="govIdNumber"
             value={formData.govIdNumber}
             onChange={handleInputChange}
-            required
             placeholder="Enter the number matching the ID Type"
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
             disabled={isSubmitting}
@@ -141,7 +136,7 @@ const OwnerKycSection: React.FC<OwnerKycProps> = ({
         {/* ID Document Upload */}
         <div> 
           <label htmlFor="idDocumentFile" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">
-            ID Document Scan/Upload <span className='text-red-500'>*</span>
+            ID Document Scan/Upload
           </label>
           <FileInputField
             id="idDocumentFile"

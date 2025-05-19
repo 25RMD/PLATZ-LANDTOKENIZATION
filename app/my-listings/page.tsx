@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { FiEdit, FiEye, FiCpu } from 'react-icons/fi';
 import AnimatedButton from '@/components/common/AnimatedButton';
+import { useAccount } from 'wagmi';
+import MintNFTModal, { MintNFTData } from '@/components/nft/MintNFTModal';
 
 // Define the LandListing type based on your Prisma schema
 interface LandListing {
@@ -19,6 +21,7 @@ interface LandListing {
   createdAt: string;
   updatedAt: string;
   userId?: string; // Optional userId field for debugging
+  propertyDescription?: string; // Added for NFT description
 }
 
 export default function MyListingsPage() {
@@ -29,6 +32,14 @@ export default function MyListingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [mintingListingId, setMintingListingId] = useState<string | null>(null);
   const [mintingStatus, setMintingStatus] = useState<string | null>(null);
+  
+  // Modal state
+  const [showMintModal, setShowMintModal] = useState<boolean>(false);
+  const [selectedListing, setSelectedListing] = useState<LandListing | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Add wallet connection
+  const { address: walletAddress, isConnected } = useAccount();
 
   // Fetch user's listings
   useEffect(() => {
@@ -91,27 +102,49 @@ export default function MyListingsPage() {
     };
 
     fetchListings();
-  }, [isAuthenticated, router, userId]);
+  }, [isAuthenticated, router, userId, authLoading]);
+
+  // Handler to open the mint modal
+  const handleOpenMintModal = (listing: LandListing) => {
+    // Check if wallet is connected
+    if (!isConnected || !walletAddress) {
+      setMintingStatus('Error: Please connect your Ethereum wallet first');
+      return;
+    }
+    
+    setSelectedListing(listing);
+    setShowMintModal(true);
+  };
 
   // Function to mint NFT for a listing
-  const mintNft = async (listingId: string) => {
+  const mintNft = async (mintData: MintNFTData) => {
     try {
+      setIsSubmitting(true);
+      const listingId = mintData.landListingId;
       setMintingListingId(listingId);
       setMintingStatus('Initiating minting process...');
       
-      // Find the listing being minted to display its title
-      const listingToMint = listings.find(listing => listing.id === listingId);
-      const listingTitle = listingToMint?.nftTitle || 'Unknown';
+      // Convert image file to base64
+      const imageBase64 = await fileToBase64(mintData.imageFile);
       
-      console.log(`Starting minting process for listing: ${listingTitle} (${listingId})`);
+      // Prepare JSON data for collection minting with fixed quantity
+      const jsonData = {
+        landListingId: listingId,
+        nftTitle: mintData.nftTitle,
+        nftDescription: mintData.nftDescription,
+        imageBase64,
+        ownerAddress: walletAddress, // Ensure this is the intended recipient
+        quantity: 99 // Fixed quantity of 99 child tokens (1 main + 99 children = 100 total)
+      };
       
-      const response = await fetch('/api/nft/mint', {
+      // Use the /api/nft/mint-collection API endpoint for collections
+      const response = await fetch('/api/nft/mint-collection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(userId ? { 'x-user-id': userId } : {})
         },
-        body: JSON.stringify({ landListingId: listingId }),
+        body: JSON.stringify(jsonData),
       });
       
       let data;
@@ -128,7 +161,11 @@ export default function MyListingsPage() {
       }
       
       console.log('Minting successful:', data);
-      setMintingStatus(`NFT for "${listingTitle}" minted successfully!`);
+      setMintingStatus(`NFT "${mintData.nftTitle}" minted successfully!`);
+      
+      // Close the modal
+      setShowMintModal(false);
+      setSelectedListing(null);
       
       // Refresh the listings to show updated status
       setTimeout(() => {
@@ -160,12 +197,30 @@ export default function MyListingsPage() {
       console.error('Error minting NFT:', err);
       setMintingStatus(`Error: ${err.message || 'Failed to mint NFT'}`);
       
-      // Clear the error after 10 seconds
+      // Don't close the modal on error, let user retry
+      setIsSubmitting(false);
+      
+      // Propagate error to modal
+      throw err;
+    } finally {
+      setIsSubmitting(false);
       setTimeout(() => {
-        setMintingStatus(null);
-        setMintingListingId(null);
+        if (mintingStatus && mintingStatus.includes('success')) {
+          setMintingStatus(null);
+          setMintingListingId(null);
+        }
       }, 10000);
     }
+  };
+
+  // Function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
   };
 
   // Function to get status badge color
@@ -193,7 +248,6 @@ export default function MyListingsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">My Land Listings</h1>
-      
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -287,21 +341,25 @@ export default function MyListingsPage() {
                     )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <Link href={`/listings/${listing.id}`} className="text-indigo-600 hover:text-indigo-900">
+                        <Link
+                          href={`/listings/${listing.id}`}
+                          className="text-indigo-600 hover:text-indigo-900">
                           <FiEye className="h-5 w-5" title="View" />
                         </Link>
                         
                         {listing.status === 'DRAFT' && (
-                          <Link href={`/create?edit=${listing.id}`} className="text-blue-600 hover:text-blue-900">
+                          <Link
+                            href={`/create?edit=${listing.id}`}
+                            className="text-blue-600 hover:text-blue-900">
                             <FiEdit className="h-5 w-5" title="Edit" />
                           </Link>
                         )}
                         
                         {(listing.mintStatus === 'NOT_STARTED' || listing.mintStatus === 'FAILED') && (
                           <button
-                            onClick={() => mintNft(listing.id)}
-                            disabled={mintingListingId === listing.id}
-                            className={`text-green-600 hover:text-green-900 ${mintingListingId === listing.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            onClick={() => handleOpenMintModal(listing)}
+                            disabled={isSubmitting || mintingListingId === listing.id}
+                            className={`text-green-600 hover:text-green-900 ${(isSubmitting || mintingListingId === listing.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             <FiCpu className="h-5 w-5" title="Mint NFT" />
                           </button>
@@ -314,6 +372,21 @@ export default function MyListingsPage() {
             </table>
           </div>
         </>
+      )}
+      {/* NFT Minting Modal */}
+      {selectedListing && (
+        <MintNFTModal
+          isOpen={showMintModal}
+          onClose={() => {
+            setShowMintModal(false);
+            setSelectedListing(null);
+          }}
+          onMint={mintNft}
+          listingId={selectedListing.id}
+          listingTitle={selectedListing.nftTitle || ''}
+          listingDescription={selectedListing.propertyDescription}
+          isSubmitting={isSubmitting}
+        />
       )}
     </div>
   );

@@ -7,7 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Refactored NFT metadata fetching on `ExploreNFTPage`:
+  - Moved `fetchCollectionDetails` logic into `ExploreNFTPage` as a `useCallback` hook.
+  - Created a new utility function `fetchAndProcessCollectionDetails` in `lib/collectionUtils.ts` to encapsulate the core fetching and processing logic, making it reusable.
+  - Moved the `CollectionDetail` interface to a dedicated `lib/types.ts` file.
+  - Updated `LoadingSpinner` component (`components/common/LoadingSpinner.tsx`) to accept a `size` prop and use `FiLoader` icon with a spinning animation.
+
 ### Fixed
+- Resolved TypeScript lint error "Property 'size' does not exist on type 'IntrinsicAttributes'" by updating `LoadingSpinner` to correctly accept and utilize the `size` prop.
+- Resolved TypeScript lint error "Argument of type '(...ABI definition...)[]' is not assignable to parameter of type '0x${string}'" by correcting the argument order in the call to `fetchAndProcessCollectionDetails` in `ExploreNFTPage.tsx`.
+- Resolved TypeScript lint error "Argument of type 'string' is not assignable to parameter of type '0x${string}'" by explicitly casting imported contract addresses to the `0x${string}` type at the call site in `ExploreNFTPage.tsx`.
+- Resolved TypeScript lint error "Argument of type '(...ABI array...)' is not assignable to parameter of type 'Abi'. Type 'string' is not assignable to type '\"function\"'" by:
+  - Applying `as const` assertions to ABI definitions in `contracts/PlatzLandNFTABI.ts` and `contracts/LandMarketplaceABI.ts`.
+  - Importing the `Abi` type from `viem` and explicitly casting imported ABI objects to the `Abi` type at the call site in `ExploreNFTPage.tsx`.
+
+### Fixed
+- Fixed NFT collection images not displaying on ExploreNFTPage by implementing a two-tier workaround in `fetchCollectionDetails`:
+  - Rewrites outdated ngrok URLs in the `collectionURI` (from the smart contract) to the current `NEXT_PUBLIC_BASE_URL` before fetching metadata.
+  - After fetching metadata, if the `image` URL within the metadata is also an outdated ngrok URL, it's rewritten to the current `NEXT_PUBLIC_BASE_URL`.
+
+- Resolved type mismatch errors in `app/api/nft/mint-collection/route.ts` during `LandListing` database updates after NFT collection minting. Ensured `collectionId` and `mainTokenId` (which are strings) are correctly assigned to Prisma model fields (defined as `String?`). Applied explicit `{ set: ... }` syntax for these and other string fields to satisfy TypeScript's type checking and improve robustness. Added checks for missing IDs post-mint event parsing.
+- **Next.js 15 Compatibility:**
+  - Updated dynamic API route handlers (`/api/static/collections/[landListingDbId]/child-tokens/[evmTokenId]/route.ts` and `/api/static/[...path]/route.ts`) to correctly `await` and process `params` objects, resolving runtime errors related to asynchronous parameter handling introduced in Next.js 15+.
 - **Enhanced NFT Minting Reliability:**
   - Significantly improved RPC connection handling with:
     - Advanced connection caching to reuse successful connections

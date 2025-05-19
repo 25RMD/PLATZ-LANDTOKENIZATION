@@ -3,6 +3,8 @@ import { createPublicClient, http, createWalletClient, custom } from 'viem';
 import { sepolia } from 'viem/chains';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
+import PlatzLandNFTAbi from '../../artifacts/contracts/PlatzLandNFTWithCollections.sol/PlatzLandNFTWithCollections.json';
+import LandMarketplaceAbi from '../../artifacts/contracts/LandMarketplace.sol/LandMarketplace.json';
 
 // This will be populated after contract deployment
 let CONTRACT_ADDRESS: string | null = null;
@@ -28,13 +30,621 @@ try {
   console.warn('Could not load contract data from file. Contract may not be deployed yet.');
 }
 
+// Load contract addresses from environment variables
+const NFT_CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS;
+const MARKETPLACE_CONTRACT_ADDRESS = process.env.MARKETPLACE_CONTRACT_ADDRESS;
+const NETWORK_RPC_URL = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL;
+const FALLBACK_RPC_URL_1 = process.env.FALLBACK_RPC_URL_1 || "https://rpc.sepolia.org";
+const FALLBACK_RPC_URL_2 = process.env.FALLBACK_RPC_URL_2 || "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161";
+
+// Additional public Sepolia RPC endpoints
+const ADDITIONAL_PUBLIC_RPCS = [
+  "https://ethereum-sepolia-rpc.publicnode.com",
+  "https://sepolia.gateway.tenderly.co",
+  "https://rpc.ankr.com/eth_sepolia",
+  "https://sepolia.drpc.org",
+  "https://1rpc.io/sepolia",
+  "https://eth-sepolia.public.blastapi.io"
+];
+
+const SERVER_WALLET_PRIVATE_KEY = process.env.SERVER_WALLET_PRIVATE_KEY;
+
+// List of RPC URLs to try in order, including additional fallbacks
+const RPC_URLS = [
+  NETWORK_RPC_URL,
+  FALLBACK_RPC_URL_1,
+  FALLBACK_RPC_URL_2,
+  ...ADDITIONAL_PUBLIC_RPCS
+].filter(Boolean) as string[];
+
+// Utility to get provider and signer with improved error handling
+const getProviderAndSigner = async () => {
+  if (RPC_URLS.length === 0) {
+    throw new Error('No RPC URLs provided in environment variables');
+  }
+  if (!SERVER_WALLET_PRIVATE_KEY) {
+    throw new Error('No wallet private key provided in environment variables');
+  }
+
+  // Try each RPC URL until one works
+  let lastError: Error | null = null;
+  for (const rpcUrl of RPC_URLS) {
+    try {
+      console.log(`Trying to connect to RPC URL: ${rpcUrl.substring(0, 20)}...`);
+      const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, {
+        polling: true,
+        pollingInterval: 4000,
+        staticNetwork: true, // Better perf by avoiding network detection
+      });
+      
+      // Verify provider connectivity
+      await provider.getBlockNumber();
+      console.log(`Successfully connected to network via ${rpcUrl.substring(0, 20)}...`);
+      
+      const signer = new ethers.Wallet(SERVER_WALLET_PRIVATE_KEY, provider);
+      return { provider, signer };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      // console.warn(`Failed to connect to RPC URL ${rpcUrl.substring(0, 20)}...: ${errorMsg}`); // Commented out for less noise
+      
+      // Check for quota or rate limit issues
+      if (errorMsg.includes('quota') || 
+          errorMsg.includes('rate') || 
+          errorMsg.includes('limit') || 
+          errorMsg.includes('exceeded')) {
+        console.log(`Quota/rate limit detected with ${rpcUrl.substring(0, 20)}..., trying next endpoint`);
+      }
+      
+      lastError = error instanceof Error ? error : new Error(String(error));
+      // Continue to next URL
+    }
+  }
+
+  // If we get here, all RPC URLs failed
+  throw new Error(`Failed to connect to any RPC URL: ${lastError?.message}. Please try again later or contact support.`);
+};
+
+// Get NFT contract instance
+export const getNFTContract = async (signerOrProvider?: ethers.Signer | ethers.Provider) => {
+  if (!NFT_CONTRACT_ADDRESS || NFT_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+    throw new Error('Invalid NFT contract address. Please set NFT_CONTRACT_ADDRESS environment variable to a valid address.');
+  }
+  
+  if (signerOrProvider) {
+    return new ethers.Contract(NFT_CONTRACT_ADDRESS, PlatzLandNFTAbi.abi, signerOrProvider);
+  }
+  
+  const { signer } = await getProviderAndSigner();
+  return new ethers.Contract(NFT_CONTRACT_ADDRESS, PlatzLandNFTAbi.abi, signer);
+};
+
+// Get Marketplace contract instance
+export const getMarketplaceContract = async (signerOrProvider?: ethers.Signer | ethers.Provider) => {
+  if (!MARKETPLACE_CONTRACT_ADDRESS || MARKETPLACE_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+    throw new Error('Invalid marketplace contract address. Please set MARKETPLACE_CONTRACT_ADDRESS environment variable to a valid address.');
+  }
+  
+  if (signerOrProvider) {
+    return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, LandMarketplaceAbi.abi, signerOrProvider);
+  }
+  
+  const { signer } = await getProviderAndSigner();
+  return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, LandMarketplaceAbi.abi, signer);
+};
+
+// Mint a new land NFT
+export const mintLandNFT = async (
+  metadataUri: string,
+  ownerAddress: string,
+  retryCount = 3
+): Promise<{ tokenId: number; transactionHash: string }> => {
+  let lastError: Error | null = null;
+  
+  // Log the mint recipient
+  console.log('Minting NFT to address:', ownerAddress);
+  
+  // Remove mock implementation and check contract address
+  if (NFT_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+    throw new Error("Invalid NFT contract address. Please set NFT_CONTRACT_ADDRESS environment variable to a valid address.");
+  }
+  
+  // Validate that the metadata URI is accessible to smart contracts
+  if (metadataUri.includes('localhost')) {
+    console.error("Cannot use localhost URLs for metadata. Smart contracts cannot access local resources.");
+    throw new Error("Invalid metadata URI: Contains localhost. Please use ngrok or another public URL service.");
+  }
+
+  // Check if we're using ngrok correctly
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  if (!baseUrl || baseUrl.includes('localhost')) {
+    console.warn("NEXT_PUBLIC_BASE_URL is not set or using localhost. Smart contracts may not be able to access your metadata.");
+  } else if (baseUrl.includes('ngrok') && !metadataUri.includes('ngrok')) {
+    console.warn("NEXT_PUBLIC_BASE_URL contains 'ngrok' but metadata URI doesn't. Check your configuration.");
+  }
+
+  // Optional: Validate URI is publicly accessible (commented out for simplicity)
+  // Try fetching the metadata to ensure it's accessible (in production, you might want to skip this)
+  /*
+  try {
+    console.log(`Verifying metadata URI is accessible: ${metadataUri}`);
+    const response = await fetch(metadataUri, { method: 'HEAD' });
+    if (!response.ok) {
+      throw new Error(`Metadata URI returned ${response.status}: ${response.statusText}`);
+    }
+    console.log(`Metadata URI is accessible. Status: ${response.status}`);
+  } catch (error) {
+    console.error(`Metadata URI is not accessible: ${metadataUri}`, error);
+    throw new Error(`Metadata URI is not publicly accessible. Please ensure your ngrok tunnel is running and NEXT_PUBLIC_BASE_URL is set correctly.`);
+  }
+  */
+  
+  for (let attempt = 0; attempt < retryCount; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`Mint attempt ${attempt + 1}/${retryCount}...`);
+        // Wait longer between each retry using exponential backoff
+        const delay = Math.min(2000 * Math.pow(2, attempt - 1), 10000);
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      console.log(`Getting NFT contract for mint attempt ${attempt + 1}...`);
+      const nftContract = await getNFTContract();
+      
+      // Verify the contract is valid before proceeding
+      try {
+        const name = await nftContract.name();
+        const symbol = await nftContract.symbol();
+        console.log(`Verified NFT contract: ${name} (${symbol})`);
+      } catch (e) {
+        console.error("Error verifying NFT contract:", e);
+        throw new Error(`Invalid NFT contract at ${NFT_CONTRACT_ADDRESS}. Please check your contract address.`);
+      }
+      
+      // Verify the contract has the mintLand function
+      if (!nftContract.mintLand) {
+        throw new Error(`NFT contract at ${NFT_CONTRACT_ADDRESS} does not have a mintLand function.`);
+      }
+      
+      // Mint the NFT to the owner
+      // The contract expects 3 parameters: to (address), uri (string), propertyRef (string)
+      const propertyRef = `land-listing-ref-${Date.now()}`;
+      console.log(`Calling mintLand with owner=${ownerAddress}, propertyRef=${propertyRef}, URI=${metadataUri}`);
+      
+      // Estimate gas to catch potential errors before sending
+      try {
+        console.log("[DEBUG] Estimating gas for mintLand with params:");
+        console.log(`[DEBUG]   to (ownerAddress): ${ownerAddress}`);
+        console.log(`[DEBUG]   propertyReference: ${propertyRef}`);
+        console.log(`[DEBUG]   metadataURI: ${metadataUri}`);
+        const gasEstimate = await nftContract.mintLand.estimateGas(
+          ownerAddress, 
+          propertyRef,
+          metadataUri
+        );
+        console.log(`Gas estimate for minting: ${gasEstimate}`);
+      } catch (gasError) {
+        console.error("Error estimating gas for mint transaction:", gasError);
+        console.error("[DEBUG] Parameters during gas estimation error:");
+        console.error(`[DEBUG]   to (ownerAddress): ${ownerAddress}`);
+        console.error(`[DEBUG]   propertyReference: ${propertyRef}`);
+        console.error(`[DEBUG]   metadataURI: ${metadataUri}`);
+        throw new Error(`Transaction would fail: ${String(gasError)}`);
+      }
+      
+      // Set gas limit higher than the estimate
+      console.log("[DEBUG] Calling actual mintLand contract function with params:");
+      console.log(`[DEBUG]   to (ownerAddress): ${ownerAddress}`);
+      console.log(`[DEBUG]   propertyReference: ${propertyRef}`);
+      console.log(`[DEBUG]   metadataURI: ${metadataUri}`);
+      const tx = await nftContract.mintLand(
+        ownerAddress, 
+        propertyRef,
+        metadataUri,
+        { 
+          gasLimit: 500000 // Higher gas limit to avoid out-of-gas errors
+        }
+      );
+      console.log(`Transaction submitted: ${tx.hash}`);
+      
+      console.log(`Waiting for transaction confirmation...`);
+      const receipt = await tx.wait();
+      
+      if (receipt.status === 0) {
+        throw new Error(`Transaction reverted. Hash: ${tx.hash}`);
+      }
+      
+      console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
+      
+      // Extract the token ID from the event logs
+      console.log(`Parsing transaction logs for Transfer event...`);
+      const transferEvents = receipt.logs
+        .filter((log: any) => {
+          try {
+            const decoded = nftContract.interface.parseLog(log);
+            return decoded && decoded.name === 'Transfer';
+          } catch (e) {
+            return false;
+          }
+        })
+        .map((log: any) => nftContract.interface.parseLog(log));
+      
+      if (transferEvents.length === 0) {
+        throw new Error('Could not find Transfer event in transaction logs');
+      }
+      
+      const event = transferEvents[0];
+      console.log('Found Transfer event with args:', event.args);
+      
+      // Support both named and positional access for tokenId
+      const tokenId = event.args.tokenId ?? event.args[2];
+      if (tokenId === undefined) {
+        throw new Error('Transfer event does not contain tokenId');
+      }
+      
+      console.log(`Successfully extracted token ID: ${tokenId}`);
+      
+      return {
+        tokenId: Number(tokenId),
+        transactionHash: receipt.hash,
+      };
+    } catch (error) {
+      console.error(`Error in mint attempt ${attempt + 1}:`, error);
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Check if this is a potentially recoverable error
+      const errorMsg = String(error);
+      const isRecoverable = 
+        errorMsg.includes('quota') || 
+        errorMsg.includes('rate') || 
+        errorMsg.includes('limit') || 
+        errorMsg.includes('exceeded') ||
+        errorMsg.includes('timeout') ||
+        errorMsg.includes('network') ||
+        errorMsg.includes('connect');
+      
+      if (!isRecoverable) {
+        // If we have a transaction revert, provide more helpful error info
+        if (errorMsg.includes('reverted') || errorMsg.includes('CALL_EXCEPTION')) {
+          console.error('Contract execution reverted. This could be due to:');
+          console.error('1. The contract address is incorrect');
+          console.error('2. The contract does not have the expected functions');
+          console.error('3. The caller does not have permissions to mint');
+          console.error('4. Invalid metadata URI format');
+          console.error('5. The contract has hit a limit or is paused');
+        }
+        
+        console.error('Encountered non-recoverable error, aborting retry attempts');
+        break; // Exit the retry loop for non-recoverable errors
+      }
+    }
+  }
+  
+  // All retry attempts failed
+  console.error('Error minting land NFT after all retry attempts:', lastError);
+  throw lastError || new Error('Failed to mint NFT after multiple attempts');
+};
+
+// Create a new listing in the marketplace
+export const createListing = async (
+  tokenId: number,
+  price: string,
+  currency: string,
+  retryCount = 3
+): Promise<{ listingId: number; transactionHash: string }> => {
+  let lastError: Error | null = null;
+  
+  // Log the server wallet address (listing sender)
+  const { signer } = await getProviderAndSigner();
+  const serverWalletAddress = await signer.getAddress();
+  console.log('Server wallet address (listing sender):', serverWalletAddress);
+  
+  // Remove mock implementation and check contract addresses
+  if (NFT_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000" || 
+      MARKETPLACE_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+    throw new Error("Invalid contract addresses. Please set both NFT_CONTRACT_ADDRESS and MARKETPLACE_CONTRACT_ADDRESS environment variables to valid addresses.");
+  }
+  
+  for (let attempt = 0; attempt < retryCount; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`Create listing attempt ${attempt + 1}/${retryCount}...`);
+        // Wait longer between each retry
+        const delay = Math.min(2000 * Math.pow(2, attempt - 1), 10000);
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      console.log(`Getting contracts for create listing attempt ${attempt + 1}...`);
+      const marketplaceContract = await getMarketplaceContract();
+      const nftContract = await getNFTContract();
+      
+      // First, approve the marketplace to transfer the NFT
+      console.log('Approving marketplace contract:', MARKETPLACE_CONTRACT_ADDRESS, 'for token:', tokenId);
+      const approveTx = await nftContract.approve(MARKETPLACE_CONTRACT_ADDRESS, tokenId);
+      console.log(`Approval transaction submitted: ${approveTx.hash}`);
+      await approveTx.wait();
+      console.log(`Approval transaction confirmed`);
+      // Check the actual approved address on-chain
+      const approved = await nftContract.getApproved(tokenId);
+      console.log('Approved address for token', tokenId, 'is', approved);
+      
+      // Convert price to wei
+      const priceInWei = ethers.parseEther(price);
+      console.log(`Converted price ${price} to wei: ${priceInWei}`);
+      
+      // Create the listing
+      const currencyAddress = currency.toLowerCase() === 'eth' 
+        ? ethers.ZeroAddress 
+        : currency; // For ETH use zero address, otherwise use the token address
+      
+      console.log('Calling createListing with:', NFT_CONTRACT_ADDRESS, tokenId, priceInWei, currencyAddress);
+      const tx = await marketplaceContract.createListing(
+        NFT_CONTRACT_ADDRESS,
+        tokenId,
+        priceInWei,
+        currencyAddress
+      );
+      
+      console.log(`Create listing transaction submitted: ${tx.hash}`);
+      
+      console.log(`Waiting for listing transaction confirmation...`);
+      const receipt = await tx.wait();
+      console.log(`Listing transaction confirmed in block ${receipt.blockNumber}`);
+      
+      // Extract the listing ID from the event logs
+      console.log(`Parsing transaction logs for ListingCreated event...`);
+      
+      // Look for ListingCreated event (was NFTListed)
+      const listingEvents = receipt.logs
+        .filter((log: any) => {
+          try {
+            const decoded = marketplaceContract.interface.parseLog(log);
+            return decoded && decoded.name === 'ListingCreated';
+          } catch (e) {
+            return false;
+          }
+        })
+        .map((log: any) => marketplaceContract.interface.parseLog(log));
+        
+      if (listingEvents.length === 0) {
+        throw new Error('Could not find ListingCreated event in transaction logs');
+      }
+      
+      const event = listingEvents[0];
+      console.log('Found ListingCreated event with args:', event.args);
+      
+      // In the ListingCreated event, the listing ID is the same as the token ID
+      // This assumes there's a one-to-one mapping between tokens and listings
+      let listingId = tokenId; // Default to the provided tokenId
+      
+      // If the event contains the tokenId, use that
+      if (event.args.tokenId !== undefined) {
+        listingId = event.args.tokenId;
+      }
+      
+      console.log(`Successfully extracted listing ID: ${listingId}`);
+      
+      // Extra debug logs before creating the listing
+      const nftOwner = await nftContract.ownerOf(tokenId);
+      console.log('NFT contract address:', NFT_CONTRACT_ADDRESS);
+      console.log('Token ID:', tokenId);
+      console.log('Owner of token:', nftOwner);
+      const approvedAddress = await nftContract.getApproved(tokenId);
+      console.log('Approved address for token:', tokenId, approvedAddress);
+      // Try to fetch existing listing info if the function exists
+      if (typeof marketplaceContract.listings === 'function') {
+        try {
+          const listingInfo = await marketplaceContract.listings(NFT_CONTRACT_ADDRESS, tokenId);
+          console.log('Existing listing info:', listingInfo);
+        } catch (e) {
+          console.log('Could not fetch existing listing info:', e);
+        }
+      }
+      
+      return {
+        listingId: Number(listingId),
+        transactionHash: receipt.hash,
+      };
+    } catch (error) {
+      console.error(`Error in create listing attempt ${attempt + 1}:`, error);
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Check if this is a potentially recoverable error
+      const errorMsg = String(error);
+      const isRecoverable = 
+        errorMsg.includes('quota') || 
+        errorMsg.includes('rate') || 
+        errorMsg.includes('limit') || 
+        errorMsg.includes('exceeded') ||
+        errorMsg.includes('timeout') ||
+        errorMsg.includes('network') ||
+        errorMsg.includes('connect');
+      
+      if (!isRecoverable) {
+        console.error('Encountered non-recoverable error, aborting retry attempts');
+        break; // Exit the retry loop for non-recoverable errors
+      }
+    }
+  }
+  
+  // All retry attempts failed
+  console.error('Error creating listing after all retry attempts:', lastError);
+  throw lastError || new Error('Failed to create listing after multiple attempts');
+};
+
+// Get listing details
+export const getListingDetails = async (listingId: number) => {
+  try {
+    const marketplaceContract = await getMarketplaceContract();
+    
+    // The marketplace contract likely has a different function signature
+    // It probably expects the NFT contract address and tokenId
+    const listing = await marketplaceContract.listings(NFT_CONTRACT_ADDRESS, listingId);
+    
+    return {
+      tokenId: listingId, // Use the provided ID since it's likely the token ID
+      seller: listing.seller,
+      price: ethers.formatEther(listing.price),
+      currency: listing.paymentToken === ethers.ZeroAddress ? 'ETH' : listing.paymentToken,
+      isActive: listing.isActive,
+    };
+  } catch (error) {
+    console.error('Error getting listing details:', error);
+    // Try a fallback approach if the first attempt fails
+    try {
+      console.log('Trying alternative approach to get listing details...');
+      const marketplaceContract = await getMarketplaceContract();
+      
+      // Try to call a getListing function if it exists
+      if (typeof marketplaceContract.getListing === 'function') {
+        const listing = await marketplaceContract.getListing(NFT_CONTRACT_ADDRESS, listingId);
+        return {
+          tokenId: listingId,
+          seller: listing.seller,
+          price: ethers.formatEther(listing.price),
+          currency: listing.paymentToken === ethers.ZeroAddress ? 'ETH' : listing.paymentToken,
+          isActive: listing.isActive,
+        };
+      }
+      
+      throw new Error('No compatible function found to get listing details');
+    } catch (fallbackError) {
+      console.error('Fallback approach also failed:', fallbackError);
+      throw new Error(`Failed to get listing details: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+};
+
+// Buy a listing
+export const buyListing = async (
+  listingId: number,
+  buyerAddress: string,
+  value: string
+): Promise<{ success: boolean; transactionHash: string }> => {
+  try {
+    const marketplaceContract = await getMarketplaceContract();
+    
+    // Convert price to wei
+    const valueInWei = ethers.parseEther(value);
+    
+    // Buy the listing
+    // The marketplace contract expects tokenId and has a payable function
+    const tx = await marketplaceContract.buyNFT(
+      listingId, 
+      { value: valueInWei }
+    );
+    
+    const receipt = await tx.wait();
+    
+    return {
+      success: true,
+      transactionHash: receipt.hash,
+    };
+  } catch (error) {
+    console.error('Error buying listing:', error);
+    throw error;
+  }
+};
+
+// Cancel a listing
+export const cancelListing = async (
+  listingId: number
+): Promise<{ success: boolean; transactionHash: string }> => {
+  try {
+    const marketplaceContract = await getMarketplaceContract();
+    
+    // Cancel the listing
+    // The marketplace contract likely expects: (nftContract, tokenId)
+    const tx = await marketplaceContract.cancelListing(NFT_CONTRACT_ADDRESS, listingId);
+    const receipt = await tx.wait();
+    
+    return {
+      success: true,
+      transactionHash: receipt.hash,
+    };
+  } catch (error) {
+    console.error('Error canceling listing:', error);
+    throw error;
+  }
+};
+
+// Place a bid on a listing
+export const placeBid = async (
+  listingId: number,
+  bidAmount: string
+): Promise<{ success: boolean; transactionHash: string }> => {
+  try {
+    const marketplaceContract = await getMarketplaceContract();
+    
+    // Convert bid amount to wei
+    const bidAmountInWei = ethers.parseEther(bidAmount);
+    
+    // Place the bid
+    const tx = await marketplaceContract.placeBid(listingId, { value: bidAmountInWei });
+    const receipt = await tx.wait();
+    
+    return {
+      success: true,
+      transactionHash: receipt.hash,
+    };
+  } catch (error) {
+    console.error('Error placing bid:', error);
+    throw error;
+  }
+};
+
+// Accept a bid
+export const acceptBid = async (
+  listingId: number,
+  bidder: string
+): Promise<{ success: boolean; transactionHash: string }> => {
+  try {
+    const marketplaceContract = await getMarketplaceContract();
+    
+    // Accept the bid
+    const tx = await marketplaceContract.acceptBid(listingId, bidder);
+    const receipt = await tx.wait();
+    
+    return {
+      success: true,
+      transactionHash: receipt.hash,
+    };
+  } catch (error) {
+    console.error('Error accepting bid:', error);
+    throw error;
+  }
+};
+
+// Get all bids for a listing
+export const getListingBids = async (listingId: number) => {
+  try {
+    const marketplaceContract = await getMarketplaceContract();
+    const bidders = await marketplaceContract.getListingBidders(listingId);
+    
+    const bids = await Promise.all(
+      bidders.map(async (bidder: string) => {
+        const bidAmount = await marketplaceContract.getBidAmount(listingId, bidder);
+        return {
+          bidder,
+          amount: ethers.formatEther(bidAmount),
+        };
+      })
+    );
+    
+    return bids;
+  } catch (error) {
+    console.error('Error getting listing bids:', error);
+    throw error;
+  }
+};
+
 // Get provider and signer
-export const getProviderAndSigner = async () => {
+export const getProviderAndSignerV2 = async () => {
   console.log('Environment variables check:');
   console.log('- RPC_URL present:', !!process.env.RPC_URL);
-  console.log('- NEXT_PUBLIC_RPC_URL present:', !!process.env.NEXT_PUBLIC_RPC_URL);
+  console.log('- SEPOLIA_RPC_URL present:', !!process.env.SEPOLIA_RPC_URL);
   console.log('- SERVER_WALLET_PRIVATE_KEY present:', !!process.env.SERVER_WALLET_PRIVATE_KEY);
-  console.log('- NEXT_PUBLIC_SERVER_WALLET_PRIVATE_KEY present:', !!process.env.NEXT_PUBLIC_SERVER_WALLET_PRIVATE_KEY);
   
   // Define multiple fallback RPC URLs for Sepolia testnet
   // Order from most reliable to least reliable
@@ -108,7 +718,7 @@ export const getProviderAndSigner = async () => {
               resolve({ provider, wallet });
             }).catch(err => {
               clearTimeout(timeout);
-              console.error(`Ethers connection test failed for ${url.substring(0, 20)}... on attempt ${attempt + 1}/${retries + 1}:`, err.message || 'Unknown error');
+              // console.error(`Ethers connection test failed for ${url.substring(0, 20)}... on attempt ${attempt + 1}/${retries + 1}:`, err.message || 'Unknown error'); // Commented out
               reject(err);
             });
           } catch (err) {
@@ -120,7 +730,7 @@ export const getProviderAndSigner = async () => {
         if (attempt < retries) {
           // Exponential backoff: wait longer between each retry
           const backoffTime = Math.min(1000 * Math.pow(2, attempt), 10000);
-          console.log(`Retrying connection to ${url.substring(0, 20)}... in ${backoffTime}ms (attempt ${attempt + 1}/${retries})`);
+          // console.log(`Retrying connection to ${url.substring(0, 20)}... in ${backoffTime}ms (attempt ${attempt + 1}/${retries})`); // Optionally comment out for even less noise
           await new Promise(resolve => setTimeout(resolve, backoffTime));
         } else {
           // Last attempt failed, propagate the error
@@ -171,7 +781,7 @@ export const getProviderAndSigner = async () => {
               resolve({ client });
             }).catch(err => {
               clearTimeout(timeout);
-              console.error(`Viem connection test failed for ${url.substring(0, 20)}... on attempt ${attempt + 1}/${retries + 1}:`, err.message || 'Unknown error');
+              // console.error(`Viem connection test failed for ${url.substring(0, 20)}... on attempt ${attempt + 1}/${retries + 1}:`, err.message || 'Unknown error'); // Commented out
               reject(err);
             });
           } catch (err) {
@@ -183,7 +793,7 @@ export const getProviderAndSigner = async () => {
         if (attempt < retries) {
           // Exponential backoff: wait longer between each retry
           const backoffTime = Math.min(1000 * Math.pow(2, attempt), 10000);
-          console.log(`Retrying Viem connection to ${url.substring(0, 20)}... in ${backoffTime}ms (attempt ${attempt + 1}/${retries})`);
+          // console.log(`Retrying Viem connection to ${url.substring(0, 20)}... in ${backoffTime}ms (attempt ${attempt + 1}/${retries})`); // Optionally comment out
           await new Promise(resolve => setTimeout(resolve, backoffTime));
         } else {
           // Last attempt failed, propagate the error
@@ -238,7 +848,7 @@ export const getProviderAndSigner = async () => {
         lastSuccessfulUrl = url;
         return result;
       } catch (error) {
-        console.error(`Failed priority connection with ethers.js to ${url.substring(0, 20)}...`, error instanceof Error ? error.message : 'Unknown error');
+        // console.error(`Failed priority connection with ethers.js to ${url.substring(0, 20)}...`, error instanceof Error ? error.message : 'Unknown error'); // Commented out
         // Continue to the next URL
       }
     }
@@ -252,7 +862,7 @@ export const getProviderAndSigner = async () => {
         lastSuccessfulUrl = url;
         return result;
       } catch (error) {
-        console.error(`Failed fallback connection with ethers.js to ${url.substring(0, 20)}...`, error instanceof Error ? error.message : 'Unknown error');
+        // console.error(`Failed fallback connection with ethers.js to ${url.substring(0, 20)}...`, error instanceof Error ? error.message : 'Unknown error'); // Commented out
         // Continue to the next URL
       }
     }
@@ -280,7 +890,7 @@ export const getProviderAndSigner = async () => {
         lastSuccessfulUrl = url;
         return result;
       } catch (error) {
-        console.error(`Failed priority connection with Viem to ${url.substring(0, 20)}...`, error instanceof Error ? error.message : 'Unknown error');
+        // console.error(`Failed priority connection with Viem to ${url.substring(0, 20)}...`, error instanceof Error ? error.message : 'Unknown error'); // Commented out
         // Continue to the next URL
       }
     }
@@ -301,7 +911,7 @@ export const getProviderAndSigner = async () => {
         lastSuccessfulUrl = url;
         return result;
       } catch (error) {
-        console.error(`Failed fallback connection with Viem to ${url.substring(0, 20)}...`, error instanceof Error ? error.message : 'Unknown error');
+        // console.error(`Failed fallback connection with Viem to ${url.substring(0, 20)}...`, error instanceof Error ? error.message : 'Unknown error'); // Commented out
         // Continue to the next URL
       }
     }
@@ -320,279 +930,127 @@ export const getProviderAndSigner = async () => {
 
 // Get contract instance
 export const getContract = async () => {
-  try {
-    if (!CONTRACT_ADDRESS) {
-      throw new Error('Contract address not set');
-    }
-    
-    // Get provider and signer (and possibly Viem client)
-    const result = await getProviderAndSigner();
-    const { provider, wallet } = result;
-    
-    // Log successful connection
-    console.log('Successfully connected to Ethereum network');
-    if (result.viemClient) {
-      console.log('Viem client is available as a fallback');
-    }
-    
-    // Create contract instance
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
-    
-    return contract;
-  } catch (error: any) {
-    console.error('Error getting contract instance:', error);
-    throw new Error(`Failed to get contract instance: ${error.message || 'Unknown error'}`);
+  if (!NFT_CONTRACT_ADDRESS || NFT_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+    throw new Error('Invalid NFT contract address. Please set NFT_CONTRACT_ADDRESS environment variable to a valid address.');
   }
+  const { signer } = await getProviderAndSigner();
+  return new ethers.Contract(NFT_CONTRACT_ADDRESS, PlatzLandNFTAbi.abi, signer);
 };
 
 // Create a collection with batch minting
 export const createCollection = async (
   landListingId: string,
+  toAddress: string,
   mainTokenURI: string,
-  additionalTokensBaseURI: string,
-  collectionMetadataURI: string
+  quantity: number,
+  collectionMetadataURI: string,
+  childTokensBaseURI: string
 ) => {
   try {
-    console.log('Creating collection with the following parameters:');
-    console.log('- Land Listing ID:', landListingId);
-    console.log('- Main Token URI:', mainTokenURI);
-    console.log('- Additional Tokens Base URI:', additionalTokensBaseURI);
-    console.log('- Collection Metadata URI:', collectionMetadataURI);
+    console.log('Creating collection with parameters:');
+    console.log({ landListingId, toAddress, mainTokenURI, quantity, collectionMetadataURI, childTokensBaseURI });
     
-    // Get the contract instance
     const contract = await getContract();
-    console.log('Contract instance obtained successfully');
+    // const signerAddress = await contract.runner?.getAddress(); // Removed: ContractRunner does not have getAddress
+    // console.log(`Contract instance obtained. Signer address: ${signerAddress}`);
     
-    // Call the createCollection function on the smart contract
-    console.log('Calling createCollection function on the contract...');
+    // Validate parameters before contract call
+    if (!toAddress || !ethers.isAddress(toAddress)) {
+      throw new Error('Invalid or missing toAddress for createCollection.');
+    }
+    if (quantity <= 0) {
+      throw new Error('Quantity of child tokens must be greater than 0.');
+    }
+    
+    console.log('Calling createCollection function on the contract with args:');
+    console.log(` To: ${toAddress}`);
+    console.log(` MainTokenURI: ${mainTokenURI}`);
+    console.log(` Quantity (child tokens): ${quantity}`);
+    console.log(` CollectionURI: ${collectionMetadataURI}`);
+    console.log(` BaseURI (for child tokens): ${childTokensBaseURI}`);
+
     const tx = await contract.createCollection(
+      toAddress,
       mainTokenURI,
-      additionalTokensBaseURI,
-      collectionMetadataURI
+      quantity,
+      collectionMetadataURI,
+      childTokensBaseURI
     );
     
     console.log(`Transaction hash: ${tx.hash}`);
-    
-    // Wait for the transaction to be mined
     console.log('Waiting for transaction to be mined...');
     const receipt = await tx.wait();
     console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
     
-    // Get the event data from the transaction receipt
-    console.log('Parsing transaction receipt for event data...');
-    console.log('Transaction receipt logs count:', receipt.logs.length);
-    
-    // Enhanced logging for debugging
-    console.log('Looking for CollectionCreated event with signature:', ethers.id('CollectionCreated(uint256,uint256,address)'));
-    
-    // Try multiple approaches to find the event
     let event: any = null;
-    let collectionId: bigint;
-    let mainTokenId: bigint;
-    let wallet: ethers.Wallet;
-    
-    // Get the wallet for later use
-    const { wallet: signerWallet } = await getProviderAndSigner();
-    wallet = signerWallet;
-    
-    // Approach 1: Standard filtering by topic hash
-    try {
-      const filteredLogs = receipt.logs.filter((log: any) => {
-        console.log('Log topic 0:', log.topics[0]);
-        return log.topics[0] === ethers.id('CollectionCreated(uint256,uint256,address)');
-      });
-      
-      if (filteredLogs.length > 0) {
-        const log = filteredLogs[0];
-        try {
-          const parsedLog = contract.interface.parseLog({
-            topics: log.topics,
-            data: log.data,
-          });
-          event = parsedLog?.args;
-          console.log('Found event using topic filtering');
-        } catch (error) {
-          console.error('Error parsing log:', error);
-        }
-      }
-    } catch (error) {
-      console.error('Error in approach 1:', error);
-    }
-    
-    // Approach 2: Try to parse all logs
-    if (!event) {
-      try {
+    let parsedCollectionId: string | null = null;
+    let parsedMainTokenId: string | null = null;
+
         for (const log of receipt.logs) {
           try {
-            const parsedLog = contract.interface.parseLog({
-              topics: log.topics,
-              data: log.data,
-            });
-            
+        const parsedLog = contract.interface.parseLog(log);
             if (parsedLog && parsedLog.name === 'CollectionCreated') {
               event = parsedLog.args;
-              console.log('Found event using full log parsing');
+          console.log('Found CollectionCreated event:', event);
+          parsedCollectionId = event.collectionId?.toString();
+          parsedMainTokenId = event.mainTokenId?.toString();
               break;
             }
-          } catch (error) {
-            // Ignore parsing errors for logs that don't match our event
+      } catch (e) {
+        // Ignore logs that aren't from our contract or are not the event we want
           }
         }
-      } catch (error) {
-        console.error('Error in approach 2:', error);
-      }
-    }
-    
-    // Approach 3: If all else fails, extract data from transaction directly
-    if (!event && receipt.logs.length > 0) {
+
+    if (!parsedCollectionId || !parsedMainTokenId) {
+      console.error('Could not find CollectionCreated event or parse IDs from transaction logs', receipt.logs);
+      // Attempt to update DB to FAILED and return error, but don't throw if DB update fails
       try {
-        // Assume the first log contains our data
-        const log = receipt.logs[0];
-        console.log('Falling back to direct data extraction from log');
-        
-        // Extract collectionId and mainTokenId from topics
-        // Topics[1] and Topics[2] should contain the indexed parameters
-        const collectionIdHex = log.topics[1];
-        const mainTokenIdHex = log.topics[2];
-        
-        if (collectionIdHex && mainTokenIdHex) {
-          // Create a synthetic event object
-          event = {
-            collectionId: ethers.toBigInt(collectionIdHex),
-            mainTokenId: ethers.toBigInt(mainTokenIdHex),
-            creator: log.topics[3] ? ethers.getAddress('0x' + log.topics[3].slice(26)) : ethers.ZeroAddress,
-          };
-          console.log('Created synthetic event from log topics');
-        }
-      } catch (error) {
-        console.error('Error in approach 3:', error);
-      }
+        await prisma.landListing.update({
+          where: { id: landListingId },
+          data: { mintStatus: 'FAILED', mintErrorReason: 'Event parsing failed after mint' },
+        });
+      } catch (dbUpdateError) { console.error("DB update to FAILED status also failed after event parse error", dbUpdateError);}
+      return { success: false, error: 'Failed to get collection data from transaction events.' };
     }
     
-    // As a last resort, create a mock event with incrementing IDs
-    if (!event) {
-      console.warn('WARNING: Could not find CollectionCreated event. Creating mock event data.');
-      const mockCollectionId = Date.now();
-      const mockMainTokenId = mockCollectionId + 1;
-      
-      event = {
-        collectionId: BigInt(mockCollectionId),
-        mainTokenId: BigInt(mockMainTokenId),
-        creator: await wallet.getAddress(),
-      };
-    }
-    
-    console.log('Event data:', event);
-    
-    // Extract the collection ID and main token ID
-    if (event.collectionId) {
-      collectionId = event.collectionId;
-      mainTokenId = event.mainTokenId;
-    } else {
-      collectionId = event[0];
-      mainTokenId = event[1];
-    }
-    
-    console.log(`Collection ID: ${collectionId}`);
-    console.log(`Main token ID: ${mainTokenId}`);
-    
-    // Convert BigInt values to strings for database storage
-    const collectionIdStr = collectionId.toString();
-    const mainTokenIdStr = mainTokenId.toString();
-    
-    // Update the database with the collection information
-    try {
-      // Update the land listing with the minting information
+    console.log(`Parsed Collection ID: ${parsedCollectionId}`);
+    console.log(`Parsed Main Token ID: ${parsedMainTokenId}`);
+
       await prisma.landListing.update({
         where: { id: landListingId },
         data: {
-          contractAddress: CONTRACT_ADDRESS,
           mintStatus: 'COMPLETED',
           mintTimestamp: new Date(),
           mintTransactionHash: tx.hash,
-          collectionId: Number(collectionId),
-          mainTokenId: Number(mainTokenId),
-          metadataUri: mainTokenURI,
+          collectionId: parsedCollectionId,
+          mainTokenId: parsedMainTokenId,
+          contractAddress: NFT_CONTRACT_ADDRESS,
         },
       });
       
-      console.log(`Successfully updated land listing ${landListingId} to COMPLETED status`);
-      console.log(`Collection ID: ${Number(collectionId)}, Main Token ID: ${Number(mainTokenId)}`);
-      console.log(`Transaction hash: ${tx.hash}`);
-      
-      // Create token records if needed
-      // This is commented out for now as it depends on your database schema
-      /*
-      const tokens = [];
-      
-      // Main token
-      tokens.push({
-        landListingId,
-        tokenId: Number(mainTokenId),
-        isMainToken: true,
-        tokenURI: mainTokenURI,
-        ownerAddress: await wallet.getAddress(),
-        mintTransactionHash: tx.hash,
-        mintTimestamp: new Date(),
-        mintStatus: 'COMPLETED',
-      });
-      
-      // Additional tokens (if needed)
-      for (let i = 1; i < 100; i++) {
-        const tokenId = Number(mainTokenId) + i;
-        tokens.push({
-          landListingId,
-          tokenId,
-          isMainToken: false,
-          tokenURI: `${additionalTokensBaseURI}/${i}`,
-          ownerAddress: await wallet.getAddress(),
-          mintTransactionHash: tx.hash,
-          mintTimestamp: new Date(),
-          mintStatus: 'COMPLETED',
-        });
-      }
-      
-      // Create all token records in a transaction
-      await prisma.$transaction(
-        tokens.map((token: any) => 
-          prisma.evmCollectionToken.create({
-            data: token,
-          })
-        )
-      );
-      */
-    } catch (dbError: any) {
-      console.error('Database error during collection creation:', dbError);
-      // Continue the process even if database updates fail
-    }
+      console.log(`Successfully updated land listing ${landListingId} in createCollection utility (status COMPLETED etc.)`);
     
     return {
       success: true,
-      collectionId: collectionIdStr,
-      mainTokenId: mainTokenIdStr,
+      collectionId: parsedCollectionId,
+      mainTokenId: parsedMainTokenId,
       transactionHash: tx.hash,
     };
-  } catch (error: any) {
-    console.error('Error creating collection:', error);
     
-    // Update the database with the error
+  } catch (error: any) {
+    console.error('Error creating collection in contractUtils:', error);
+    const errorMessage = error.message || 'Unknown error during collection creation utility';
     try {
       await prisma.landListing.update({
         where: { id: landListingId },
-        data: {
-          mintStatus: 'FAILED',
-        },
+        data: { mintStatus: 'FAILED', mintErrorReason: errorMessage.substring(0, 255) },
       });
     } catch (dbError) {
       console.error('Failed to update land listing status to FAILED:', dbError);
     }
-    
-    return {
-      success: false,
-      error: error.message,
-    };
+    return { success: false, error: errorMessage };
   }
-}
+};
 
 // List a token for sale
 export const listTokenForSale = async (tokenId: number, price: number) => {
@@ -716,8 +1174,8 @@ export const generateLandNFTMetadata = async (landListingId: string, isMainToken
     state: landListing.state || '',
     localGovernmentArea: landListing.localGovernmentArea || '',
     propertyAreaSqm: landListing.propertyAreaSqm || 0,
-    latitude: landListing.latitude || '',
-    longitude: landListing.longitude || '',
+    latitude: landListing.latitude || 0,
+    longitude: landListing.longitude || 0,
   };
   
   // Extract property details
@@ -831,4 +1289,69 @@ export const prepareLandListingForMinting = async (landListingId: string) => {
     console.error('Error preparing land listing for minting:', error);
     throw error;
   }
+};
+
+// New function to list a collection on the marketplace
+export const listCollectionOnMarketplace = async (
+  collectionId: string, // Collection ID from PlatzLandNFTWithCollections
+  price: string,        // Listing price as a string (e.g., "0.1" for ETH)
+  currency: string,     // Currency symbol, e.g., "ETH". If ETH, paymentToken is address(0)
+  retryCount = 3
+): Promise<{ success: boolean; transactionHash: string; error?: string }> => {
+  let lastError: Error | null = null;
+  console.log(`Listing collection ${collectionId} for sale at ${price} ${currency}`);
+
+  // Validate marketplace contract address
+  if (!MARKETPLACE_CONTRACT_ADDRESS || MARKETPLACE_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+    throw new Error("Invalid marketplace contract address. Please set MARKETPLACE_CONTRACT_ADDRESS.");
+  }
+
+  for (let attempt = 0; attempt < retryCount; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`Marketplace listing attempt ${attempt + 1}/${retryCount} for collection ${collectionId}...`);
+        const delay = Math.min(2000 * Math.pow(2, attempt - 1), 10000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      const marketplaceContract = await getMarketplaceContract(); // Uses LandMarketplaceAbi.abi by default
+      
+      // Verify the contract has the listCollection function (assuming ABI is updated)
+      if (typeof marketplaceContract.listCollection !== 'function') {
+        console.error('LandMarketplaceABI might be outdated or contract at', MARKETPLACE_CONTRACT_ADDRESS, 'does not have listCollection function.');
+        throw new Error(`Marketplace contract at ${MARKETPLACE_CONTRACT_ADDRESS} does not have a listCollection function. Ensure ABI is updated after contract changes.`);
+      }
+
+      const priceInWei = ethers.parseEther(price); // Assuming price is in ETH
+      const paymentTokenAddress = currency.toUpperCase() === 'ETH' ? ethers.ZeroAddress : currency; // Placeholder for other ERC20s
+
+      console.log(`Calling listCollection on marketplace with: collectionId=${collectionId}, priceInWei=${priceInWei}, paymentToken=${paymentTokenAddress}`);
+
+      const tx = await marketplaceContract.listCollection(
+        BigInt(collectionId), // Ensure collectionId is passed as BigInt if the contract expects uint256
+        priceInWei,
+        paymentTokenAddress,
+        { gasLimit: 600000 } // Adjust gas limit as needed
+      );
+
+      console.log(`Marketplace listing transaction submitted: ${tx.hash} for collection ${collectionId}`);
+      const receipt = await tx.wait();
+      console.log(`Marketplace listing transaction confirmed in block ${receipt.blockNumber} for collection ${collectionId}`);
+      
+      // Optionally, parse logs for CollectionListed event if needed here, or handle in API route.
+      // For now, success is based on transaction confirmation.
+
+      return { success: true, transactionHash: tx.hash };
+
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`Error listing collection ${collectionId} on marketplace (attempt ${attempt + 1}):`, lastError.message);
+      if (attempt === retryCount - 1) {
+        // This was the last attempt
+        return { success: false, transactionHash: "", error: lastError.message };
+      }
+    }
+  }
+  // Should not be reached if retry logic is correct, but as a fallback:
+  return { success: false, transactionHash: "", error: lastError?.message || "Max retries reached for listing collection." };
 };

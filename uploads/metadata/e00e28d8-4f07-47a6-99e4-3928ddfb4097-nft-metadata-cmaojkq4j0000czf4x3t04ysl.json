@@ -1,0 +1,24 @@
+{
+  "name": "test",
+  "description": "test",
+  "image": "https://295d-197-210-53-77.ngrok-free.app/uploads/e21e64ca-540f-4945-b1e6-e83791bf11bd-nft-image-cmaojkq4j0000czf4x3t04ysl.jpeg",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmaojkq4j0000czf4x3t04ysl"
+    },
+    {
+      "trait_type": "Parcel Number",
+      "value": "1"
+    },
+    {
+      "trait_type": "Country",
+      "value": "Nigeria"
+    },
+    {
+      "trait_type": "Area (sqm)",
+      "value": "1"
+    }
+  ],
+  "external_url": "https://platz.com/listings/cmaojkq4j0000czf4x3t04ysl"
+}

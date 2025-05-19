@@ -1,14 +1,34 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAccount, useContractRead, usePublicClient } from 'wagmi';
+import { Abi } from 'viem';
 import { motion } from 'framer-motion';
-import { FiFilter, FiGrid, FiList, FiMap, FiSearch, FiX } from 'react-icons/fi';
-import { useAuth } from '@/context/AuthContext';
+import { FiAlertCircle, FiLoader, FiPackage, FiSearch, FiFilter, FiGrid, FiList, FiMap, FiX, FiLayers } from 'react-icons/fi';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 import AnimatedButton from '@/components/common/AnimatedButton';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import SkeletonLoader from '@/components/common/SkeletonLoader';
 import NFTImage from '@/components/nft/NFTImage';
+import { LAND_MARKETPLACE_ADDRESS, PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
+import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
+import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
+import { formatEther, decodeEventLog, createPublicClient, http, PublicClient } from 'viem';
+import { sepolia } from 'viem/chains';
+import { getLogsInChunks, safeDecodeEventLog } from '@/lib/ethereum/blockchainUtils';
+import { SEPOLIA_RPC_URLS, getPrioritizedSepoliaRpcUrl, getSepoliaClientConfig } from '@/lib/ethereum/rpcConfig';
+import CollectionsGrid from '@/components/collections/CollectionsGrid';
+import CollectionCard from '@/components/CollectionCard'; // Adjust path if needed e.g. @/components/CollectionCard
+import { CollectionDetail } from '../lib/types';
+import { fetchAndProcessCollectionDetails } from '../lib/collectionUtils';
+
+// Define the DecodedArgs interface for typed event args
+interface DecodedArgs {
+  collectionId: bigint;
+  mainTokenId: bigint;
+  creator: string;
+}
 
 // Define types for NFT collections
 interface NFTCollection {
@@ -21,8 +41,7 @@ interface NFTCollection {
   nftCollectionSize: number;
   country: string;
   state: string;
-  localGovernmentArea: string;
-  propertyAreaSqm: number;
+  localGovernmentArea: number;
   latitude: string;
   longitude: string;
   contractAddress: string;
@@ -49,6 +68,23 @@ interface NFTCollection {
   }[];
 }
 
+// Define types for CollectionDetail (returned by fetchCollectionDetails)
+
+
+// Define types for on-chain collection data
+interface OnChainCollection {
+  collectionId: bigint;
+  mainTokenId: bigint;
+  startTokenId: bigint;
+  totalSupply: bigint;
+  baseURI: string;
+  collectionURI: string;
+  creator: string;
+  isListed: boolean;
+  price?: bigint;
+  seller?: string;
+}
+
 // Define types for filter state
 interface FilterState {
   status: string;
@@ -59,12 +95,53 @@ interface FilterState {
   search: string;
 }
 
-const ExploreNFTPage = () => {
+// --- MAIN PAGE COMPONENT ---
+const ExploreNFTPage: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
-  const { address: connectedEvmAddress, isConnected: isEvmWalletConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const { address: accountAddress } = useAccount();
+
+  const fetchCollectionDetails = useCallback(async (collectionId: bigint, client: PublicClient): Promise<CollectionDetail | null> => {
+    if (!client) {
+      console.error("[ExploreNFTPage] Public client is not available.");
+      return null;
+    }
+
+    let baseUrlToUse: string;
+    if (typeof window !== 'undefined') {
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        baseUrlToUse = window.location.origin; // e.g., http://localhost:3000
+      } else {
+        // If on client but not localhost (e.g., accessed via ngrok URL directly in browser)
+        baseUrlToUse = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+      }
+    } else {
+      // Server-side or window not available
+      baseUrlToUse = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'; // Fallback for SSR if needed
+    }
+    
+    // Fallback if somehow still undefined
+    if (!baseUrlToUse) {
+      console.warn("[ExploreNFTPage] baseUrlToUse could not be determined, defaulting to NEXT_PUBLIC_BASE_URL or a hardcoded localhost.");
+      baseUrlToUse = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    }
+
+    console.log(`[ExploreNFTPage] Determined baseUrlToUse for fetching: ${baseUrlToUse}`);
+
+    return fetchAndProcessCollectionDetails(
+      collectionId,
+      client,
+      baseUrlToUse, // Use the dynamically determined base URL
+      PLATZ_LAND_NFT_ADDRESS as `0x${string}`, 
+      LAND_MARKETPLACE_ADDRESS as `0x${string}`,
+      PlatzLandNFTABI as Abi, 
+      LandMarketplaceABI as Abi 
+    );
+  }, []); // Removed publicClient from dependency array as fetchAndProcessCollectionDetails now accepts it as an argument
 
   // State for collections and loading
   const [collections, setCollections] = useState<NFTCollection[]>([]);
+  const [onChainCollections, setOnChainCollections] = useState<CollectionDetail[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -91,502 +168,151 @@ const ExploreNFTPage = () => {
   const [countries, setCountries] = useState<string[]>([]);
   const [states, setStates] = useState<string[]>([]);
 
-  // Fetch collections on mount and when filters change
-  useEffect(() => {
-    fetchCollections();
-  }, [page, filters]);
-
-  // Function to fetch collections from the API
-  const fetchCollections = async () => {
+  const loadCollections = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
-      // Build query parameters
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', page.toString());
-      queryParams.append('limit', '12'); // 12 items per page
+      if (!publicClient) {
+        console.warn('[ExploreNFTPage] Public client not available yet.');
+        setError('Blockchain connection not available.');
+        // setLoading(false); // Optional: manage loading state based on whether this is an initial load critical error
+        return;
+      }
+      console.log("Attempting to load all collection IDs...");
+      const allCollectionIds = await publicClient.readContract({
+            address: PLATZ_LAND_NFT_ADDRESS as `0x${string}`,
+        abi: PlatzLandNFTABI,
+        functionName: 'getAllCollectionIds',
+        args: [],
+      }) as bigint[];
 
-      // Add filters if they exist
-      if (filters.status) queryParams.append('status', filters.status);
-      if (filters.minPrice) queryParams.append('minPrice', filters.minPrice);
-      if (filters.maxPrice) queryParams.append('maxPrice', filters.maxPrice);
-      if (filters.country) queryParams.append('country', filters.country);
-      if (filters.state) queryParams.append('state', filters.state);
-      if (filters.search) queryParams.append('search', filters.search);
+      console.log(`Found ${allCollectionIds?.length || 0} collection IDs: ${allCollectionIds?.join(', ')}`);
 
-      // Fetch collections from the API
-      const response = await fetch(`/api/nft/collections?${queryParams.toString()}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch collections: ${response.status}`);
+      if (!allCollectionIds || allCollectionIds.length === 0) {
+        setCollections([]);
+        setLoading(false);
+        return;
       }
 
-      const data = await response.json();
+      const collectionsDetailsPromises = allCollectionIds.map(id => fetchCollectionDetails(id, publicClient));
+      const settledResults = await Promise.allSettled(collectionsDetailsPromises);
 
-      if (data.success) {
-        setCollections(data.data.collections);
-        setTotalPages(data.data.pagination.pages);
-        setTotalCollections(data.data.pagination.total);
-        
-        // Extract unique countries and states for filters
-        if (data.data.collections.length > 0) {
-          const uniqueCountries = [
-            ...new Set<string>(data.data.collections.map((c: NFTCollection) => c.country).filter((value: string | undefined): value is string => !!value))
-          ];
-          const uniqueStates = [
-            ...new Set<string>(data.data.collections.map((c: NFTCollection) => c.state).filter((value: string | undefined): value is string => !!value))
-          ];
-          
-          setCountries(uniqueCountries);
-          setStates(uniqueStates);
+      const fetchedOnChainCollections: CollectionDetail[] = [];
+      settledResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          fetchedOnChainCollections.push(result.value);
+        } else if (result.status === 'rejected') {
+          console.error(`Failed to fetch details for collection ID ${allCollectionIds[index]}:`, result.reason);
         }
-      } else {
-        setError(data.message || 'Failed to fetch collections');
-      }
-    } catch (err: any) {
-      console.error('Error fetching collections:', err);
-      setError(err.message || 'An error occurred while fetching collections');
-    } finally {
-      setLoading(false);
+      });
+      
+      console.log(`Loaded ${fetchedOnChainCollections.length} collections from chain.`, fetchedOnChainCollections);
+      setOnChainCollections(fetchedOnChainCollections.sort((a, b) => Number(b.collectionId) - Number(a.collectionId))); // Sort here if onChainCollections should be sorted
+
+      const transformedCollections: NFTCollection[] = fetchedOnChainCollections.map(detail => {
+        return {
+          id: detail.collectionId.toString(),
+          collectionId: detail.collectionId.toString(),
+          nftTitle: detail.name,
+          nftDescription: detail.description,
+          nftImageFileRef: detail.image,
+          isListedForSale: detail.isListed,
+          listingPrice: detail.price ? parseFloat(formatEther(detail.price)) : 0,
+          listingPriceEth: detail.price ? parseFloat(formatEther(detail.price)) : 0,
+          priceCurrency: 'ETH',
+          mainTokenId: detail.mainTokenId.toString(),
+          metadataUri: detail.collectionURI,
+          evmOwnerAddress: detail.seller || detail.creator, // Prefer seller if listed
+          contractAddress: PLATZ_LAND_NFT_ADDRESS, 
+          nftCollectionSize: Number(detail.totalSupply),
+          // Default/placeholder values for fields not in CollectionDetail
+          country: 'N/A',
+          state: 'N/A',
+          localGovernmentArea: 0,
+          latitude: '0',
+          longitude: '0',
+          mintTransactionHash: 'N/A',
+          mintTimestamp: new Date().toISOString(), 
+          createdAt: new Date().toISOString(), 
+          user: { 
+            id: detail.creator, 
+            username: 'Unknown User', 
+            evmAddress: detail.creator 
+          },
+          evmCollectionTokens: [], 
+        };
+      });
+
+      setCollections(transformedCollections.sort((a, b) => Number(b.collectionId) - Number(a.collectionId)));
+    } catch (e: any) {
+      console.error('Error loading collections:', e);
+      setError(e.message || 'Failed to load collections.');
     }
-  };
+    setLoading(false);
+  }, [publicClient]);
 
-  // Function to handle filter changes
-  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-    setPage(1); // Reset to first page when filters change
-  };
+  useEffect(() => {
+    loadCollections();
+  }, [loadCollections]);
 
-  // Function to clear filters
-  const clearFilters = () => {
-    setFilters({
-      status: '',
-      minPrice: '',
-      maxPrice: '',
-      country: '',
-      state: '',
-      search: '',
-    });
-    setPage(1);
-  };
-
-  // Function to handle search
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-  };
-
-  // Function to purchase an NFT
-  const handlePurchase = async (collectionId: string, tokenId: string) => {
-    if (!isEvmWalletConnected) {
-      alert('Please connect your Ethereum wallet to purchase NFTs');
-      return;
-    }
-
-    // Implementation for purchasing NFT will go here
-    // This would involve calling the smart contract's purchase function
-    alert(`Purchase functionality will be implemented in a future update. Collection: ${collectionId}, Token: ${tokenId}`);
-  };
-
-  // Render loading state
-  if (loading && collections.length === 0) {
+  if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <LoadingSpinner size="xl" />
+      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
+        <LoadingSpinner size={60} />
+        <p className="ml-4 mt-4 text-xl text-gray-600 dark:text-gray-300">Loading Collections...</p>
       </div>
     );
   }
 
-  // Render error state
-  if (error && collections.length === 0) {
+  if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-red-800 dark:text-red-200 mb-2">Error</h2>
-          <p className="text-red-700 dark:text-red-300">{error}</p>
-          <button
-            onClick={fetchCollections}
-            className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
-          >
-            Retry
-          </button>
-        </div>
+      <div className="container mx-auto py-8 px-4 text-center min-h-[calc(100vh-200px)] flex flex-col justify-center items-center">
+        <FiAlertCircle className="text-red-500 text-5xl mx-auto mb-4" />
+        <p className="text-red-500 text-xl mb-4">Error: {error}</p>
+        <AnimatedButton onClick={loadCollections} className="bg-blue-500 hover:bg-blue-600 text-white">
+          <FiLoader className="mr-2" /> Retry
+        </AnimatedButton>
+      </div>
+    );
+  }
+
+  if (collections.length === 0) {
+    return (
+      <div className="container mx-auto py-8 px-4 text-center min-h-[calc(100vh-200px)] flex flex-col justify-center items-center">
+        <FiPackage className="text-gray-400 dark:text-gray-500 text-6xl mx-auto mb-6" />
+        <p className="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-3">No Collections Found</p>
+        <p className="text-gray-500 dark:text-gray-400 mb-8">It looks like there are no NFT collections available at the moment.</p>
+        <Link href="/create-land-listing" passHref>
+          <AnimatedButton className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 text-lg">
+            Create New Listing
+          </AnimatedButton>
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-text-light dark:text-text-dark mb-3">Explore Land NFT Collections</h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-3xl">
-          Browse and purchase tokenized land properties on the Ethereum Sepolia testnet. Each collection contains 1 main NFT and 99 fractional ownership tokens.
-        </p>
+    <div className="container mx-auto py-12 px-4 md:px-6 lg:px-8">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-10">
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white mb-4 md:mb-0">
+          Explore Land Collections
+        </h1>
+        {/* Optional: Add search/filter controls here later */}
       </div>
 
-      {/* Search and Filter Bar */}
-      <div className="mb-8 bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 p-4">
-        <div className="flex flex-col md:flex-row justify-between gap-4">
-          {/* Search Form */}
-          <form onSubmit={handleSearch} className="flex-1">
-            <div className="relative">
-              <input
-                type="text"
-                name="search"
-                value={filters.search}
-                onChange={handleFilterChange}
-                placeholder="Search by title or description..."
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-            </div>
-          </form>
-
-          {/* View Mode Toggles */}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800'}`}
-              aria-label="Grid view"
-            >
-              <FiGrid size={20} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800'}`}
-              aria-label="List view"
-            >
-              <FiList size={20} />
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`p-2 rounded-lg ${viewMode === 'map' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800'}`}
-              aria-label="Map view"
-            >
-              <FiMap size={20} />
-            </button>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`p-2 rounded-lg ${showFilters ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800'}`}
-              aria-label="Toggle filters"
-            >
-              <FiFilter size={20} />
-            </button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        {showFilters && (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
+        {collections.map((collection) => (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800"
+            key={collection.collectionId.toString()}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }} // Slightly faster animation
+            className="w-full" 
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <div>
-                <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-                <select
-                  id="status"
-                  name="status"
-                  value={filters.status}
-                  onChange={handleFilterChange}
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="SOLD">Sold</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="minPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Min Price (ETH)</label>
-                <input
-                  type="number"
-                  id="minPrice"
-                  name="minPrice"
-                  value={filters.minPrice}
-                  onChange={handleFilterChange}
-                  min="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Price (ETH)</label>
-                <input
-                  type="number"
-                  id="maxPrice"
-                  name="maxPrice"
-                  value={filters.maxPrice}
-                  onChange={handleFilterChange}
-                  min="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="country" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Country</label>
-                <select
-                  id="country"
-                  name="country"
-                  value={filters.country}
-                  onChange={handleFilterChange}
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All Countries</option>
-                  {countries.map(country => (
-                    <option key={country} value={country}>{country}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="state" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State/Province</label>
-                <select
-                  id="state"
-                  name="state"
-                  value={filters.state}
-                  onChange={handleFilterChange}
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All States</option>
-                  {states.map(state => (
-                    <option key={state} value={state}>{state}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={clearFilters}
-                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex items-center"
-              >
-                <FiX className="mr-1" /> Clear Filters
-              </button>
-            </div>
+            <CollectionCard collection={collection} />
           </motion.div>
-        )}
+        ))}
       </div>
-
-      {/* Results Count */}
-      <div className="mb-6 flex justify-between items-center">
-        <p className="text-gray-600 dark:text-gray-400">
-          Showing {collections.length} of {totalCollections} collections
-        </p>
-      </div>
-
-      {/* Collections Grid */}
-      {viewMode === 'grid' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {collections.map((collection, index) => (
-            <motion.div
-              key={collection.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden"
-            >
-              <div className="relative h-48 bg-gray-200 dark:bg-zinc-800">
-                <NFTImage
-                  imageRef={collection.nftImageFileRef}
-                  alt={collection.nftTitle || 'NFT Image'}
-                  priority={index < 6} // Prioritize loading first 6 images
-                />
-                <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                  {collection.nftCollectionSize} NFTs
-                </div>
-              </div>
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 truncate">
-                  {collection.nftTitle || 'Untitled Collection'}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                  {collection.nftDescription || 'No description provided'}
-                </p>
-                <div className="flex justify-between items-center mb-3">
-                  <div className="text-sm text-gray-500 dark:text-gray-500">
-                    {collection.country && collection.state ? `${collection.country}, ${collection.state}` : 'Location not specified'}
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {collection.listingPriceEth} ETH
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Link
-                    href={`/explore/${collection.id}`}
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-lg text-sm font-medium"
-                  >
-                    View Details
-                  </Link>
-                  {collection.isListedForSale && (
-                    <button
-                      onClick={() => handlePurchase(collection.id, collection.mainTokenId)}
-                      className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-center rounded-lg text-sm font-medium"
-                    >
-                      Purchase
-                    </button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* Collections List */}
-      {viewMode === 'list' && (
-        <div className="space-y-4">
-          {collections.map((collection, index) => (
-            <motion.div
-              key={collection.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden"
-            >
-              <div className="flex flex-col md:flex-row">
-                <div className="md:w-48 h-48 bg-gray-200 dark:bg-zinc-800 flex-shrink-0">
-                  <NFTImage
-                    imageRef={collection.nftImageFileRef}
-                    alt={collection.nftTitle || 'NFT Image'}
-                    priority={index < 3} // Prioritize loading first 3 list images
-                  />
-                </div>
-                <div className="p-4 flex-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        {collection.nftTitle || 'Untitled Collection'}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {collection.nftDescription || 'No description provided'}
-                      </p>
-                    </div>
-                    <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                      {collection.listingPriceEth} ETH
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-500">Location</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {collection.country && collection.state ? `${collection.country}, ${collection.state}` : 'Location not specified'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-500">Area</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {collection.propertyAreaSqm ? `${collection.propertyAreaSqm} sqm` : 'Not specified'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-500">Collection Size</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {collection.nftCollectionSize} NFTs
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Link
-                      href={`/explore/${collection.id}`}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-lg text-sm font-medium"
-                    >
-                      View Details
-                    </Link>
-                    {collection.isListedForSale && (
-                      <button
-                        onClick={() => handlePurchase(collection.id, collection.mainTokenId)}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-center rounded-lg text-sm font-medium"
-                      >
-                        Purchase
-                      </button>
-                    )}
-                    <a
-                      href={`https://sepolia.etherscan.io/token/${collection.contractAddress}?a=${collection.mainTokenId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-800 dark:text-gray-200 text-center rounded-lg text-sm font-medium"
-                    >
-                      View on Etherscan
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* Map View */}
-      {viewMode === 'map' && (
-        <div className="bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden h-[600px] flex items-center justify-center">
-          <p className="text-gray-500 dark:text-gray-400">
-            Map view will be implemented in a future update.
-          </p>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {collections.length === 0 && !loading && (
-        <div className="bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 p-8 text-center">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Collections Found</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            There are no NFT collections matching your criteria.
-          </p>
-          <button
-            onClick={clearFilters}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
-          >
-            Clear Filters
-          </button>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-8 flex justify-center">
-          <nav className="flex items-center space-x-2">
-            <button
-              onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className={`px-3 py-1 rounded-md ${
-                page === 1
-                  ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-200 dark:bg-zinc-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-zinc-600'
-              }`}
-            >
-              Previous
-            </button>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
-              <button
-                key={pageNum}
-                onClick={() => setPage(pageNum)}
-                className={`px-3 py-1 rounded-md ${
-                  page === pageNum
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-zinc-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-zinc-600'
-                }`}
-              >
-                {pageNum}
-              </button>
-            ))}
-            
-            <button
-              onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={page === totalPages}
-              className={`px-3 py-1 rounded-md ${
-                page === totalPages
-                  ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-200 dark:bg-zinc-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-zinc-600'
-              }`}
-            >
-              Next
-            </button>
-          </nav>
-        </div>
-      )}
     </div>
   );
 };

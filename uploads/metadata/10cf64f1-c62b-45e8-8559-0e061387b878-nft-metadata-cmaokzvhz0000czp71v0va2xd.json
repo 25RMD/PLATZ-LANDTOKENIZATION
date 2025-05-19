@@ -1,0 +1,24 @@
+{
+  "name": "Serene Hilltop plot #1",
+  "description": "test",
+  "image": "https://295d-197-210-53-77.ngrok-free.app/uploads/18cc6ef0-1f85-4003-81fc-579e9b27864f-nft-image-cmaokzvhz0000czp71v0va2xd.jpeg",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmaokzvhz0000czp71v0va2xd"
+    },
+    {
+      "trait_type": "Parcel Number",
+      "value": "2"
+    },
+    {
+      "trait_type": "Country",
+      "value": "South Africa"
+    },
+    {
+      "trait_type": "Area (sqm)",
+      "value": "1"
+    }
+  ],
+  "external_url": "https://platz.com/listings/cmaokzvhz0000czp71v0va2xd"
+}

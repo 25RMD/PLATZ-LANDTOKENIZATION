@@ -1,45 +1,62 @@
-import { ethers } from "hardhat";
+import hre from "hardhat";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from 'url';
 
 async function main() {
-  console.log("Deploying PlatzLandNFT contract...");
+  const [deployer] = await hre.ethers.getSigners();
+  console.log("Deploying contracts with the account:", deployer.address);
 
-  // Deploy the contract
-  const PlatzLandNFT = await ethers.getContractFactory("PlatzLandNFT");
-  const platzLandNFT = await PlatzLandNFT.deploy();
-
+  // Deploy PlatzLandNFT contract
+  const PlatzLandNFT = await hre.ethers.getContractFactory("PlatzLandNFT");
+  const platzLandNFT = await PlatzLandNFT.deploy(deployer.address);
   await platzLandNFT.waitForDeployment();
 
-  const contractAddress = await platzLandNFT.getAddress();
-  console.log(`PlatzLandNFT deployed to: ${contractAddress}`);
+  const platzLandNFTAddress = await platzLandNFT.getAddress();
+  console.log("PlatzLandNFT deployed to:", platzLandNFTAddress);
 
-  // Save the contract address and ABI to a file for frontend use
-  const contractsDir = path.join(__dirname, "..", "lib", "contracts");
+  // Deploy LandMarketplace contract
+  const LandMarketplace = await hre.ethers.getContractFactory("LandMarketplace");
+  const landMarketplace = await LandMarketplace.deploy(deployer.address);
+  await landMarketplace.waitForDeployment();
+
+  const landMarketplaceAddress = await landMarketplace.getAddress();
+  console.log("LandMarketplace deployed to:", landMarketplaceAddress);
+
+  console.log("Deployment complete!");
+  
+  // Optionally, save the contract addresses
+  try {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const contractsDir = path.join(__dirname, '..', 'contract-addresses');
   
   if (!fs.existsSync(contractsDir)) {
     fs.mkdirSync(contractsDir, { recursive: true });
   }
 
-  // Save contract address
   fs.writeFileSync(
-    path.join(contractsDir, "contract-address.json"),
-    JSON.stringify({ PlatzLandNFT: contractAddress }, null, 2)
+      path.join(contractsDir, 'contracts.json'),
+      JSON.stringify(
+        {
+          PlatzLandNFT: platzLandNFTAddress,
+          LandMarketplace: landMarketplaceAddress,
+        },
+        null,
+        2
+      )
   );
 
-  // Save contract ABI
-  const artifact = require("../artifacts/contracts/PlatzLandNFT.sol/PlatzLandNFT.json");
-  fs.writeFileSync(
-    path.join(contractsDir, "PlatzLandNFT.json"),
-    JSON.stringify(artifact, null, 2)
-  );
-
-  console.log("Contract address and ABI saved to lib/contracts/");
+    console.log('Contract addresses saved to contract-addresses/contracts.json');
+  } catch (error) {
+    console.log('Failed to save contract addresses:', error);
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
-main().catch((error) => {
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+    process.exit(1);
 });

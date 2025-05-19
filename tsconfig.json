@@ -1,27 +1,41 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "target": "ES2020", // For async/await and private fields
+    "module": "CommonJS", // Required by Hardhat
+    "moduleResolution": "node", // Resolve node modules
+    "esModuleInterop": true, // Fix fs/path import errors
+    "skipLibCheck": true, // Skip broken type defs
     "resolveJsonModule": true,
+    "strict": true,
+    "outDir": "dist", // Optional: compiled output
+    "noEmit": false, // Required to emit .js if compiling
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "incremental": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "incremental": true,
     "plugins": [
       {
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "hardhat.config.ts",
+    "scripts",
+    "test",
+    "typechain-types",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

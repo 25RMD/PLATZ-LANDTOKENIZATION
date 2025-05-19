@@ -1,0 +1,24 @@
+{
+  "name": "Serene Hilltop plot #1",
+  "description": "TEST",
+  "image": "https://295d-197-210-53-77.ngrok-free.app/uploads/b18cce4a-522c-4b46-ba32-711d8ec72f5e-nft-image-cmaoi8v8y0000czflwripvzpf.png",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmaoi8v8y0000czflwripvzpf"
+    },
+    {
+      "trait_type": "Parcel Number",
+      "value": "2424242"
+    },
+    {
+      "trait_type": "Country",
+      "value": "Nigeria"
+    },
+    {
+      "trait_type": "Area (sqm)",
+      "value": "2"
+    }
+  ],
+  "external_url": "https://platz.com/listings/cmaoi8v8y0000czflwripvzpf"
+}

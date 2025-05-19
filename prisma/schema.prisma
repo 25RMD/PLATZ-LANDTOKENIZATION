@@ -29,23 +29,23 @@ model Property {
 }
 
 model NFT {
-  id            String       @id @default(cuid())
-  name          String
-  itemNumber    Int
-  image         String
-  price         Float
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  propertyId    String?      
-  ownerId       String?      
-  isListed      Boolean      @default(false)
-  landListingId String?      @map("land_listing_id")
-  landListing   LandListing? @relation("LandListingToNFTs", fields: [landListingId], references: [id], onDelete: Cascade)
-  owner         User?        @relation(fields: [ownerId], references: [id])
-  property      Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  offers        Offer[]
-  trades        Trade[]
+  id                  String               @id @default(cuid())
+  name                String
+  itemNumber          Int
+  image               String
+  price               Float
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  propertyId          String?
+  ownerId             String?
+  isListed            Boolean              @default(false)
+  landListingId       String?              @map("land_listing_id")
   evmCollectionTokens EvmCollectionToken[]
+  landListing         LandListing?         @relation("LandListingToNFTs", fields: [landListingId], references: [id], onDelete: Cascade)
+  owner               User?                @relation("UserOwnedNFTs", fields: [ownerId], references: [id])
+  property            Property?            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  offers              Offer[]
+  trades              Trade[]
 
   @@unique([propertyId, itemNumber])
   @@index([propertyId])
@@ -75,14 +75,20 @@ model User {
   govIdType         String?            @map("gov_id_type") @db.VarChar(50)
   kycVerified       Boolean            @default(false) @map("kyc_verified")
   phone             String?            @db.VarChar(20)
-  sofDocRef         String?            @map("sof_doc_ref")
+  authType          String             @default("email") @map("auth_type") @db.VarChar(20)
   isAdmin           Boolean            @default(false) @map("is_admin")
+  walletAddress     String?            @unique @map("wallet_address") @db.VarChar(42)
+  accounts          Account[]
+  sessions          Session[]
   kycUpdateRequests KycUpdateRequest[]
   landListings      LandListing[]
-  nfts              NFT[]
+  nftBids           NftBid[]
+  ownedNfts         NFT[]              @relation("UserOwnedNFTs")
   offersMade        Offer[]            @relation("OffersMade")
+  offersReceived    Offer[]
   properties        Property[]
   tradesBought      Trade[]            @relation("TradesBought")
+  tradesCreated     Trade[]            @relation("TradesCreated")
   tradesSold        Trade[]            @relation("TradesSold")
   watchlist         Watchlist[]        @relation("UserWatchlist")
 
@@ -116,8 +122,10 @@ model Offer {
   expiresAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  userId    String?
   nft       NFT       @relation(fields: [nftId], references: [id], onDelete: Cascade)
   offerer   User      @relation("OffersMade", fields: [offererId], references: [id], onDelete: Cascade)
+  User      User?     @relation(fields: [userId], references: [id])
 
   @@index([nftId])
   @@index([offererId])
@@ -132,7 +140,9 @@ model Trade {
   sellerId  String
   price     Float
   timestamp DateTime @default(now())
+  creatorId String?
   buyer     User     @relation("TradesBought", fields: [buyerId], references: [id], onDelete: Cascade)
+  creator   User?    @relation("TradesCreated", fields: [creatorId], references: [id])
   nft       NFT      @relation(fields: [nftId], references: [id], onDelete: Cascade)
   seller    User     @relation("TradesSold", fields: [sellerId], references: [id], onDelete: Cascade)
 
@@ -140,6 +150,7 @@ model Trade {
   @@index([buyerId])
   @@index([sellerId])
   @@index([timestamp])
+  @@index([creatorId])
   @@map("trades")
 }
 
@@ -148,8 +159,8 @@ model Watchlist {
   userId       String
   collectionId String
   createdAt    DateTime    @default(now())
-  user         User        @relation("UserWatchlist", fields: [userId], references: [id], onDelete: Cascade)
   collection   LandListing @relation("WatchlistedCollections", fields: [collectionId], references: [id], onDelete: Cascade)
+  user         User        @relation("UserWatchlist", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, collectionId])
   @@index([userId])
@@ -158,116 +169,92 @@ model Watchlist {
 }
 
 model LandListing {
-  id                     String      @id @default(cuid())
-  userId                 String
-  titleDeedFileRef       String?     @map("title_deed_file_ref")
-  deedNumber             String?
-  deedType               String?
-  grantorName            String?
-  granteeName            String?
-  deedDate               DateTime?   @db.Date
-  titleCertFileRef       String?     @map("title_cert_file_ref")
-  certNumber             String?
-  certIssueDate          DateTime?   @db.Date
-  certExpiryDate         DateTime?   @db.Date
-  encumbranceFileRef     String?     @map("encumbrance_file_ref")
-  encumbranceId          String?
-  encumbrancePeriodStart DateTime?   @db.Date
-  encumbrancePeriodEnd   DateTime?   @db.Date
-  parcelNumber           String?
-  registryVolume         String?
-  registryPage           String?
-  surveyPlanFileRef      String?     @map("survey_plan_file_ref")
-  surveyPlanNumber       String?
-  surveyDate             DateTime?   @db.Date
-  country                String?     @map("country")
-  state                  String?     @map("state")
-  localGovernmentArea    String?     @map("local_government_area")
-  propertyAreaSqm        Float?      @map("property_area_sqm")
-  latitude               String?
-  longitude              String?
-  gisFileRef             String?     @map("gis_file_ref")
-  ownerName              String?
-  govIdNumber            String?
-  idIssueDate            DateTime?   @db.Date
-  idExpiryDate           DateTime?   @db.Date
-  idDocumentFileRef      String?     @map("id_document_file_ref")
-  addressProofFileRef    String?     @map("address_proof_file_ref")
-  kycStatus              String?     @default("PENDING")
-  titleSearchFileRef     String?     @map("title_search_file_ref")
-  titleOpinionFileRef    String?     @map("title_opinion_file_ref")
-  recordedInstruments    String?
-  docHash                String? // Existing, keeping for now
-  ipfsUri                String? // Existing, will be superseded by metadataUri for on-chain metadata
-  // Removed mintTimestamp to avoid duplication with Ethereum fields
-  tokenId                String? // Existing, might be superseded by mintAddress
-  propertyDescription    String?
-  propertyPhotosFileRef  String[]    @map("property_photos_file_ref")
-  propertyValuation      String?     @map("property_valuation")
-  propertyValuationFileRef String?   @map("property_valuation_file_ref")
-  valuationDate          DateTime?   @db.Date
-  zoningClassification   String?
-  zoningComplianceFileRef String?    @map("zoning_compliance_file_ref")
-  additionalNotes        String?
-  status                 String?     @default("DRAFT") // Example: DRAFT, ACTIVE, SOLD, DELISTED
-  nftTitle               String?     @map("nft_title")
-  nftDescription         String?
-  listingPrice           Decimal?    @db.Decimal(18, 8)
-  priceCurrency          String?     @default("SOL")
-  nftImageFileRef        String?     @map("nft_image_file_ref")
-  nftCollectionSize      Int?        @default(100) @map("nft_collection_size") // Typically 1 for a unique NFT
-  slug                   String?     @unique
-
-  // --- Ethereum NFT Integration Fields ---
-  contractAddress        String?
-  collectionId           BigInt? // Changed from Int?
-  mainTokenId            BigInt? // Changed from Int?
-  metadataUri            String? // For collection-level metadata
-  evmOwnerAddress        String?     @map("evm_owner_address") // Current owner's Ethereum address
-  isListedForSale        Boolean     @default(false) @map("is_listed_for_sale")
-  listingPriceEth        Float?      @map("listing_price_eth") // Price in ETH if listed on our platform
-  mintTransactionHash    String?     @map("mint_transaction_hash") // Transaction hash of the mint transaction
-  mintTimestamp          DateTime?   @map("mint_timestamp") // When the NFT was minted
-  mintStatus             String?     @default("NOT_STARTED") @map("mint_status") // NOT_STARTED, PENDING, COMPLETED, FAILED
-  // --- End Ethereum NFT Integration Fields ---
-
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
-
-  individualNfts         NFT[]       @relation("LandListingToNFTs")
-  watchlistedBy          Watchlist[] @relation("WatchlistedCollections")
-  evmCollectionTokens    EvmCollectionToken[]
-  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String               @id @default(cuid())
+  userId               String
+  titleDeedFileRef     String?              @map("title_deed_file_ref")
+  deedNumber           String?
+  deedType             String?
+  grantorName          String?
+  granteeName          String?
+  deedDate             DateTime?            @db.Date
+  titleCertFileRef     String?              @map("title_cert_file_ref")
+  certNumber           String?
+  certIssueDate        DateTime?            @map("cert_issue_date") @db.Date
+  legalDescription     String?              @map("legal_description")
+  parcelNumber         String?              @map("parcel_number")
+  propertyAddress      String?              @map("property_address")
+  city                 String?
+  state                String?
+  zipCode              String?              @map("zip_code")
+  country              String?
+  latitude             Float?
+  longitude            Float?
+  propertyType         String?              @map("property_type")
+  propertyAreaSqm      Float?               @map("property_area_sqm")
+  propertyDescription  String?              @map("property_description")
+  listingTitle         String?              @map("listing_title")
+  listingPrice         Float?               @map("listing_price")
+  priceCurrency        String?              @map("price_currency")
+  status               String               @default("DRAFT")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+  mintStatus           String?              @map("mint_status")
+  mintErrorReason      String?              @map("mint_error_reason")
+  mintTimestamp        DateTime?            @map("mint_timestamp")
+  mintTransactionHash  String?              @map("mint_transaction_hash")
+  tokenId              Int?                 @map("token_id")
+  contractAddress      String?              @map("contract_address")
+  collectionId         String?              @unique @map("collection_id")
+  mainTokenId          String?              @map("main_token_id")
+  collectionNftTitle   String?              @map("collection_nft_title")
+  collectionMetadataUrl String?             @map("collection_metadata_url")
+  mainTokenMetadataUrl String?              @map("main_token_metadata_url")
+  childTokensBaseUrl   String?              @map("child_tokens_base_url")
+  slug                 String?              @unique
+  coverImageUrl        String?              @map("cover_image_url")
+  nftDescription       String?              @map("nft_description")
+  nftTitle             String?              @map("nft_title")
+  nftImageFileRef      String?              @map("nft_image_file_ref")
+  nftCollectionSize    Int?                 @map("nft_collection_size") @default(10)
+  marketplaceListingId Int?                 @map("marketplace_listing_id")
+  marketplaceTransactionHash String?         @map("marketplace_transaction_hash")
+  marketplaceListingError String?           @map("marketplace_listing_error")
+  nftImageIrysUri      String?              @map("nft_image_irys_uri")
+  nftMetadataIrysUri   String?              @map("nft_metadata_irys_uri")
+  localGovernmentArea  String?              @map("local_government_area")
+  propertyValuation    String?              @map("property_valuation")
+  zoningClassification String?              @map("zoning_classification")
+  evmCollectionTokens  EvmCollectionToken[] @relation("LandListingTokens")
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nfts                 NFT[]                @relation("LandListingToNFTs")
+  watchlist            Watchlist[]          @relation("WatchlistedCollections")
+  nftBids              NftBid[]
+  transactions         NftTransaction[]
 
   @@index([userId])
-  @@index([contractAddress])
-  @@index([collectionId])
-  @@index([mainTokenId])
-  @@index([evmOwnerAddress])
-  @@index([isListedForSale])
+  @@index([status])
   @@index([mintStatus])
   @@map("land_listings")
 }
 
 model EvmCollectionToken {
-  id                String       @id @default(cuid())
-  landListingId     String       @map("land_listing_id")
-  nftId             String?      @map("nft_id")
-  tokenId           Int          @map("token_id")
-  isMainToken       Boolean      @default(false) @map("is_main_token")
-  tokenURI          String       @map("token_uri")
-  ownerAddress      String?      @map("owner_address")
-  mintTransactionHash String?    @map("mint_transaction_hash")
-  mintTimestamp     DateTime?    @map("mint_timestamp")
-  mintStatus        String       @default("NOT_STARTED") @map("mint_status") // NOT_STARTED, PENDING, COMPLETED, FAILED
-  isListed          Boolean      @default(false) @map("is_listed")
-  listingPrice      Float?       @map("listing_price")
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  
-  landListing       LandListing  @relation(fields: [landListingId], references: [id], onDelete: Cascade)
-  nft               NFT?         @relation(fields: [nftId], references: [id], onDelete: SetNull)
-  
+  id                  String      @id @default(cuid())
+  landListingId       String      @map("land_listing_id")
+  nftId               String?     @map("nft_id")
+  tokenId             Int         @map("token_id")
+  isMainToken         Boolean     @default(false) @map("is_main_token")
+  tokenURI            String      @map("token_uri")
+  ownerAddress        String?     @map("owner_address")
+  mintTransactionHash String?     @map("mint_transaction_hash")
+  mintTimestamp       DateTime?   @map("mint_timestamp")
+  mintStatus          String      @default("NOT_STARTED") @map("mint_status")
+  isListed            Boolean     @default(false) @map("is_listed")
+  listingPrice        Float?      @map("listing_price")
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  landListing         LandListing @relation("LandListingTokens", fields: [landListingId], references: [id], onDelete: Cascade)
+  nft                 NFT?        @relation(fields: [nftId], references: [id])
+
   @@index([landListingId])
   @@index([nftId])
   @@index([tokenId])
@@ -276,4 +263,71 @@ model EvmCollectionToken {
   @@index([mintStatus])
   @@index([isListed])
   @@map("evm_collection_tokens")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NftBid {
+  id              String      @id @default(cuid())
+  landListingId   String      @map("land_listing_id")
+  bidderUserId    String      @map("bidder_user_id")
+  bidAmount       Float       @map("bid_amount")
+  bidStatus       String      @map("bid_status") @db.VarChar(20)
+  transactionHash String?     @map("transaction_hash") @db.VarChar(66)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  bidder          User        @relation(fields: [bidderUserId], references: [id])
+  landListing     LandListing @relation(fields: [landListingId], references: [id])
+
+  @@map("nft_bids")
+}
+
+model NftTransaction {
+  id              String      @id @default(cuid())
+  landListingId   String      @map("land_listing_id")
+  tokenId         Int         @map("token_id")
+  fromAddress     String      @map("from_address") @db.VarChar(42)
+  toAddress       String      @map("to_address") @db.VarChar(42)
+  price           Float
+  transactionHash String      @map("transaction_hash") @db.VarChar(66)
+  transactionType String      @map("transaction_type") @db.VarChar(20)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  landListing     LandListing @relation(fields: [landListingId], references: [id])
+
+  @@map("nft_transactions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }

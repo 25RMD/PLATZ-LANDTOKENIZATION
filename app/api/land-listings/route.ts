@@ -37,10 +37,55 @@ const saveFile = async (file: File): Promise<string> => {
   return uniqueFilename;
 };
 
+// Helper function to filter out undefined fields or fields that don't exist in the schema
+const filterValidFields = (data: any): any => {
+  // Define all valid fields from the LandListing schema based on the Prisma schema
+  const validFields = [
+    'id', 'userId', 'titleDeedFileRef', 'deedNumber', 'deedType', 'grantorName', 'granteeName', 
+    'deedDate', 'titleCertFileRef', 'certNumber', 'certIssueDate', 'legalDescription', 
+    'parcelNumber', 'propertyAddress', 'city', 'state', 'zipCode', 'country', 'latitude', 
+    'longitude', 'propertyType', 'propertyAreaSqm', 'propertyDescription', 'listingTitle', 
+    'listingPrice', 'priceCurrency', 'status', 'createdAt', 'updatedAt', 
+    'coverImageUrl', 'title', 'tokenId', 'mintStatus', 
+    'mintTransactionHash', 'mintErrorReason', 'nftImageIrysUri', 'nftMetadataIrysUri', 
+    'marketplaceListingId', 'user', 'localGovernmentArea', 'propertyValuation', 
+    'zoningClassification', 'nftTitle', 'nftDescription', 'nftImageFileRef', 'nftCollectionSize',
+    'marketplaceListingError', 'contractAddress', 'collectionId', 'mainTokenId', 'metadataUri', 'slug'
+  ];
+  
+  // Create a new object with only valid fields
+  const filteredData: any = {};
+  
+  for (const [key, value] of Object.entries(data)) {
+    if (validFields.includes(key) && value !== undefined) {
+      filteredData[key] = value;
+    }
+  }
+  
+  // Preserve special fields like 'user' relation that need to maintain their structure
+  if (data.user) {
+    filteredData.user = data.user;
+  }
+  
+  return filteredData;
+};
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    console.log("Received FormData keys:", Array.from((formData as any).keys())); // Log incoming FormData keys
+    // console.log("Received FormData keys:", Array.from(((formData as any) as any).keys())); // Log incoming FormData keys
+
+    // --- For development: Explicitly check for NFT Title and Image --- 
+    const nftTitleForCheck = (formData as any).get('nftTitle') as string | null;
+    const nftImageFileForCheck = (formData as any).get('nftImageFile') as File | null;
+
+    if (!nftTitleForCheck || !nftImageFileForCheck) {
+      return NextResponse.json({
+        error: 'For development, NFT Title and NFT Image are required to create a basic listing.',
+        // success: false, // Kept consistent with other error responses
+      }, { status: 400 });
+    }
+    // --- End of development check ---
 
     // --- User Authentication ---
     // For development purposes, we'll use a hardcoded user ID if no authentication is present
@@ -58,13 +103,13 @@ export async function POST(req: NextRequest) {
     }
 
     // --- File Handling ---
-    const titleDeedFile = getFile(formData, 'titleDeedFile');
-    const titleCertFile = getFile(formData, 'titleCertFile');
-    const encumbranceFile = getFile(formData, 'encumbranceFile');
-    const surveyPlanFile = getFile(formData, 'surveyPlanFile');
-    const gisFile = getFile(formData, 'gisFile');
-    const idDocumentFile = getFile(formData, 'idDocumentFile');
-    const nftImageFile = getFile(formData, 'nftImageFile');
+    const titleDeedFile = (formData as any).get('titleDeedFile') as File | null;
+    const titleCertFile = (formData as any).get('titleCertFile') as File | null;
+    const encumbranceFile = (formData as any).get('encumbranceFile') as File | null;
+    const surveyPlanFile = (formData as any).get('surveyPlanFile') as File | null;
+    const gisFile = (formData as any).get('gisFile') as File | null;
+    const idDocumentFile = (formData as any).get('idDocumentFile') as File | null;
+    const nftImageFile = (formData as any).get('nftImageFile') as File | null;
 
     let nftMintAddress: string | null = null;
     let nftMetadataUri: string | null = null;
@@ -84,8 +129,8 @@ export async function POST(req: NextRequest) {
     if (nftImageFile) savedFiles.nftImageFileRef = await saveFile(nftImageFile);
 
     // --- NFT Minting Process ---
-    const nftTitle = getString(formData, 'nftTitle');
-    const nftDescription = getString(formData, 'nftDescription');
+    const nftTitle = nftTitleForCheck;
+    const nftDescription = (formData as any).get('nftDescription') as string | null;
     let ownerEthAddressForDb: string | null = null; // Variable to store the Ethereum address used for minting
 
     if (nftImageFile && nftTitle) {
@@ -137,79 +182,53 @@ export async function POST(req: NextRequest) {
     // Create a base data object without the user relation
     const baseData: Omit<Prisma.LandListingCreateInput, 'user'> = {
       // Land Details
-      parcelNumber: getString(formData, 'parcelNumber'),
-      registryVolume: getString(formData, 'registryVolume'),
-      registryPage: getString(formData, 'registryPage'),
-      surveyPlanNumber: getString(formData, 'surveyPlanNumber'),
-      surveyDate: getString(formData, 'surveyDate') ? new Date(getString(formData, 'surveyDate')!) : null,
-      // Store latitude and longitude directly as they exist in the schema
-      latitude: getString(formData, 'latitude'),
-      longitude: getString(formData, 'longitude'),
-      gisFileRef: savedFiles.gisFileRef || null,
-      surveyPlanFileRef: savedFiles.surveyPlanFileRef || null,
+      parcelNumber: (formData as any).get('parcelNumber') as string | null,
+      latitude: (formData as any).get('latitude') ? parseFloat((formData as any).get('latitude')!) : null,
+      longitude: (formData as any).get('longitude') ? parseFloat((formData as any).get('longitude')!) : null,
 
       // Title Information
       titleDeedFileRef: savedFiles.titleDeedFileRef || null,
-      deedNumber: getString(formData, 'deedNumber'),
-      deedType: getString(formData, 'deedType'),
-      grantorName: getString(formData, 'grantorName'),
-      granteeName: getString(formData, 'granteeName'),
-      deedDate: getString(formData, 'deedDate') ? new Date(getString(formData, 'deedDate')!) : null,
+      deedNumber: (formData as any).get('deedNumber') as string | null,
+      deedType: (formData as any).get('deedType') as string | null,
+      grantorName: (formData as any).get('grantorName') as string | null,
+      granteeName: (formData as any).get('granteeName') as string | null,
+      deedDate: (formData as any).get('deedDate') ? new Date(((formData as any).get('deedDate') as string)!) : null,
 
       // Title Certificate
       titleCertFileRef: savedFiles.titleCertFileRef || null,
-      certNumber: getString(formData, 'certNumber'),
-      certIssueDate: getString(formData, 'certIssueDate') ? new Date(getString(formData, 'certIssueDate')!) : null,
-      certExpiryDate: getString(formData, 'certExpiryDate') ? new Date(getString(formData, 'certExpiryDate')!) : null,
+      certNumber: (formData as any).get('certNumber') as string | null,
+      certIssueDate: (formData as any).get('certIssueDate') ? new Date(((formData as any).get('certIssueDate') as string)!) : null,
 
-      // Encumbrance Details
-      encumbranceFileRef: savedFiles.encumbranceFileRef || null,
-      encumbranceId: getString(formData, 'encumbranceId'),
-      encumbrancePeriodStart: getString(formData, 'encumbrancePeriodStart') ? new Date(getString(formData, 'encumbrancePeriodStart')!) : null,
-      encumbrancePeriodEnd: getString(formData, 'encumbrancePeriodEnd') ? new Date(getString(formData, 'encumbrancePeriodEnd')!) : null,
-
-      // Owner KYC
-      ownerName: getString(formData, 'ownerName'),
-      govIdNumber: getString(formData, 'govIdNumber'),
-      idDocumentFileRef: savedFiles.idDocumentFileRef || null,
-      kycStatus: getString(formData, 'kycStatus') || 'PENDING',
-
-      // Chain-of-Title & Encumbrance History
-      titleSearchFileRef: getString(formData, 'titleSearchFileRef'), 
-      titleOpinionFileRef: getString(formData, 'titleOpinionFileRef'), 
-      recordedInstruments: getString(formData, 'recordedInstruments'),
-
-      // NFT Specific Details
-      nftTitle: nftTitle,
-      nftDescription: nftDescription,
-      // Use Arweave URL if available, otherwise fall back to local image reference.
-      // Never store null or placeholder values if we have an image
-      nftImageFileRef: nftImageUrlArweave || savedFiles.nftImageFileRef || null,
-      listingPrice: getString(formData, 'listingPrice') ? parseFloat(getString(formData, 'listingPrice')!) : null,
-      priceCurrency: getString(formData, 'priceCurrency') || 'ETH',
-      // nftCollectionSize will use the default (100) from Prisma schema
-      // Ethereum NFT Integration Fields
-      contractAddress: nftMintAddress, // Contract address instead of mintAddress
-      metadataUri: nftMetadataUri,
-      evmOwnerAddress: nftMintAddress ? ownerEthAddressForDb : null, // Use the fetched Ethereum address
-      mintStatus: 'NOT_STARTED', // Default status
-
-      // Additional Info
-      status: getString(formData, 'status') || 'DRAFT',
-      // Store location data and property area in additionalNotes as JSON until database migration is done
-      additionalNotes: JSON.stringify({
-        locationData: {
-          country: getString(formData, 'country'),
-          state: getString(formData, 'state'),
-          localGovernmentArea: getString(formData, 'localGovernmentArea')
-        },
-        propertyAreaSqm: getString(formData, 'propertyAreaSqm') || '',
-        notes: getString(formData, 'additionalNotes') || ''
+      // Property Details
+      propertyAddress: (formData as any).get('propertyAddress') as string | null,
+      city: (formData as any).get('city') as string | null,
+      state: (formData as any).get('state') as string | null,
+      country: (formData as any).get('country') as string | null,
+      zipCode: (formData as any).get('zipCode') as string | null,
+      propertyType: (formData as any).get('propertyType') as string | null,
+      propertyAreaSqm: (formData as any).get('propertyAreaSqm') ? parseFloat(((formData as any).get('propertyAreaSqm') as string)!) : null,
+      legalDescription: (formData as any).get('legalDescription') as string | null,
+      
+      propertyDescription: JSON.stringify({
+        nftDescription: nftDescription,
+        notes: ((formData as any).get('additionalNotes') as string | null) || '',
+        evmOwnerAddress: ownerEthAddressForDb
       }),
+      
+      listingTitle: nftTitle,
+      nftImageIrysUri: nftImageUrlArweave,
+      coverImageUrl: savedFiles.nftImageFileRef,
+      listingPrice: (formData as any).get('listingPrice') ? parseFloat(((formData as any).get('listingPrice') as string)!) : null,
+      priceCurrency: ((formData as any).get('priceCurrency') as string | null) || 'ETH',
+      
+      mintStatus: 'NOT_STARTED',
+      mintTransactionHash: nftMintAddress, 
+      nftMetadataIrysUri: nftMetadataUri,
+
+      status: ((formData as any).get('status') as string | null) || 'DRAFT',
     };
 
     // Try to find a valid user to connect to the listing, or create one if needed
-    let prismaData: Prisma.LandListingCreateInput;
     let userToConnect = await prisma.user.findUnique({ where: { id: userId } });
     
     if (!userToConnect) {
@@ -244,7 +263,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Now we should have a valid user to connect to
-    prismaData = {
+    const prismaData = {
       ...baseData,
       user: {
         connect: {
@@ -253,11 +272,14 @@ export async function POST(req: NextRequest) {
       }
     };
     
-    console.log("Prisma Data Before Create:", JSON.stringify(prismaData, null, 2));
+    // Filter the data to only include fields that exist in the schema
+    const filteredPrismaData = filterValidFields(prismaData);
+    
+    console.log("Prisma Data After Filtering:", JSON.stringify(filteredPrismaData, null, 2));
 
-    // Create the listing with or without a user relation
+    // Create the listing with filtered data
     const newListing = await prisma.landListing.create({
-      data: prismaData,
+      data: filteredPrismaData,
     });
 
     return NextResponse.json(newListing, { status: 201 });

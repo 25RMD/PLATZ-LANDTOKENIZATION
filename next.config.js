@@ -1,16 +1,39 @@
 /** @type {import('next').NextConfig} */
+
+// Read the ngrok URL from environment variable
+const ngrokDevOrigin = process.env.NEXT_PUBLIC_BASE_URL;
+
+const initialAllowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+  'http://172.20.10.2:3000',
+  'http://172.20.10.2:3001',
+];
+
+if (ngrokDevOrigin) {
+  // Ensure we don't add duplicates if it's already localhost or similar
+  if (!initialAllowedOrigins.includes(ngrokDevOrigin)) {
+    initialAllowedOrigins.push(ngrokDevOrigin);
+  }
+  console.log(`[next.config.js] Added ${ngrokDevOrigin} to allowedDevOrigins.`);
+} else {
+  console.log('[next.config.js] NEXT_PUBLIC_BASE_URL not set, ngrok origin not added to allowedDevOrigins.');
+}
+
 const nextConfig = {
   devIndicators: {
-    allowedDevOrigins: [
-      // Allow requests from localhost and common local IPs
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      // Add the specific IP from the error message if it's consistent
-      'http://172.20.10.2:3000',
-      'http://172.20.10.2:3001',
-    ],
+    allowedDevOrigins: initialAllowedOrigins,
+  },
+  // Add static file serving configuration
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/api/static/:path*',
+      },
+    ];
   },
   webpack: (config, { isServer }) => {
     // The externals configuration was removed as it was causing SyntaxErrors.

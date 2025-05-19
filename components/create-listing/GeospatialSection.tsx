@@ -83,13 +83,12 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
           {/* Country Dropdown */}
           <div>
-            <label htmlFor="country" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Country {<span className="text-red-500">*</span>}</label>
+            <label htmlFor="country" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Country</label>
             <select
               id="country"
               name="country"
               value={formData.country}
               onChange={handleInputChange}
-              required
               className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               disabled={isSubmitting}
             >
@@ -102,13 +101,12 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
           
           {/* State/Province Dropdown */}
           <div>
-            <label htmlFor="state" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">State/Province {<span className="text-red-500">*</span>}</label>
+            <label htmlFor="state" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">State/Province</label>
             <select
               id="state"
               name="state"
               value={formData.state}
               onChange={handleInputChange}
-              required
               className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               disabled={isSubmitting || !formData.country}
             >
@@ -121,13 +119,12 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
           
           {/* Local Government Area Dropdown */}
           <div>
-            <label htmlFor="localGovernmentArea" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Local Government Area {<span className="text-red-500">*</span>}</label>
+            <label htmlFor="localGovernmentArea" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Local Government Area</label>
             <select
               id="localGovernmentArea"
               name="localGovernmentArea"
               value={formData.localGovernmentArea}
               onChange={handleInputChange}
-              required
               className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               disabled={isSubmitting || !formData.state}
             >
@@ -145,7 +142,7 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
           {/* Property Area in Square Meters */}
           <div>
-            <label htmlFor="propertyAreaSqm" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Property Area (sq. meters) {<span className="text-red-500">*</span>}</label>
+            <label htmlFor="propertyAreaSqm" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Property Area (sq. meters)</label>
             <div className="relative">
               <input
                 type="number"
@@ -153,7 +150,6 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
                 name="propertyAreaSqm"
                 value={formData.propertyAreaSqm}
                 onChange={handleInputChange}
-                required
                 min="0"
                 step="0.01"
                 placeholder="e.g., 1000"
@@ -174,7 +170,7 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* Latitude */}
           <div>
-            <label htmlFor="latitude" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Latitude {<span className="text-red-500">*</span>}</label>
+            <label htmlFor="latitude" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Latitude</label>
             <div className="relative">
               <input
                 type="text" // Consider type="number" with step attribute later
@@ -182,7 +178,6 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
                 name="latitude"
                 value={formData.latitude}
                 onChange={handleInputChange}
-                required
                 placeholder="e.g., 34.0522"
                 className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} focus:ring-blue-500 focus:border-blue-500`}
                 disabled={isSubmitting}
@@ -195,7 +190,7 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
           </div>
           {/* Longitude */}
           <div>
-            <label htmlFor="longitude" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Longitude {<span className="text-red-500">*</span>}</label>
+            <label htmlFor="longitude" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Longitude</label>
             <div className="relative">
               <input
                 type="text" // Consider type="number" with step attribute later
@@ -203,7 +198,6 @@ const GeospatialSection: React.FC<GeospatialProps> = ({
                 name="longitude"
                 value={formData.longitude}
                 onChange={handleInputChange}
-                required
                 placeholder="e.g., -118.2437"
                 className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} focus:ring-blue-500 focus:border-blue-500`}
                 disabled={isSubmitting}

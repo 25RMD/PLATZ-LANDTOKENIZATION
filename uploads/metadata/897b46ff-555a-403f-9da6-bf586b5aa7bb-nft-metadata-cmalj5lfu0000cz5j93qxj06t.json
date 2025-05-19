@@ -1,0 +1,24 @@
+{
+  "name": "Test NFT",
+  "description": "rees",
+  "image": "http://localhost:3001/uploads/bfb349f4-fa01-4492-9375-d8694b254a5f-nft-image-cmalj5lfu0000cz5j93qxj06t.png",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmalj5lfu0000cz5j93qxj06t"
+    },
+    {
+      "trait_type": "Parcel Number",
+      "value": "12345"
+    },
+    {
+      "trait_type": "Country",
+      "value": "USA"
+    },
+    {
+      "trait_type": "Area (sqm)",
+      "value": "1000"
+    }
+  ],
+  "external_url": "https://platz.com/listings/cmalj5lfu0000cz5j93qxj06t"
+}

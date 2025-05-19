@@ -14,6 +14,11 @@ const protectedApiRoutes = [
   // Add other API routes that require login (non-admin)
 ];
 
+// API routes that should be unprotected for diagnostic purposes
+const unprotectedApiRoutes = [
+  '/api/admin/debug-kyc',
+];
+
 // API routes that should be protected only for certain methods (e.g., POST, PUT, DELETE)
 const methodProtectedApiRoutes = [
   { path: '/api/collections', methods: ['POST', 'PUT', 'DELETE'] }, // Allow GET for public viewing
@@ -33,6 +38,13 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+
+  // Check if this is an unprotected diagnostic route
+  const isUnprotectedDiagnostic = unprotectedApiRoutes.some(route => pathname === route);
+  if (isUnprotectedDiagnostic) {
+    console.log(`Middleware: Allowing unprotected diagnostic access to ${pathname}`);
+    return NextResponse.next();
+  }
 
   const isProtectedApi = protectedApiRoutes.some(route => pathname.startsWith(route));
   const isAdminApiRoute = adminApiRoutes.some(route => pathname.startsWith(route));

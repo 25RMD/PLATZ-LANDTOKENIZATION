@@ -1,0 +1,24 @@
+{
+  "name": "Serene Hilltop plot #1",
+  "description": "test",
+  "image": "http://127.0.0.1:4040/uploads/bf2ffd42-8e62-4af6-8c70-573a5fd60753-nft-image-cmaofvloq0000czdwz5f72b2c.jpeg",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmaofvloq0000czdwz5f72b2c"
+    },
+    {
+      "trait_type": "Parcel Number",
+      "value": "2"
+    },
+    {
+      "trait_type": "Country",
+      "value": "Kenya"
+    },
+    {
+      "trait_type": "Area (sqm)",
+      "value": "1"
+    }
+  ],
+  "external_url": "https://platz.com/listings/cmaofvloq0000czdwz5f72b2c"
+}

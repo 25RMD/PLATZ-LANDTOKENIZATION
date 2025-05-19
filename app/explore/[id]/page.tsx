@@ -9,7 +9,7 @@ const CollectionDetailPage = () => {
   const collectionId = params.id as string;
 
   return (
-    <div>
+    <div className="min-h-screen">
       <NFTCollectionDetailPage collectionId={collectionId} />
     </div>
   );

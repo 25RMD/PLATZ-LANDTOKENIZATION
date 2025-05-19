@@ -244,19 +244,10 @@ const Header = () => {
             </div>
           ) : (
             <div className="flex items-center space-x-2">
-              <Link href="/login">
-                <AnimatedButton size="sm" variant="outline" className="border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black text-xs uppercase">
-                  Log In
-                </AnimatedButton>
-              </Link>
-              <Link href="/signup">
-                <AnimatedButton 
-                  size="sm" 
-                  variant="outline"
-                  className="border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black text-xs uppercase"
-                >
-                  Sign Up
-                </AnimatedButton>
+              <Link 
+                href="/login"
+                className="text-text-light dark:text-text-dark border border-black/20 dark:border-white/20 rounded-md px-4 py-2 font-medium hover:bg-black/5 dark:hover:bg-white/5 transition">
+                Login
               </Link>
             </div>
           )}
@@ -338,7 +329,8 @@ const Header = () => {
                     <div className="h-10 bg-gray-200 dark:bg-zinc-700 rounded-md animate-pulse"></div>
                   ) : isAuthenticated ? (
                     <div className="space-y-2">
-                      <Link href="/profile"
+                      <Link
+                        href="/profile"
                         className="flex items-center justify-between w-full px-3 py-2 rounded-md text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
                         onClick={() => setMobileMenuOpen(false)}
                       >
@@ -364,20 +356,11 @@ const Header = () => {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <Link href="/login">
-                        <AnimatedButton size="sm" variant="outline" className="w-full text-xs uppercase border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black" onClick={() => setMobileMenuOpen(false)}>
-                          Log In
-                        </AnimatedButton>
-                      </Link>
-                      <Link href="/signup">
-                        <AnimatedButton 
-                          size="sm" 
-                          variant="outline"
-                          className="w-full text-xs uppercase border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Sign Up
-                        </AnimatedButton>
+                      <Link 
+                        href="/login"
+                        className="block w-full text-center text-text-light dark:text-text-dark border border-black/20 dark:border-white/20 rounded-md px-4 py-2 font-medium hover:bg-black/5 dark:hover:bg-white/5 transition"
+                        onClick={() => setMobileMenuOpen(false)}>
+                        Login
                       </Link>
                     </div>
                   )}

@@ -56,13 +56,8 @@ const FileInputField: React.FC<FileInputFieldProps> = ({
         />
         {file ? (
           <div className="text-sm text-green-700 dark:text-green-300">
-            <p className="font-semibold">File Selected:</p>
-            {Array.isArray(file) ? (
-              file.map((file, index) => (
-                <div key={index}>
-                  <p>{file.name}</p>
-                  <p className="text-xs opacity-70">({(file.size / 1024).toFixed(1)} KB)</p>
-                </div>
+            <p className="font-semibold">Fi
+            <p className="font-semibold">Fi
               ))
             ) : (
               <>

@@ -3,19 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "next-dev": "next dev",
+    "dev": "concurrently \"ngrok http 3000\" \"sleep 10 && npm run update-ngrok && npm run next-dev\" --names \"NGROK,APP\" --kill-others-on-fail",
     "build": "next build",
+    "build:optimized": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "deploy:verify": "hardhat verify --network sepolia 0x3634a1Da3bb8f2F81D7c7db37aF99A2E4F788190 0x3ed58788ab7ca932c3b3b52a9c58f81b7a4f77ad",
+    "deploy:verify:collections": "hardhat verify --network sepolia 0xc2Fba30e5d703c237C7fE94E861E34ffA1536b36 0x3ec4bfe3167ba77A5906C034AABE5537BA7c4B07",
+    "update-ngrok": "node scripts/update-ngrok-url.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@irys/sdk": "^0.2.11",
-    "@openzeppelin/contracts": "^5.0.2",
-    "@prisma/client": "^6.7.0",
+    "@prisma/client": "^6.8.2",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-avatar": "^1.0.4",
     "@tailwindcss/typography": "^0.5.10",
@@ -25,7 +29,7 @@
     "@types/uuid": "^10.0.0",
     "@wagmi/connectors": "4.1.10",
     "@wagmi/core": "2.6.1",
-    "axios": "^1.6.8",
+    "axios": "^1.9.0",
     "bcryptjs": "^2.4.3",
     "bs58": "^6.0.0",
     "cookie": "^1.0.2",
@@ -52,30 +56,64 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.11",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.13",
+    "@openzeppelin/contracts": "^5.3.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
     "@types/bcrypt": "^5.0.2",
     "@types/bcryptjs": "^2.4.6",
+    "@types/chai": "^4.3.20",
     "@types/cookie": "^0.6.0",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^20.12.12",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.17.47",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "assert": "^2.1.0",
     "autoprefixer": "^10.4.19",
     "buffer": "^6.0.3",
+    "chai": "^4.5.0",
+    "concurrently": "^9.1.2",
     "crypto-browserify": "^3.12.1",
     "dotenv": "^16.5.0",
+    "form-data": "^4.0.2",
     "hardhat": "^2.24.0",
+    "hardhat-gas-reporter": "^1.0.10",
     "https-browserify": "^1.0.0",
+    "node-fetch": "^3.3.2",
     "os-browserify": "^0.3.0",
     "pino-pretty": "^13.0.0",
     "postcss": "^8.4.38",
     "prisma": "^6.7.0",
+    "solidity-coverage": "^0.8.16",
     "stream-browserify": "^3.0.0",
     "stream-http": "^3.2.0",
     "tailwindcss": "^3.4.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5",
+    "typechain": "^8.3.2",
+    "typescript": "^5.8.3",
     "url": "^0.11.4"
-  }
+  },
+  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+  "main": "next.config.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/25RMD/PLATZ-LANDTOKENIZATION.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/25RMD/PLATZ-LANDTOKENIZATION/issues"
+  },
+  "homepage": "https://github.com/25RMD/PLATZ-LANDTOKENIZATION#readme"
 }

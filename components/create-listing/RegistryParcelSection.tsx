@@ -50,14 +50,13 @@ const RegistryParcelSection: React.FC<RegistryParcelProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Parcel Number */}
         <div>
-          <label htmlFor="parcelNumber" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Parcel Number / APN {<span className="text-red-500">*</span>}</label>
+          <label htmlFor="parcelNumber" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Parcel Number / APN</label>
           <input
             type="text"
             id="parcelNumber"
             name="parcelNumber"
             value={formData.parcelNumber}
             onChange={handleInputChange}
-            required
             placeholder="e.g., 123-456-789-00"
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
             disabled={isSubmitting}

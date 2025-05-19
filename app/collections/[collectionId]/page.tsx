@@ -279,7 +279,7 @@ const SingleCollectionPage = () => {
             transition={{ duration: 0.5 }}
             className="overflow-x-hidden"
         >
-            {/* Banner Section */}  
+            {/* Banner Section */}
             <div className="bg-gradient-to-b from-gray-100 to-transparent dark:from-zinc-800 dark:to-transparent relative w-full">
                 <div className="pointer-events-none relative aspect-4/3 md:aspect-16/9 lg:aspect-[7/2] xl:h-[min(550px,_100vh_-_270px)] w-full">
                     <img 
@@ -314,7 +314,10 @@ const SingleCollectionPage = () => {
                                 </div>
                                 {/* Row 2: Meta Tags */} 
                                 <div className="flex w-full gap-2 flex-wrap md:flex-nowrap text-xs text-gray-600 dark:text-gray-400">
-                                    <span>By <Link href={`/users/${collectionData.user?.id || '#'}`} className="text-blue-600 dark:text-blue-400 hover:underline">{creatorName}</Link></span>
+                                    <span>By <Link
+                                        href={`/users/${collectionData.user?.id || '#'}`}
+                                        className="text-blue-600 dark:text-blue-400 hover:underline"
+                                        legacyBehavior>{creatorName}</Link></span>
                                     <span>·</span>
                                     <span>Created {formatDate(collectionData.createdAt.toISOString())}</span>
                                     {/* Removed Chain and Category tags */}
@@ -325,7 +328,12 @@ const SingleCollectionPage = () => {
                         {/* Right Side Actions (Top) */} 
                         <div className="mt-3 flex w-full flex-wrap items-center justify-start gap-2 lg:mt-0 lg:w-auto lg:justify-end">
                            {collectionData.mintAddress && (
-                             <Link href={`https://explorer.solana.com/address/${collectionData.mintAddress}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-4 py-2 border rounded-lg text-sm bg-transparent border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 transition-colors">
+                             <Link
+                                 href={`https://explorer.solana.com/address/${collectionData.mintAddress}?cluster=devnet`}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="flex items-center gap-1.5 px-4 py-2 border rounded-lg text-sm bg-transparent border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 transition-colors"
+                                 legacyBehavior>
                                 <FiExternalLink /> View on Explorer
                             </Link>
                            )}
@@ -359,8 +367,7 @@ const SingleCollectionPage = () => {
                     </div>
                 </div> 
             </div>
-
-            {/* Main Content Area */} 
+            {/* Main Content Area */}
             <div className="max-w-7xl mx-auto px-4 py-8 lg:px-6">
                 {/* Stats Bar - Updated for full collection stats */} 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-px overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-200 dark:bg-zinc-700 mb-8 shadow">
@@ -455,8 +462,7 @@ const SingleCollectionPage = () => {
                 {/* Removed: Section for displaying individual NFTs (NFTCardSimple) */}
 
             </div>
-
-            {/* Toast Notification for Copy Link */} 
+            {/* Toast Notification for Copy Link */}
             {showToast && (
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}

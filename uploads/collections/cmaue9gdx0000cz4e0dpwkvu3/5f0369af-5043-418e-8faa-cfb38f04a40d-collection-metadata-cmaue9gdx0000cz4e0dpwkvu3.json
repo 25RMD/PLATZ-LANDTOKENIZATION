@@ -1,0 +1,8 @@
+{
+  "name": "Collection: test",
+  "description": "A collection of 100 NFTs representing fractional ownership or aspects of land listing cmaue9gdx0000cz4e0dpwkvu3. Includes one main token and 99 child tokens.",
+  "image": "https://8d28-185-107-56-151.ngrok-free.app/uploads/collections/cmaue9gdx0000cz4e0dpwkvu3/a2dc5d14-424c-4e3e-9de4-5b4f067b654f-main-token-image-cmaue9gdx0000cz4e0dpwkvu3.jpeg",
+  "external_link": "https://8d28-185-107-56-151.ngrok-free.app/collections/cmaue9gdx0000cz4e0dpwkvu3",
+  "seller_fee_basis_points": 250,
+  "fee_recipient": "0x3ec4bfe3167ba77A5906C034AABE5537BA7c4B07"
+}

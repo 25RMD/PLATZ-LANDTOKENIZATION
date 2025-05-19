@@ -18,8 +18,7 @@ const kycFields: (keyof Prisma.UserUpdateInput)[] = [
     'postalCode',
     'country',
     'govIdType',
-    'govIdRef',
-    'sofDocRef'
+    'govIdRef'
 ];
 
 // GET handler to fetch current user's profile
@@ -48,7 +47,6 @@ export async function GET(request: NextRequest) {
         country: true,
         govIdType: true,
         govIdRef: true,
-        sofDocRef: true,
         kycVerified: true,
       },
     });
@@ -99,7 +97,6 @@ export async function PUT(request: NextRequest) {
         country: true,
         govIdType: true,
         govIdRef: true,
-        sofDocRef: true,
         kycVerified: true,
       }
     });
@@ -205,7 +202,6 @@ export async function PUT(request: NextRequest) {
         country: true,
         govIdType: true,
         govIdRef: true,
-        sofDocRef: true,
         kycVerified: true,
       }
     });
@@ -263,7 +259,6 @@ const profileSelectFields = {
     country: true,
     govIdType: true,
     govIdRef: true,
-    sofDocRef: true,
     kycVerified: true,
 }; 
 

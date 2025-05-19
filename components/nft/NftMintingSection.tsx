@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
 import { FiAlertCircle, FiCheckCircle, FiInfo } from 'react-icons/fi';
@@ -25,36 +25,60 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
   inputFieldDisabledStyles,
 }) => {
   const { address: connectedEvmAddress, isConnected: isEvmWalletConnected } = useAccount();
+
+  useEffect(() => {
+    console.log('[NftMintingSection] Received or updated landListingId prop:', landListingId);
+  }, [landListingId]);
   
   const [mintStatus, setMintStatus] = useState<string>('NOT_STARTED');
   const [mintingInProgress, setMintingInProgress] = useState<boolean>(false);
   const [mintingError, setMintingError] = useState<string | null>(null);
   const [mintingResult, setMintingResult] = useState<any>(null);
-  const [mintingProgress, setMintingProgress] = useState<number>(0);
+  const [mintingProgressMessage, setMintingProgressMessage] = useState<string>('');
+
+  // Function to convert file to base64
+  const fileToBase64 = useCallback((file: File): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  }, []);
 
   // Check minting status when component mounts or landListingId or status changes
   useEffect(() => {
-    let interval: number;
-    if (landListingId && (mintStatus === 'PENDING' || mintStatus === 'NOT_STARTED')) {
+    let intervalId: number | undefined;
+    if (landListingId && (mintStatus === 'PENDING' || (mintStatus === 'NOT_STARTED' && !mintingResult))) {
       checkMintingStatus();
-      interval = setInterval(checkMintingStatus, 5000);
+      intervalId = setInterval(checkMintingStatus, 7000);
     }
-    return () => clearInterval(interval);
-  }, [landListingId, mintStatus]);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [landListingId, mintStatus, mintingResult]);
 
-  // Function to check the minting status
+  // Function to check the minting status from the GET endpoint
   const checkMintingStatus = async () => {
     if (!landListingId) return;
-
+    console.log(`Checking mint status for ${landListingId}... Current status: ${mintStatus}`);
     try {
       const response = await fetch(`/api/nft/mint?landListingId=${landListingId}`);
       const data = await response.json();
 
       if (data.success) {
+        console.log('Mint status from API:', data.status, data.data);
         setMintStatus(data.status);
         if (data.status === 'COMPLETED' && data.data) {
           setMintingResult(data.data);
+          setMintingProgressMessage('NFT Minted Successfully!');
+          setMintingInProgress(false);
+        } else if (data.status === 'FAILED') {
+          setMintingError(data.error || 'Minting failed. Check server logs.');
+          setMintingInProgress(false);
         }
+      } else {
+        console.warn('Failed to check minting status:', data.message);
       }
     } catch (error) {
       console.error('Error checking minting status:', error);
@@ -63,41 +87,65 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
 
   // Function to initiate the minting process
   const handleMintNFT = async () => {
-    if (!landListingId || !isEvmWalletConnected) return;
+    console.log('[NftMintingSection] handleMintNFT called with landListingId:', landListingId);
+
+    if (!landListingId || !isEvmWalletConnected || !connectedEvmAddress) {
+      setMintingError("Land listing ID is missing or wallet not connected.");
+      return;
+    }
+
+    const { nftTitle, nftDescription, nftImageFile } = formData;
+
+    if (!nftTitle || !nftImageFile) {
+      setMintingError("NFT Title and Image are required to mint.");
+      return;
+    }
 
     setMintingInProgress(true);
     setMintingError(null);
-    setMintingProgress(10);
+    setMintingResult(null);
+    setMintStatus('PENDING');
+    setMintingProgressMessage('Preparing NFT data...');
 
     try {
-      // Call the API to initiate minting
-      const response = await fetch('/api/nft/mint', {
+      setMintingProgressMessage('Converting image to Base64...');
+      const imageBase64 = await fileToBase64(nftImageFile);
+
+      console.log('[NftMintingSection] Value of formData.nftCollectionSize before payload construction:', formData.nftCollectionSize);
+      const payload = {
+        landListingId,
+        nftTitle,
+        nftDescription: nftDescription || '',
+        imageBase64,
+        ownerAddress: connectedEvmAddress,
+      collectionSize: formData.nftCollectionSize, // Send the desired collection size
+      };
+      console.log('[NftMintingSection] Payload for /api/nft/mint-json:', payload);
+      setMintingProgressMessage('Sending mint request to server...');
+      const response = await fetch('/api/nft/mint-json', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          landListingId,
-        }),
+        body: JSON.stringify(payload),
       });
-
-      setMintingProgress(50);
 
       const data = await response.json();
 
       if (data.success) {
-        // Rely on server-driven status updates
-        setMintStatus('PENDING');
-        setMintingProgress(50);
+        setMintingProgressMessage('Minting request accepted. Waiting for blockchain confirmation...');
+        if(data.data && data.data.transactionHash){
+          setMintingResult(data.data);
+        }
       } else {
-        setMintingError(data.message || 'Failed to mint NFT collection');
+        setMintingError(data.details || data.error || 'Failed to mint NFT');
         setMintStatus('FAILED');
+        setMintingInProgress(false);
       }
     } catch (error: any) {
-      console.error('Error minting NFT collection:', error);
-      setMintingError(error.message || 'An error occurred while minting NFT collection');
+      console.error('Error minting NFT:', error);
+      setMintingError(error.message || 'An error occurred while minting NFT');
       setMintStatus('FAILED');
-    } finally {
       setMintingInProgress(false);
     }
   };
@@ -105,9 +153,11 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
   // Determine if minting is possible
   const canMint = landListingId && 
                   isEvmWalletConnected && 
+                  formData.nftImageFile &&
+                  formData.nftTitle &&
                   mintStatus !== 'COMPLETED' && 
                   mintStatus !== 'PENDING' && 
-                  !isSubmitting && 
+                  !isSubmitting &&
                   !mintingInProgress;
 
   return (
@@ -119,7 +169,7 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
     >
       <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
         <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">9</span>
-        Ethereum NFT Minting
+        NFT Minting (via Create Listing Page)
       </h2>
 
       {/* Wallet Connection Status */}
@@ -141,12 +191,48 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
         </div>
       </div>
 
+      {!landListingId && (
+         <div className="mb-4 p-3 bg-amber-100 text-amber-700 rounded-md flex items-center">
+            <FiInfo className="mr-2"/>
+            <span>Please save the land listing first to enable NFT minting. The NFT details (title, description, image) are taken from the form sections above.</span>
+        </div>
+      )}
+
+      {landListingId && (!formData.nftTitle || !formData.nftImageFile) && (
+        <div className="mb-4 p-3 bg-amber-100 text-amber-700 rounded-md flex items-center">
+            <FiAlertCircle className="mr-2"/>
+            <span>Please provide an NFT Title and upload an NFT Image in the 'NFT Details' section above to enable minting.</span>
+        </div>
+      )}
+
       {/* Minting Information */}
       <div className="mb-6">
         <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">About NFT Minting</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Minting will create a collection of 100 NFTs on the Ethereum Sepolia testnet. The main NFT will contain all property details, while the additional 99 NFTs represent fractional ownership shares.
         </p>
+        
+        {process.env.NEXT_PUBLIC_BASE_URL?.includes('ngrok') ? (
+          <div className="flex items-start mb-4 p-2 bg-green-50 dark:bg-green-900/20 rounded-md">
+            <div className="mt-0.5 mr-3 flex-shrink-0 text-green-500">
+              <FiCheckCircle size={18} />
+            </div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              <p>Using ngrok for public access: <span className="font-mono text-xs">{process.env.NEXT_PUBLIC_BASE_URL}</span></p>
+              <p className="text-xs mt-1">Your metadata and images will be accessible to the smart contract through this public URL.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start mb-4 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+            <div className="mt-0.5 mr-3 flex-shrink-0 text-amber-500">
+              <FiAlertCircle size={18} />
+            </div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              <p>You appear to be using a local URL: <span className="font-mono text-xs">{process.env.NEXT_PUBLIC_BASE_URL || 'localhost'}</span></p>
+              <p className="text-xs mt-1">For smart contracts to access your NFT data, set up ngrok and add the URL to <span className="font-mono text-xs">.env.local</span> as <span className="font-mono text-xs">NEXT_PUBLIC_BASE_URL</span>.</p>
+            </div>
+          </div>
+        )}
         
         <div className="flex items-start mb-4">
           <div className="mt-0.5 mr-3 flex-shrink-0 text-blue-500">
@@ -158,7 +244,7 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
         </div>
       </div>
 
-      {/* Minting Status */}
+      {/* Minting Status Display */}
       {landListingId && (
         <div className="mb-6 p-4 rounded-lg bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700">
           <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Minting Status</h3>
@@ -166,54 +252,45 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
           <div className="flex items-center mb-2">
             <div className={`mr-3 flex-shrink-0 ${
               mintStatus === 'COMPLETED' ? 'text-green-500' : 
-              mintStatus === 'PENDING' ? 'text-amber-500' : 
+              mintStatus === 'PENDING' ? 'text-amber-500 animate-pulse' : 
               mintStatus === 'FAILED' ? 'text-red-500' : 
               'text-gray-400'
             }`}>
               {mintStatus === 'COMPLETED' ? <FiCheckCircle size={18} /> : 
                mintStatus === 'FAILED' ? <FiAlertCircle size={18} /> : 
-               <span className="inline-block w-4 h-4 border-2 border-current rounded-full border-b-transparent animate-spin"></span>}
+               mintStatus === 'PENDING' ? <span className="inline-block w-4 h-4 border-2 border-current rounded-full border-t-transparent animate-spin"></span> :
+               <FiInfo size={18}/>
+              }
             </div>
             <span className="text-sm font-medium">
-              {mintStatus === 'NOT_STARTED' ? 'Not Started' : 
-               mintStatus === 'PENDING' ? 'Minting in Progress' : 
+              {mintStatus === 'NOT_STARTED' ? 'Ready to Mint' : 
+               mintStatus === 'PENDING' ? `Minting in Progress... ${mintingProgressMessage}` : 
                mintStatus === 'COMPLETED' ? 'Minting Completed' : 
-               'Minting Failed'}
+               mintStatus === 'FAILED' ? 'Minting Failed' :
+               mintStatus
+              }
             </span>
           </div>
-          
-          {mintingInProgress && (
-            <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2.5 mb-4">
-              <div 
-                className="bg-blue-600 dark:bg-blue-500 h-2.5 rounded-full" 
-                style={{ width: `${mintingProgress}%` }}
-              ></div>
-            </div>
-          )}
           
           {mintingError && (
             <p className="text-sm text-red-500 mt-2">{mintingError}</p>
           )}
           
-          {mintingResult && (
-            <div className="mt-4 text-sm">
+          {mintingResult && mintStatus === 'COMPLETED' && (
+            <div className="mt-4 text-sm space-y-1">
               <p className="text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Collection ID:</span> {mintingResult.collectionId}
-              </p>
-              <p className="text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Main Token ID:</span> {mintingResult.mainTokenId}
-              </p>
-              <p className="text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Transaction:</span>{' '}
+                <span className="font-medium text-gray-800 dark:text-gray-200">Transaction Hash:</span>{' '}
                 <a 
                   href={`https://sepolia.etherscan.io/tx/${mintingResult.transactionHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:underline"
                 >
-                  View on Etherscan
+                  {mintingResult.transactionHash?.slice(0,10)}...{mintingResult.transactionHash?.slice(-8)}
                 </a>
               </p>
+              {mintingResult.tokenId && <p className="text-gray-600 dark:text-gray-400"><span className="font-medium text-gray-800 dark:text-gray-200">Token ID:</span> {mintingResult.tokenId}</p>}
+              {mintingResult.listingId && <p className="text-gray-600 dark:text-gray-400"><span className="font-medium text-gray-800 dark:text-gray-200">Marketplace Listing ID:</span> {mintingResult.listingId}</p>}
             </div>
           )}
         </div>
@@ -224,15 +301,15 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
         <AnimatedButton
           onClick={handleMintNFT}
           disabled={!canMint}
-          className={`px-6 py-2 rounded-lg font-medium ${
+          className={`px-6 py-3 text-lg rounded-lg font-semibold transition-all duration-150 ease-in-out ${
             canMint
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
-              : 'bg-gray-300 dark:bg-zinc-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+              : 'bg-gray-300 dark:bg-zinc-700 text-gray-500 dark:text-gray-400 cursor-not-allowed opacity-70'
           }`}
           loading={mintingInProgress}
-          loadingText="Minting..."
+          loadingText="Processing..."
         >
-          Mint NFT Collection
+          {mintStatus === 'COMPLETED' ? 'Minted Successfully' : mintStatus === 'FAILED' ? 'Retry Mint' : 'Mint Land NFT'}
         </AnimatedButton>
         
         {!landListingId && (

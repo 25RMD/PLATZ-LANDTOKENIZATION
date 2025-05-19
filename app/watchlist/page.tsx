@@ -182,7 +182,9 @@ const WatchlistPage = () => {
                 
                 <div className="p-4 flex-grow">
                   <div className="flex items-start justify-between">
-                    <Link href={`/collections/${item.collectionId}`} className="hover:underline">
+                    <Link
+                      href={`/collections/${item.collectionId}`}
+                      className="hover:underline">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate" title={item.name}>
                         {item.name}
                       </h3>
@@ -221,10 +223,9 @@ const WatchlistPage = () => {
                 </div>
                 
                 <div className="px-4 py-3 border-t border-gray-200 dark:border-zinc-700">
-                  <Link 
+                  <Link
                     href={`/collections/${item.collectionId}`}
-                    className="flex items-center justify-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                  >
+                    className="flex items-center justify-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
                     View Collection
                     <FiExternalLink className="ml-1 h-4 w-4" />
                   </Link>

@@ -89,15 +89,13 @@ const HomePage = () => {
           Transform your property into digital tokens. Enable fractional ownership and global liquidity for your assets.
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/collections" legacyBehavior>
-            <a>
-              {/* Added hover/tap scale effect */}
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <AnimatedButton className="bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white hover:bg-white hover:text-black hover:border-black dark:hover:bg-black dark:hover:text-white dark:hover:border-white">
-                  Get Started
-                </AnimatedButton>
-              </motion.div>
-            </a>
+          <Link href="/collections">
+            {/* Added hover/tap scale effect */}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <AnimatedButton className="bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white hover:bg-white hover:text-black hover:border-black dark:hover:bg-black dark:hover:text-white dark:hover:border-white">
+                Get Started
+              </AnimatedButton>
+            </motion.div>
           </Link>
           {/* Optional secondary button */}
           {/* <AnimatedButton 

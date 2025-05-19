@@ -1,0 +1,16 @@
+{
+  "name": "test",
+  "description": "sss",
+  "image": "https://8d28-185-107-56-151.ngrok-free.app/uploads/collections/cmaue9gdx0000cz4e0dpwkvu3/a2dc5d14-424c-4e3e-9de4-5b4f067b654f-main-token-image-cmaue9gdx0000cz4e0dpwkvu3.jpeg",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmaue9gdx0000cz4e0dpwkvu3"
+    },
+    {
+      "trait_type": "Token Type",
+      "value": "Main Collection Token"
+    }
+  ],
+  "external_url": "https://8d28-185-107-56-151.ngrok-free.app/explore/cmaue9gdx0000cz4e0dpwkvu3"
+}

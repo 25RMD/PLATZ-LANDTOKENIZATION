@@ -31,9 +31,8 @@ const getFileUrl = (fileRef: string | null): string => {
 
 export async function GET(
   request: NextRequest,
-  context: { params: { collectionId: string } }
+  { params }: { params: { collectionId: string } }
 ) {
-  const { params } = context;
   const landListingId = params.collectionId;
 
   if (!landListingId) {

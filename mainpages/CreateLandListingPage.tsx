@@ -96,7 +96,7 @@ const initialFormData: FormDataInterface = { // Explicitly type initialFormData
   nftImageFile: null as File | null,
   listingPrice: "",
   priceCurrency: "ETH",
-  nftCollectionSize: 100, // Default, display as read-only
+  nftCollectionSize: 10, // Default, display as read-only
   status: "DRAFT", // Default status
   additionalNotes: "", // Default additional notes
 };
@@ -233,8 +233,11 @@ const CreateListingContent = () => {
     setTitleDeedError(null);
     setIdDocumentError(null);
 
-    // --- Manual Validation for Required Files ---
+    // --- Manual Validation for Required Fields (Development: Only NFT fields are critical) ---
     let isValid = true;
+    
+    // Comment out or remove checks for non-NFT fields for development
+    /*
     if (!formData.titleDeedFile) {
       setTitleDeedError(() => "Title Deed document is required.");
       isValid = false;
@@ -244,14 +247,31 @@ const CreateListingContent = () => {
       setIdDocumentError(() => "ID Document is required.");
       isValid = false;
     }
+    */
+
+    // Add checks for essential NFT fields
+    if (!formData.nftTitle) {
+      setError("NFT Title is required."); // Use general error for now, or create specific state
+      isValid = false;
+    }
+
+    if (!formData.nftImageFile) {
+      setError("NFT Image is required."); // Use general error for now, or create specific state
+      isValid = false;
+    }
 
     if (!isValid) {
       setIsSubmitting(false);
       return; // Stop submission
     }
-    // --- End Manual Validation ---
+    // --- End of Manual Validation ---
 
-    const data = new FormData();
+    // Clear previous errors if any before new submission attempt
+    setError(null);
+    setTitleDeedError(null);
+    setIdDocumentError(null);
+
+    const dataToSubmit = new FormData();
 
     // Append all fields from formData to FormData object
     Object.keys(formData).forEach((key) => {
@@ -263,20 +283,20 @@ const CreateListingContent = () => {
              // Use bracket notation for array fields, e.g., propertyPhotosFile[0], propertyPhotosFile[1]
              // The exact naming convention might depend on your backend API expectation.
              // Using a simple key like 'propertyPhotosFile' multiple times is also common.
-             data.append(key, file, file.name); // Append each file with the same key
+             dataToSubmit.append(key, file, file.name); // Append each file with the same key
            });
         } else if (value instanceof File) { // Handle single files
-            data.append(key, value, value.name);
+            dataToSubmit.append(key, value, value.name);
         } else if (value !== null && value !== undefined) { // Handle non-file values
            // Skip read-only fields
             if (!['docHash', 'ipfsUri', 'mintTimestamp', 'tokenId'].includes(key)) {
-                 data.append(key, String(value));
+                 dataToSubmit.append(key, String(value));
             }
         }
     });
 
     console.log("Submitting FormData:"); // For debugging
-    for (let pair of data.entries()) { // More detailed FormData logging
+    for (let pair of dataToSubmit.entries()) { // More detailed FormData logging
        console.log(pair[0]+ ', ', pair[1]); 
     }
 
@@ -284,7 +304,7 @@ const CreateListingContent = () => {
       // TODO: Update API endpoint for land listings
       const response = await fetch('/api/land-listings', { // <-- IMPORTANT: Use the correct endpoint
         method: 'POST',
-        body: data,
+        body: dataToSubmit,
         // Headers might not be needed if backend handles FormData correctly
         // headers: { 'Content-Type': 'multipart/form-data' }, // Usually set automatically by browser for FormData
       });

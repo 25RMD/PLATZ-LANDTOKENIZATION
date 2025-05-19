@@ -5,7 +5,7 @@ import ExploreNFTPage from '@/mainpages/ExploreNFTPage';
 
 const ExplorePage = () => {
   return (
-    <div>
+    <div className="min-h-screen">
       <ExploreNFTPage />
     </div>
   );

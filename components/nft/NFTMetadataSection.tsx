@@ -45,14 +45,20 @@ const NFTMetadataSection: React.FC<NFTMetadataSectionProps> = ({
     setError(null);
 
     try {
-      // For IPFS URIs, we would need a gateway
-      // This is a simplified implementation
+      // Handle different URI formats
       let uri = metadataUri;
       
       // If it's an IPFS URI, use a public gateway
       if (uri.startsWith('ipfs://')) {
         uri = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
       }
+      
+      // If it's an Arweave URI, use Arweave gateway
+      if (uri.startsWith('ar://')) {
+        uri = uri.replace('ar://', 'https://arweave.net/');
+      }
+      
+      // For local storage, we're already using the correct API path format
 
       // For demo purposes, we're simulating metadata if it's not available
       if (!uri || uri === 'placeholder') {
@@ -186,7 +192,9 @@ const NFTMetadataSection: React.FC<NFTMetadataSectionProps> = ({
                     <a
                       href={metadataUri.startsWith('ipfs://') 
                         ? metadataUri.replace('ipfs://', 'https://ipfs.io/ipfs/') 
-                        : metadataUri}
+                        : metadataUri.startsWith('ar://') 
+                          ? metadataUri.replace('ar://', 'https://arweave.net/') 
+                          : metadataUri}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"

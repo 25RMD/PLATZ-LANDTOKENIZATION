@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "types": ["node", "hardhat"],
+    "typeRoots": ["./node_modules/@types", "./node_modules/hardhat/types"]
+  },
+  "include": [
+    "./scripts/**/*.ts",
+    "./test/**/*.ts",
+    "./hardhat.config.ts"
+  ]
+} 
