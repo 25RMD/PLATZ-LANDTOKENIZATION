@@ -56,15 +56,10 @@ const FileInputField: React.FC<FileInputFieldProps> = ({
         />
         {file ? (
           <div className="text-sm text-green-700 dark:text-green-300">
-            <p className="font-semibold">Fi
-            <p className="font-semibold">Fi
-              ))
-            ) : (
-              <>
-                <p>{file.name}</p>
-                <p className="text-xs opacity-70">({(file.size / 1024).toFixed(1)} KB)</p>
-              </>
-            )}
+            {fileNameDisplay && <p className="font-semibold">{fileNameDisplay}</p>}
+            {file && !Array.isArray(file) && file.size ? (
+              <p className="text-xs opacity-70">({(file.size / 1024).toFixed(1)} KB)</p>
+            ) : null}
             <p className={`mt-1 text-xs text-text-light dark:text-text-dark opacity-60 ${!disabled ? 'hover:underline' : 'cursor-not-allowed'}`}>
               {disabled ? 'Cannot replace during submission' : 'Click or drag to replace'}
             </p>

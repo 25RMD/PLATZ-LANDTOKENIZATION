@@ -25,8 +25,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <LoadingSpinner size="lg" />
-        <p className="ml-4 text-text-light dark:text-text-dark">Checking authentication...</p>
+        <LoadingSpinner size={48} />
       </div>
     );
   }

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Updated the post-login loading indicator in `ProtectedRoute.tsx` to be more minimalistic:
+  - Corrected `LoadingSpinner` size prop to use a numeric value (`48`) instead of a string (`"lg"`), fixing potential rendering issues.
+  - Removed the "Checking authentication..." text for a cleaner UI.
 - Refactored NFT metadata fetching on `ExploreNFTPage`:
   - Moved `fetchCollectionDetails` logic into `ExploreNFTPage` as a `useCallback` hook.
   - Created a new utility function `fetchAndProcessCollectionDetails` in `lib/collectionUtils.ts` to encapsulate the core fetching and processing logic, making it reusable.
@@ -15,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `LoadingSpinner` component (`components/common/LoadingSpinner.tsx`) to accept a `size` prop and use `FiLoader` icon with a spinning animation.
 
 ### Fixed
+- Fixed a JSX syntax error in `components/common/FileInputField.tsx` caused by a malformed block displaying selected file information. Replaced the faulty block with correct logic using the existing `fileNameDisplay` variable and added file size display for single files.
 - Resolved TypeScript lint error "Property 'size' does not exist on type 'IntrinsicAttributes'" by updating `LoadingSpinner` to correctly accept and utilize the `size` prop.
 - Resolved TypeScript lint error "Argument of type '(...ABI definition...)[]' is not assignable to parameter of type '0x${string}'" by correcting the argument order in the call to `fetchAndProcessCollectionDetails` in `ExploreNFTPage.tsx`.
 - Resolved TypeScript lint error "Argument of type 'string' is not assignable to parameter of type '0x${string}'" by explicitly casting imported contract addresses to the `0x${string}` type at the call site in `ExploreNFTPage.tsx`.
