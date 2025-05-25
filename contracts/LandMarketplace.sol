@@ -417,7 +417,7 @@ contract LandMarketplace is Ownable {
         require(price > 0, "Price must be greater than zero");
         
         // Get collection details from the NFT contract
-        (,, uint256 mainTokenId,,,,) = platzNftContract.getCollection(collectionId);
+        (,, uint256 mainTokenId,,,) = platzNftContract.getCollection(collectionId);
         require(mainTokenId != 0, "Collection main token not found");
 
         address seller = platzNftContract.ownerOf(mainTokenId);

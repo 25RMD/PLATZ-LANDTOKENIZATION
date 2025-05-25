@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Handle local file
-    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
     const filePath = path.join(uploadsDir, imageRef);
     
     // Basic security check to prevent path traversal

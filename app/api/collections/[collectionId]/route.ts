@@ -1,20 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
-import { LandListing as PrismaLandListing, User, NFT, Offer, Trade, Prisma } from '@prisma/client'; 
+import { LandListing as PrismaLandListing, User as PrismaUser, NFT as PrismaNftEntity, Offer as PrismaOffer, Trade as PrismaTrade, Prisma } from '@prisma/client'; // Aliased to avoid naming conflicts 
 import { Decimal } from '@prisma/client/runtime/library'; 
 
-interface LandListingWithStats extends PrismaLandListing {
-  user: User | null;
+// This interface describes the final shape of the LandListing object sent in the response,
+// including processed data and calculated stats.
+interface LandListingWithStats extends PrismaLandListing { // Start with the base Prisma type
+  // Relations will be typed based on what's included in the Prisma query
+  user: PrismaUser | null; // Explicitly type the user relation
+  nfts: ProcessedNft[]; // nfts will be an array of our ProcessedNft type
   processedNftImageUrl: string | null;
   derivedCreatorName: string;
-  derivedOwnerCount: number;   
-  derivedListedCount: number;  
-  derivedItemsCount: number;   
+  derivedOwnerCount: number;
+  derivedListedCount: number;
+  derivedItemsCount: number;
   stats: {
-    topOffer: Decimal | number | null; 
+    topOffer: Decimal | number | null;
     volume24h: Decimal | number | null;
     sales24h: number | null;
   };
+}
+
+// This interface describes an individual NFT *after* its image URL is processed by getFileUrl
+// and it's part of the LandListingWithStats response.
+interface ProcessedNft {
+  // Fields from PrismaNftEntity
+  id: string;
+  name: string;
+  itemNumber: number;
+  image: string | null; // <<< This is the key change: processed URL from getFileUrl
+  price: number | null; // Changed from Decimal | null to number | null to match Prisma Float
+  isListed: boolean;
+  ownerId: string | null;
+  landListingId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  propertyId: string | null;
+
+  // Relations, explicitly typed
+  owner: PrismaUser | null;
+  offers: PrismaOffer[];
+  trades: PrismaTrade[];
+  // Note: Add any other fields from PrismaNftEntity that are used by NFTCard or elsewhere
 }
 
 const getFileUrl = (fileRef: string | null): string => {
@@ -44,41 +71,61 @@ export async function GET(
 
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const landListingWithNfts = await prisma.landListing.findUnique({
+    const landListingArgs = {
       where: {
         id: landListingId,
       },
       include: {
-        user: true, 
-        individualNfts: {     // Changed from 'nfts' to 'individualNfts'
+        user: true,
+        nfts: {
           include: {
-            owner: true, // To count unique owners
+            owner: true,
             offers: {
-              where: {
-                status: 'ACTIVE', 
-              },
-              orderBy: {
-                price: 'desc',
-              },
+              where: { status: 'ACTIVE' as const }, // Add 'as const' for literal type
+              orderBy: { price: 'desc' as const },
             },
             trades: {
-              where: {
-                timestamp: {
-                  gte: twentyFourHoursAgo,
-                },
-              },
+              where: { timestamp: { gte: twentyFourHoursAgo } },
             },
           },
         },
       },
+    } satisfies Prisma.LandListingFindUniqueArgs;
+
+    const landListingWithNfts: Prisma.LandListingGetPayload<typeof landListingArgs> | null = await prisma.landListing.findUnique(landListingArgs);
+
+    // Type for an NFT as included from the database, before image processing
+    // This helps type the 'nft' parameter in the map function below.
+    // Ensure landListingWithNfts is not null before trying to access its properties for type derivation.
+    // Using the dynamic approach based on landListingArgs for robustness.
+    type IncludedNft = NonNullable<Prisma.LandListingGetPayload<typeof landListingArgs>['nfts']>[number];
+
+      // Additional check to ensure landListingWithNfts is not null before proceeding
+      if (!landListingWithNfts) {
+        console.error(`API GET /api/collections/${landListingId}: LandListing not found after Prisma query.`);
+        return NextResponse.json({ message: 'LandListing not found' }, { status: 404 });
+      }
+
+      // Check if user exists on landListingWithNfts before accessing its properties
+      const creator = landListingWithNfts.user;
+
+    const processedAndTypedNfts: ProcessedNft[] = (landListingWithNfts.nfts || []).map((nft: IncludedNft) => {
+      const processedNft: ProcessedNft = {
+        // Spread all properties from the original nft (IncludedNft)
+        ...nft,
+        // Override the image with the processed URL
+        image: getFileUrl(nft.image),
+        // Ensure price is Decimal or null. Prisma's Decimal type should be fine.
+        price: nft.price,
+        // Ensure relations are correctly passed if they are part of IncludedNft
+        owner: nft.owner,
+        offers: nft.offers,
+        trades: nft.trades,
+      };
+      return processedNft;
     });
 
-    if (!landListingWithNfts) { 
-      console.log(`API GET /api/collections/${landListingId}: LandListing not found.`);
-      return NextResponse.json({ message: 'LandListing not found' }, { status: 404 });
-    }
-
-    const nftsInCollection = landListingWithNfts.individualNfts || []; // Changed from .nfts
+    const nftsInCollection = processedAndTypedNfts;
     
     const derivedItemsCount = nftsInCollection.length;
     
@@ -111,23 +158,27 @@ export async function GET(
       });
     });
 
-    const derivedCreatorName = landListingWithNfts.user?.username || landListingWithNfts.user?.solanaPubKey || landListingWithNfts.user?.email || 'Unknown Creator';
+    const derivedCreatorName = landListingWithNfts.user?.username || landListingWithNfts.user?.email || 'Unknown Creator'; // Removed solanaPubKey
     const processedNftImageUrl = getFileUrl(landListingWithNfts.nftImageFileRef);
 
     const responseData: LandListingWithStats = {
-      ...landListingWithNfts,
-      user: landListingWithNfts.user,
+      // Spread all properties from landListingWithNfts (which is PrismaLandListing with relations)
+      // Ensure that the types are compatible or cast appropriately.
+      ...(landListingWithNfts as Omit<PrismaLandListing, 'nfts' | 'user'> & { user: PrismaUser | null }), // Corrected Omit key
+      nfts: nftsInCollection, // Use the processed NFTs
+      user: landListingWithNfts.user, // Explicitly include the user from the fetched data
       processedNftImageUrl: processedNftImageUrl,
       derivedCreatorName: derivedCreatorName,
       derivedOwnerCount: derivedOwnerCount,
       derivedListedCount: derivedListedCount,
       derivedItemsCount: derivedItemsCount,
       stats: {
-        topOffer: topOffer, 
-        volume24h: volume24h, 
+        topOffer: topOffer,
+        volume24h: volume24h,
         sales24h: sales24h,
       },
     };
+
 
     console.log(`API GET /api/collections/${landListingId}: Returning LandListing details with calculated stats.`);
     return NextResponse.json(responseData);

@@ -97,8 +97,8 @@ export async function POST(request: NextRequest) {
     
     let nftImageFileName;
     try {
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'uploads');
+      // Create public/uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     console.log('Saving main token metadata to local storage...');
     let mainTokenMetadataFileName;
     try {
-      const metadataDir = path.join(process.cwd(), 'uploads', 'metadata');
+      const metadataDir = path.join(process.cwd(), 'public', 'uploads', 'metadata');
       if (!fs.existsSync(metadataDir)) {
         fs.mkdirSync(metadataDir, { recursive: true });
       }
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     console.log('Saving collection metadata (copy of main token metadata)...');
     let collectionMetadataFileName;
     try {
-      const metadataDir = path.join(process.cwd(), 'uploads', 'metadata'); // Ensure directory exists (should from above)
+      const metadataDir = path.join(process.cwd(), 'public', 'uploads', 'metadata'); // Ensure directory exists (should from above)
       collectionMetadataFileName = `${uuidv4()}-collection.json`;
       const collectionMetadataPath = path.join(metadataDir, collectionMetadataFileName);
       fs.writeFileSync(collectionMetadataPath, JSON.stringify(mainTokenMetadata, null, 2)); // Using mainTokenMetadata
@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
       };
 
       try {
-        const metadataDir = path.join(process.cwd(), 'uploads', 'metadata');
+        const metadataDir = path.join(process.cwd(), 'public', 'uploads', 'metadata');
         const additionalTokenMetadataPath = path.join(metadataDir, metadataFileNameForChild);
         fs.writeFileSync(additionalTokenMetadataPath, JSON.stringify(additionalTokenMetadata, null, 2));
         console.log(`Metadata for child token (display ${childTokenDisplayId}), file ${metadataFileNameForChild} saved to: ${additionalTokenMetadataPath}`);

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 import AnimatedButton from '@/components/common/AnimatedButton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import toast from 'react-hot-toast';
@@ -38,7 +38,7 @@ const ProfileContent = () => {
   const { 
     data, 
     signMessageAsync, 
-    isLoading: isSigningMessage, 
+    isPending: isSigningMessage, 
     isError: isSignMessageError, 
     error: signMessageHookError, 
     status: signMessageStatus 
@@ -430,8 +430,7 @@ const ProfileContent = () => {
   if (pageLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <LoadingSpinner size="lg" />
-        <p className="ml-4 text-text-light dark:text-text-dark">Loading profile data...</p>
+        <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
       </div>
     );
   }

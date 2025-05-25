@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FaSearch, FaBoxOpen } from "react-icons/fa";
-import LoadingSpinner from "@/components/common/LoadingSpinner";
+import PulsingDotsSpinner from "@/components/common/PulsingDotsSpinner";
 import { NFT } from "@/lib/interdace";
 import { mockNFTs } from "@/lib/data";
 import NFTCard from "@/components/NFTCard";

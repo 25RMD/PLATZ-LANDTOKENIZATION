@@ -26,12 +26,23 @@ const nextConfig = {
   devIndicators: {
     allowedDevOrigins: initialAllowedOrigins,
   },
-  // Add static file serving configuration
   async rewrites() {
     return [
       {
+        source: '/uploads/collections/:path*',
+        destination: '/api/fallback-upload/collections/:path*',
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
         source: '/uploads/:path*',
-        destination: '/api/static/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-Requested-With, Content-Type, Authorization' },
+        ],
       },
     ];
   },

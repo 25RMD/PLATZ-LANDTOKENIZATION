@@ -1,16 +1,20 @@
 // Contract addresses for the deployed contracts
 // These are placeholders and should be updated with actual deployed contract addresses
 
+// Define the Address type for Ethereum addresses, compatible with viem
+export type Address = `0x${string}`;
+
+
 // For Sepolia testnet
-export const PLATZ_LAND_NFT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS || "0x155e70f694E645907d36583Cca893BE52bf3A29f";
-export const LAND_MARKETPLACE_ADDRESS = "0xdce38280EE756a7F930feFB87efFb66C72Ef66CB";
+export const PLATZ_LAND_NFT_ADDRESS: Address = (process.env.NFT_CONTRACT_ADDRESS || "0x837527fa3206Adcba2a8909CAE39280D606540c4") as Address;
+export const LAND_MARKETPLACE_ADDRESS: Address = (process.env.MARKETPLACE_CONTRACT_ADDRESS || "0xfAE9Ef51fea4D220cD427EC47C8dFDA4a6426De8") as Address;
 
 // For local development
-export const LOCALHOST_PLATZ_LAND_NFT_ADDRESS = "0x155e70f694E645907d36583Cca893BE52bf3A29f";
-export const LOCALHOST_LAND_MARKETPLACE_ADDRESS = "0xdce38280EE756a7F930feFB87efFb66C72Ef66CB";
+export const LOCALHOST_PLATZ_LAND_NFT_ADDRESS: Address = "0x837527fa3206Adcba2a8909CAE39280D606540c4" as Address;
+export const LOCALHOST_LAND_MARKETPLACE_ADDRESS: Address = "0xfAE9Ef51fea4D220cD427EC47C8dFDA4a6426De8" as Address;
 
 // Get the correct contract address based on the environment
-export function getContractAddress(contractName: string): string {
+export function getContractAddress(contractName: string): Address {
   // Check if we're in development mode using localhost
   const isLocalhost = typeof window !== 'undefined' && 
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');

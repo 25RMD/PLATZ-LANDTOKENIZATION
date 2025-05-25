@@ -21,7 +21,9 @@ export async function GET(
 
   if (!actualParams) {
     console.error('[API Child Token Metadata] Error: actualParams is undefined after awaiting paramsPromise. paramsPromise was:', paramsPromise);
-    return NextResponse.json({ error: 'Failed to resolve route parameters' }, { status: 500 });
+    const response = NextResponse.json({ error: 'Failed to resolve route parameters' }, { status: 500 });
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    return response;
   }
 
   const { landListingDbId, evmTokenId: rawEvmTokenId } = actualParams;
@@ -31,7 +33,9 @@ export async function GET(
   }
 
   if (!landListingDbId || !evmTokenId) {
-    return NextResponse.json({ error: 'Missing landListingDbId or evmTokenId' }, { status: 400 });
+    const response = NextResponse.json({ error: 'Missing landListingDbId or evmTokenId' }, { status: 400 });
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    return response;
   }
 
   console.log(`[API Child Token Metadata] Request for LandListing DB ID: ${landListingDbId}, EVM Token ID: ${evmTokenId}`);
@@ -43,13 +47,130 @@ export async function GET(
 
     if (!landListing) {
       console.warn(`[API Child Token Metadata] LandListing not found for DB ID: ${landListingDbId}`);
-      return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+      const response = NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+      response.headers.set('Access-Control-Allow-Origin', '*');
+      return response;
     }
 
-    // Validate evmTokenId
+    // Handle cases where mainTokenId or nftCollectionSize is missing
     if (!landListing.mainTokenId || landListing.nftCollectionSize === null || landListing.nftCollectionSize === undefined) {
-      console.error(`[API Child Token Metadata] LandListing ${landListingDbId} is missing mainTokenId or nftCollectionSize.`);
-      return NextResponse.json({ error: 'Collection data incomplete for validation' }, { status: 500 });
+      console.warn(`[API Child Token Metadata] LandListing ${landListingDbId} is missing mainTokenId or nftCollectionSize.`, {
+        id: landListing.id,
+        mainTokenId: landListing.mainTokenId,
+        nftCollectionSize: landListing.nftCollectionSize,
+        collectionId: landListing.collectionId,
+        status: landListing.status,
+        mintStatus: landListing.mintStatus,
+        updatedAt: landListing.updatedAt
+      });
+      
+      // Check if this is a valid token ID based on the collection size (if available)
+      const maxTokenId = landListing.nftCollectionSize ? 
+        landListing.nftCollectionSize - 1 : // 0-based indexing
+        99; // Default max if collection size is not set
+      
+      // Parse the token ID safely
+      let tokenIdNum;
+      try {
+        tokenIdNum = parseInt(evmTokenId, 10);
+        if (isNaN(tokenIdNum)) {
+          throw new Error(`Invalid token ID: ${evmTokenId}`);
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[API Child Token Metadata] Invalid token ID format: ${evmTokenId}`, error);
+        const response = NextResponse.json({ 
+          error: 'Invalid token ID format',
+          details: errorMessage 
+        }, { status: 400 });
+        response.headers.set('Access-Control-Allow-Origin', '*');
+        return response;
+      }
+      
+      // Validate token ID is within reasonable bounds
+      if (tokenIdNum < 0 || tokenIdNum > maxTokenId) {
+        const response = NextResponse.json({ 
+          error: 'Token ID out of range',
+          maxTokenId: maxTokenId
+        }, { status: 400 });
+        response.headers.set('Access-Control-Allow-Origin', '*');
+        return response;
+      }
+      
+              // Return a placeholder metadata response
+        const response = NextResponse.json({
+        name: landListing.collectionNftTitle ? 
+          `${landListing.collectionNftTitle} #${tokenIdNum}` : 
+          `Land Token #${tokenIdNum}`,
+        description: landListing.nftDescription || 
+          'This token is part of a land collection on Platz Protocol.',
+        image: (() => {
+          // Try to find the main token image file in the collection directory first
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            const collectionsDir = path.join(process.cwd(), 'public', 'uploads', 'collections', landListingDbId);
+            
+            if (fs.existsSync(collectionsDir)) {
+              const files = fs.readdirSync(collectionsDir);
+              // Look for main token image file (contains 'main-token-image' in the filename)
+              const mainImageFile = files.find((file: string) => 
+                file.includes('main-token-image') && 
+                (file.endsWith('.jpeg') || file.endsWith('.jpg') || file.endsWith('.png'))
+              );
+              
+              if (mainImageFile) {
+                                 const baseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
+                 return `${baseUrl}/api/static/collections/${landListingDbId}/${mainImageFile}`;
+              }
+            }
+          } catch (error) {
+            console.error(`[API Child Token Metadata] Error reading collection directory for placeholder:`, error);
+          }
+          
+          // Fallback to database coverImageUrl with URL rewriting
+          if (landListing.coverImageUrl) {
+            let imageUrl = landListing.coverImageUrl;
+            // Convert /uploads/ to /api/static/ for consistency
+            if (imageUrl.startsWith('/uploads/')) {
+              imageUrl = imageUrl.replace('/uploads/', '/api/static/');
+            }
+            // If the image URL contains ngrok, rewrite it to use local API route
+            if (imageUrl.includes('ngrok-free.app')) {
+              try {
+                const oldUrl = new URL(imageUrl);
+                // Extract the path after /uploads/ or /api/static/
+                const pathMatch = oldUrl.pathname.match(/\/(?:uploads|api\/static)\/(.+)/);
+                if (pathMatch) {
+                  imageUrl = `/api/static/${pathMatch[1]}`;
+                }
+              } catch (e: any) {
+                console.error(`[API Child Token Metadata] Error rewriting ngrok image URL ${imageUrl}:`, e.message);
+                // Keep original URL if rewrite fails
+              }
+            }
+            const baseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
+            return imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+          }
+          
+          // Final fallback
+          const baseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : (process.env.NEXT_PUBLIC_BASE_URL || 'https://platzprotocol.xyz');
+          return `${baseUrl}/placeholder-land.jpg`;
+        })(),
+        external_url: `${process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : (process.env.NEXT_PUBLIC_BASE_URL || 'https://platzprotocol.xyz')}/explore/${landListingDbId}`,
+        attributes: [
+          { trait_type: 'Status', value: landListing.status || 'Processing' },
+          { trait_type: 'Token ID', value: tokenIdNum.toString() },
+          { trait_type: 'Collection', value: landListing.collectionNftTitle || 'Land Collection' },
+          { trait_type: 'Location', value: [
+            landListing.city,
+            landListing.state,
+            landListing.country
+          ].filter(Boolean).join(', ') || 'Unknown' }
+                  ].filter(attr => attr.value !== undefined)
+        });
+        response.headers.set('Access-Control-Allow-Origin', '*');
+        return response;
     }
 
     const requestedEvmTokenIdNum = BigInt(evmTokenId); // Now evmTokenId is just the number
@@ -59,7 +180,9 @@ export async function GET(
     // Check if the requested ID is the main token ID
     if (requestedEvmTokenIdNum === dbMainTokenIdNum) {
       console.warn(`[API Child Token Metadata] Requested EVM token ID ${evmTokenId} is the mainTokenId for LandListing DB ID: ${landListingDbId}. This endpoint is for child tokens.`);
-      return NextResponse.json({ error: 'This endpoint is for child token metadata. Main token has a separate metadata URL.' }, { status: 400 });
+      const response = NextResponse.json({ error: 'This endpoint is for child token metadata. Main token has a separate metadata URL.' }, { status: 400 });
+      response.headers.set('Access-Control-Allow-Origin', '*');
+      return response;
     }
 
     // Validate if the token ID is a valid child token for this collection
@@ -72,11 +195,106 @@ export async function GET(
       requestedEvmTokenIdNum > dbMainTokenIdNum + dbCollectionSize - BigInt(1) // Must be within the range of child tokens
     ) {
       console.warn(`[API Child Token Metadata] Requested EVM token ID ${evmTokenId} is not a valid child token for LandListing DB ID: ${landListingDbId}. MainTokenID: ${dbMainTokenIdNum}, CollectionSize: ${dbCollectionSize}`);
-      return NextResponse.json({ error: 'Token ID not valid for this collection' }, { status: 404 });
+      const response = NextResponse.json({ error: 'Token ID not valid for this collection' }, { status: 404 });
+      response.headers.set('Access-Control-Allow-Origin', '*');
+      return response;
     }
     
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
-    const collectionImage = landListing.coverImageUrl ? `${baseUrl}${landListing.coverImageUrl.startsWith('/') ? '' : '/'}${landListing.coverImageUrl}` : `${baseUrl}/placeholder-image.png`;
+    // Use localhost for development to avoid ngrok URL issues
+    const baseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
+    
+    // Handle image URL construction with proper API route
+    let collectionImage = `${baseUrl}/placeholder-image.png`;
+    
+    // For collections, try to find the main token image file in the collection directory
+    // This is more reliable than using the database coverImageUrl which may contain ngrok URLs
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const collectionsDir = path.join(process.cwd(), 'public', 'uploads', 'collections', landListingDbId);
+      
+      if (fs.existsSync(collectionsDir)) {
+        const files = fs.readdirSync(collectionsDir);
+        // Look for main token image file (contains 'main-token-image' in the filename)
+        const mainImageFile = files.find((file: string) => 
+          file.includes('main-token-image') && 
+          (file.endsWith('.jpeg') || file.endsWith('.jpg') || file.endsWith('.png'))
+        );
+        
+        if (mainImageFile) {
+          collectionImage = `${baseUrl}/api/static/collections/${landListingDbId}/${mainImageFile}`;
+          console.log(`[API Child Token Metadata] Found main token image: ${mainImageFile}`);
+        } else {
+          console.warn(`[API Child Token Metadata] No main token image found in ${collectionsDir}`);
+          // Fallback to database coverImageUrl with URL rewriting
+          if (landListing.coverImageUrl) {
+            let imageUrl = landListing.coverImageUrl;
+            
+            // If the image URL starts with /uploads/, convert it to /api/static/
+            if (imageUrl.startsWith('/uploads/')) {
+              imageUrl = imageUrl.replace('/uploads/', '/api/static/');
+            }
+            
+            // If the image URL contains ngrok, rewrite it to use local API route
+            if (imageUrl.includes('ngrok-free.app')) {
+              try {
+                const oldUrl = new URL(imageUrl);
+                // Extract the path after /uploads/ or /api/static/
+                const pathMatch = oldUrl.pathname.match(/\/(?:uploads|api\/static)\/(.+)/);
+                if (pathMatch) {
+                  imageUrl = `/api/static/${pathMatch[1]}`;
+                }
+              } catch (e: any) {
+                console.error(`[API Child Token Metadata] Error rewriting ngrok image URL ${imageUrl}:`, e.message);
+                // Keep original URL if rewrite fails
+              }
+            }
+            
+            // Construct the full URL
+            if (imageUrl.startsWith('http')) {
+              collectionImage = imageUrl;
+            } else {
+              collectionImage = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+            }
+          }
+        }
+      } else {
+        console.warn(`[API Child Token Metadata] Collection directory not found: ${collectionsDir}`);
+      }
+    } catch (error) {
+      console.error(`[API Child Token Metadata] Error reading collection directory:`, error);
+      // Fallback to database coverImageUrl with URL rewriting
+      if (landListing.coverImageUrl) {
+        let imageUrl = landListing.coverImageUrl;
+        
+        // If the image URL starts with /uploads/, convert it to /api/static/
+        if (imageUrl.startsWith('/uploads/')) {
+          imageUrl = imageUrl.replace('/uploads/', '/api/static/');
+        }
+        
+        // If the image URL contains ngrok, rewrite it to use local API route
+        if (imageUrl.includes('ngrok-free.app')) {
+          try {
+            const oldUrl = new URL(imageUrl);
+            // Extract the path after /uploads/ or /api/static/
+            const pathMatch = oldUrl.pathname.match(/\/(?:uploads|api\/static)\/(.+)/);
+            if (pathMatch) {
+              imageUrl = `/api/static/${pathMatch[1]}`;
+            }
+          } catch (e: any) {
+            console.error(`[API Child Token Metadata] Error rewriting ngrok image URL ${imageUrl}:`, e.message);
+            // Keep original URL if rewrite fails
+          }
+        }
+        
+        // Construct the full URL
+        if (imageUrl.startsWith('http')) {
+          collectionImage = imageUrl;
+        } else {
+          collectionImage = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+        }
+      }
+    }
 
     const metadata: ChildTokenMetadata = {
       name: `Platz Child Token #${evmTokenId} for ${landListing.collectionNftTitle || 'Land Collection'}`,
@@ -91,17 +309,36 @@ export async function GET(
         { trait_type: 'Country', value: landListing.country || 'N/A' },
         { trait_type: 'State/Province', value: landListing.state || 'N/A' },
       ],
-      external_url: `${baseUrl}/explore/${landListingDbId}`, // Link to the main listing/collection page
+      external_url: `${process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : (process.env.NEXT_PUBLIC_BASE_URL || 'https://platzprotocol.xyz')}/explore/${landListingDbId}`, // Link to the main listing/collection page
     };
 
     console.log(`[API Child Token Metadata] Successfully generated metadata for LandListing DB ID: ${landListingDbId}, EVM Token ID: ${evmTokenId}`);
-    return NextResponse.json(metadata);
+    
+    const response = NextResponse.json(metadata);
+    
+    // Add CORS headers for cross-origin requests
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    return response;
 
   } catch (error) {
     console.error(`[API Child Token Metadata] Error processing request for LandListing DB ID: ${landListingDbId}, EVM Token ID: ${evmTokenId}:`, error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: 'Failed to generate token metadata', details: errorMessage }, { status: 500 });
+    const response = NextResponse.json({ error: 'Failed to generate token metadata', details: errorMessage }, { status: 500 });
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    return response;
   }
+}
+
+// Handle CORS preflight requests
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 200 });
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  return response;
 }
 
 // Ensure BigInt serialization for JSON (though NextResponse.json might handle it)

@@ -25,15 +25,36 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/app/*": ["app/*"],
+      "@/lib/*": ["lib/*"],
+      "@/components/*": ["components/*"],
+      "@/context/*": ["context/*"],
+      "@/mainpages/*": ["mainpages/*"],
+      "@/contracts/*": ["contracts/*"],
+      "@/config/*": ["config/*"],
+      "@/hooks/*": ["hooks/*"]
     }
   },
   "include": [
+    "next-env.d.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "context/**/*.ts",
+    "context/**/*.tsx",
+    "mainpages/**/*.ts",
+    "mainpages/**/*.tsx",
+    "config/**/*.ts",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    ".next/types/**/*.ts",
     "hardhat.config.ts",
-    "scripts",
-    "test",
-    "typechain-types",
-    ".next/types/**/*.ts"
+    "scripts/**/*.ts",
+    "test/**/*.ts",
+    "typechain-types"
   ],
   "exclude": [
     "node_modules"

@@ -25,10 +25,10 @@ export async function GET(
       return new NextResponse('Invalid path structure - resolution failed', { status: 400 });
     }
 
-    const filePath = path.join(process.cwd(), 'uploads', ...pathSegments);
+    const filePath = path.join(process.cwd(), 'public', 'uploads', ...pathSegments);
 
     // Security check
-    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
     if (!filePath.startsWith(uploadsDir)) {
       return new NextResponse('Invalid path', { status: 400 });
     }

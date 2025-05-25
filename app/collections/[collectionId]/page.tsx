@@ -9,10 +9,35 @@ import { FiAlertCircle, FiArrowLeft, FiStar, FiInfo, FiCopy, FiX, FiMoreHorizont
 import Link from 'next/link';
 
 import { LandListing as PrismaLandListing, User as PrismaUser } from '@prisma/client';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
+import NFTCard from '@/components/NFTCard'; // Added import for NFTCard
+
+// Minimal interface for individual NFTs coming from the API
+interface ProcessedNftFromAPI {
+  id: string;
+  name: string;
+  image: string | null;
+  price: number | null;
+  // Add other fields if needed for mapping, e.g., owner info if NFTCard requires it directly
+}
+
+// Interface for the data structure NFTCard expects
+interface NFTCardData {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  price: string; // Pre-formatted string including currency
+  creator: {
+    name: string;
+    avatar: string;
+    verified: boolean;
+  };
+}
 
 // Updated interface to include full stats and correct derived counts
 interface LandListingWithCollectionStats extends PrismaLandListing {
+  nfts: ProcessedNftFromAPI[]; // Added field for individual NFTs
   user: PrismaUser | null;
   processedNftImageUrl: string | null;
   derivedCreatorName: string;
@@ -24,8 +49,100 @@ interface LandListingWithCollectionStats extends PrismaLandListing {
     volume24h: string | null;   // Prisma Decimal is serialized to string
     sales24h: number | null;
   };
-  // Note: PrismaLandListing already includes fields like listingPrice (Decimal?), priceCurrency, createdAt, etc.
+  // Explicitly define fields from PrismaLandListing that are directly used or might have type ambiguity
+  listingPrice: number | null; // Corrected: Prisma's Float? is number | null
+  priceCurrency: string | null; // Corrected: Prisma's String? is string | null
+  createdAt: Date; // Prisma DateTime is Date
+  nftDescription: string | null; // Corrected: Prisma's String? is string | null, not undefined
+
+  // Add missing optional fields that are accessed in JSX
+  mintAddress?: string | null;
+  cadastralNumber?: string | null;
+  permittedUse?: string | null;
+  ownershipForm?: string | null;
+  egrnRecordStatus?: string | null;
+  isListedForSale?: boolean | null;
+  metadataUri?: string | null;
+  onChainOwnerPublicKey?: string | null;
+  // Add other fields from PrismaLandListing if they are directly accessed and not covered
+  // For example: titleDeedFileRef, legalDescription, parcelNumber, propertyAddress, etc.
+  // If these are needed, they should be added here or ensured they are part of PrismaLandListing type correctly.
 }
+
+// ---- Helper functions moved here to address hoisting ----
+const formatStat = (value: number | null | undefined, precision = 0): string => {
+    if (value === null || value === undefined) return 'N/A';
+    return value.toLocaleString(undefined, { minimumFractionDigits: precision, maximumFractionDigits: precision });
+};
+
+const formatCurrency = (value: number | null | undefined, currencySymbol?: string | null): string => {
+    if (value === null || value === undefined) return 'N/A';
+    const symbol = currencySymbol || ''; // Use provided currency symbol or empty string
+    return symbol ? `${symbol} ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 
+                   `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const formatDate = (dateString: string | Date | undefined): string => {
+    if (!dateString) return 'N/A';
+    try {
+        // Ensure dateString is a Date object or a string that can be parsed into one
+        const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    } catch (e) {
+        console.warn('Invalid date string for formatDate:', dateString);
+        return 'N/A';
+    }
+};
+
+// Using the centralized getImageUrl utility function from lib/utils/imageUtils.ts
+// Note: For banner images, we use a different default placeholder
+const getBannerImageUrl = (imageRef: string | null | undefined): string => {
+    return getImageUrl(imageRef, getPlaceholderImage('banner'));
+};
+
+// Helper for collection logo images (now NFT image)
+const getLogoImageUrl = (imageRef: string | null | undefined): string => {
+    return getImageUrl(imageRef, getPlaceholderImage('collection')); // 'collection' placeholder seems fine for NFT logo too
+};
+// ---- End of Helper functions ----
+
+// Helper component for stats bar items
+const StatItem = ({ title, value }: { title: string; value: string | number; }) => (
+    <div className={`bg-primary-light dark:bg-card-dark p-4`}>
+        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">{title}</p>
+        <p className="text-xl font-semibold text-text-light dark:text-text-dark truncate" title={String(value)}>{value}</p>
+    </div>
+);
+
+// Helper for Detail Items
+const DetailItem = ({ label, value }: { label: string; value: string | number | null }) => {
+    if (!value) return null;
+    return (
+        <div>
+            <dt className="text-gray-500 dark:text-gray-400 font-medium">{label}</dt>
+            <dd className="text-text-light dark:text-text-dark mt-0.5">{value}</dd>
+        </div>
+    );
+};
+
+// Helper for Copyable Text
+const CopyableText = ({ text }: { text: string }) => {
+    const [copied, setCopied] = useState(false);
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000); 
+    };
+
+    return (
+        <span className="inline-flex items-center gap-1.5">
+            <span className="truncate max-w-[150px] sm:max-w-[200px]" title={text}>{text}</span>
+            <button onClick={copyToClipboard} title="Copy to clipboard" className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+                {copied ? <FiCheckCircle className="w-3 h-3 text-green-500" /> : <FiCopy className="w-3 h-3" />}
+            </button>
+        </span>
+    );
+};
 
 const SingleCollectionPage = () => {
     const params = useParams();
@@ -39,6 +156,7 @@ const SingleCollectionPage = () => {
     const [showMoreOptions, setShowMoreOptions] = useState(false); // For more options dropdown
     const [showToast, setShowToast] = useState(false); // For toast notifications
     const [toastMessage, setToastMessage] = useState(''); // Toast message content
+    const [mappedNfts, setMappedNfts] = useState<NFTCardData[]>([]); // State for mapped NFTs for NFTCard
     
     // Use the watchlist hook instead of local state
     const { isWatchlisted, isWatchlistLoading, toggleWatchlist, checkWatchlistStatus } = useWatchlist(); 
@@ -58,6 +176,7 @@ const SingleCollectionPage = () => {
         };
     }, []);
 
+    // useEffect for fetching collection data
     useEffect(() => {
         if (!collectionId) {
             setError("Collection ID not found in URL.");
@@ -82,6 +201,7 @@ const SingleCollectionPage = () => {
                 setCollectionData(data);
                 
                 // Check watchlist status using the hook function
+                // Ensure checkWatchlistStatus is stable or correctly memoized if defined in this component
                 await checkWatchlistStatus(collectionId);
                 
             } catch (err: any) {
@@ -93,46 +213,33 @@ const SingleCollectionPage = () => {
         };
         
         fetchCollectionData();
-    }, [collectionId, checkWatchlistStatus]);
-    
-    // Helper to format numbers (e.g., item count, owner count)
-    const formatStat = (value: number | null | undefined, precision = 0): string => {
-        if (value === null || value === undefined) return 'N/A';
-        return value.toLocaleString(undefined, { minimumFractionDigits: precision, maximumFractionDigits: precision });
-    };
+    }, [collectionId, checkWatchlistStatus]); // checkWatchlistStatus should be stable if from useWatchlist hook
 
-    // Helper for currency
-    const formatCurrency = (value: number | null | undefined, currencySymbol?: string | null): string => {
-        if (value === null || value === undefined) return 'N/A';
-        const symbol = currencySymbol || ''; // Use provided currency symbol or empty string
-        return symbol ? `${symbol} ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 
-                       `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    };
-
-    // Helper for date formatting (e.g., Created Sep 2023)
-    const formatDate = (dateString: string | undefined): string => {
-        if (!dateString) return 'N/A';
-        try {
-            return new Date(dateString).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        } catch (e) {
-            // Handle cases where dateString might not be a valid date
-            console.warn('Invalid date string for formatDate:', dateString);
-            return 'N/A';
+    // useEffect for mapping NFTs when collectionData changes
+    useEffect(() => {
+        if (collectionData && collectionData.nfts) {
+            const newMappedNfts = collectionData.nfts.map((apiNft) => ({
+                id: apiNft.id,
+                name: apiNft.name || 'Unnamed NFT',
+                description: collectionData.nftDescription || 'No description available.',
+                image: getImageUrl(apiNft.image, getPlaceholderImage('collection')),
+                price: formatCurrency(apiNft.price, collectionData.priceCurrency),
+                creator: {
+                    name: collectionData.derivedCreatorName || 'Unknown Creator',
+                    avatar: getPlaceholderImage('collection'), 
+                    verified: collectionData.user?.kycVerified || false,
+                },
+            }));
+            setMappedNfts(newMappedNfts);
+        } else {
+            setMappedNfts([]); // Clear mapped NFTs if no collection data or no nfts
         }
-    };
-    
-    // Using the centralized getImageUrl utility function from lib/utils/imageUtils.ts
-    // Note: For banner images, we use a different default placeholder
-    const getBannerImageUrl = (imageRef: string | null | undefined): string => {
-        return getImageUrl(imageRef, getPlaceholderImage('banner'));
-    };
-    
-    // Helper for collection logo images (now NFT image)
-    const getLogoImageUrl = (imageRef: string | null | undefined): string => {
-        return getImageUrl(imageRef, getPlaceholderImage('collection')); // 'collection' placeholder seems fine for NFT logo too
-    };
+        // getImageUrl, getPlaceholderImage, formatCurrency are now defined outside the component, so they are stable.
+    // The dependency array for the mapping useEffect should reflect this.
+    }, [collectionData]); // Removed getImageUrl, getPlaceholderImage, formatCurrency as they are stable
 
     if (isLoading) {
+    if (isLoading && !collectionData) { // Show skeleton only if no data yet
         return (
             <div className="animate-pulse overflow-x-hidden">
                 {/* Skeleton Header */}
@@ -248,7 +355,7 @@ const SingleCollectionPage = () => {
                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-zinc-700'}`}
             aria-label={isWatchlisted ? "Remove from Watchlist" : "Add to Watchlist"}
         >
-            {isWatchlistLoading ? <FiLoader className="animate-spin w-5 h-5" /> : <FiStar className="w-5 h-5" />}
+            {isWatchlistLoading ? <PulsingDotsSpinner size={20} color="bg-black dark:bg-white" /> : <FiStar className="w-5 h-5" />}
         </button>
     );
 
@@ -427,7 +534,7 @@ const SingleCollectionPage = () => {
                             <div className="bg-gray-50 dark:bg-zinc-800 p-5 rounded-lg border border-gray-200 dark:border-zinc-700">
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Price</p>
                                 <p className="text-3xl font-bold text-text-light dark:text-text-dark mb-3">
-                                    {formatCurrency(collectionData.listingPrice ? collectionData.listingPrice.toNumber() : null, collectionData.priceCurrency)}
+                                    {formatCurrency(collectionData.listingPrice, collectionData.priceCurrency)}
                                 </p>
                                 <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors text-sm">
                                     Buy Now (Action TBD)
@@ -477,42 +584,6 @@ const SingleCollectionPage = () => {
     );
 };
 
-// Helper component for stats bar items
-const StatItem = ({ title, value }: { title: string; value: string | number; }) => (
-    <div className={`bg-primary-light dark:bg-card-dark p-4`}>
-        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">{title}</p>
-        <p className="text-xl font-semibold text-text-light dark:text-text-dark truncate" title={String(value)}>{value}</p>
-    </div>
-);
 
-// Helper for Detail Items
-const DetailItem = ({ label, value }: { label: string; value: string | number | null }) => {
-    if (!value) return null;
-    return (
-        <div>
-            <dt className="text-gray-500 dark:text-gray-400 font-medium">{label}</dt>
-            <dd className="text-text-light dark:text-text-dark mt-0.5">{value}</dd>
-        </div>
-    );
-};
-
-// Helper for Copyable Text
-const CopyableText = ({ text }: { text: string }) => {
-    const [copied, setCopied] = useState(false);
-    const copyToClipboard = () => {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000); 
-    };
-
-    return (
-        <span className="inline-flex items-center gap-1.5">
-            <span className="truncate max-w-[150px] sm:max-w-[200px]" title={text}>{text}</span>
-            <button onClick={copyToClipboard} title="Copy to clipboard" className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
-                {copied ? <FiCheckCircle className="w-3 h-3 text-green-500" /> : <FiCopy className="w-3 h-3" />}
-            </button>
-        </span>
-    );
-};
 
 export default SingleCollectionPage;

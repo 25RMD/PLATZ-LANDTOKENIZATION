@@ -13,7 +13,7 @@ import {
 } from "react-icons/fi";
 import CollectionCard from "@/components/CollectionCard";
 import CollectionListCard from "@/components/CollectionListCard";
-import LoadingSpinner from "@/components/common/LoadingSpinner";
+import PulsingDotsSpinner from "@/components/common/PulsingDotsSpinner";
 import CollectionCardSkeleton from '@/components/skeletons/CollectionCardSkeleton';
 import CollectionListCardSkeleton from '@/components/skeletons/CollectionListCardSkeleton';
 

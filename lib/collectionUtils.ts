@@ -62,7 +62,7 @@ export async function fetchAndProcessCollectionDetails(
       const marketplaceData = await client.readContract({
         address: landMarketplaceAddress,
         abi: marketplaceAbi,
-        functionName: 'getCollectionListing', 
+        functionName: 'collectionListings', 
         args: [collectionId],
       });
       
@@ -100,16 +100,13 @@ export async function fetchAndProcessCollectionDetails(
                         oldUrl.protocol = newUrl.protocol;
                         oldUrl.host = newUrl.host;
                         validCollectionMetaURI = oldUrl.toString();
-                        console.warn(`[UTIL C_ID:${collectionId}] Workaround: Rewrote old ngrok URL ${collectionMetaURI} to ${validCollectionMetaURI}`);
                     } catch (e: any) {
                         console.error(`[UTIL C_ID:${collectionId}] Workaround: Error trying to rewrite ngrok URL ${collectionMetaURI}:`, e.message);
                         // Keep original collectionMetaURI if rewrite fails, or could set name/desc to error here
                     }
                 }
                 
-                console.log(`[UTIL C_ID:${collectionId}] Attempting to fetch metadata from: ${validCollectionMetaURI}`);
                 const metaResponse = await fetch(validCollectionMetaURI);
-                console.log(`[UTIL Debug C_ID:${collectionId}] Fetch to ${validCollectionMetaURI} - Status: ${metaResponse.status}, OK: ${metaResponse.ok}`);
 
                 if (metaResponse.ok) {
                     let meta;
@@ -119,14 +116,13 @@ export async function fetchAndProcessCollectionDetails(
                         responseTextForLogging = await clonedResponse.text();
                         meta = JSON.parse(responseTextForLogging);
 
-                        console.log(`[UTIL C_ID:${collectionId}] Successfully parsed metadata from ${validCollectionMetaURI}.`);
+
                         finalMetaUriToLog = validCollectionMetaURI;
                         name = meta.name || 'N/A';
                         description = meta.description || 'N/A';
                         let imageUrl = meta.image || placeholderImageUrl;
                         const originalImageUrlFromMetadata = meta.image;
 
-                        console.log(`[UTIL C_ID:${collectionId}] currentBaseUrl: ${currentBaseUrl}, Original image from metadata: ${originalImageUrlFromMetadata}`);
 
                         if (!imageUrl || typeof imageUrl !== 'string') {
                           console.warn(`[UTIL C_ID:${collectionId}] Invalid or missing image URL in metadata, using placeholder: ${placeholderImageUrl}`);
@@ -136,13 +132,13 @@ export async function fetchAndProcessCollectionDetails(
                           const isImageAbsoluteNgrok = imageUrl.startsWith('https://') && (imageUrl.includes('.ngrok-free.app') || imageUrl.includes('.ngrok.io'));
 
                           if (isImageAbsoluteNgrok && isCurrentBaseLocalhost) {
-                            console.log(`[UTIL C_ID:${collectionId}] Image URL is absolute ngrok (${imageUrl}) and current base is localhost. Attempting to transform.`);
+
                             try {
                               const ngrokUrlObject = new URL(imageUrl);
                               const imagePath = ngrokUrlObject.pathname;
                               if (imagePath.startsWith('/uploads/')) {
                                 imageUrl = `${currentBaseUrl}${imagePath}`;
-                                console.log(`[UTIL C_ID:${collectionId}] Transformed ngrok URL to local: ${imageUrl}`);
+
                               } else {
                                 console.warn(`[UTIL C_ID:${collectionId}] Ngrok URL path (${imagePath}) does not start with /uploads/. Using original ngrok URL as fallback for now: ${imageUrl}`);
                               }
@@ -152,7 +148,7 @@ export async function fetchAndProcessCollectionDetails(
                             }
                           } else if (imageUrl.startsWith('/uploads/')) {
                             imageUrl = `${currentBaseUrl}${imageUrl}`;
-                            console.log(`[UTIL C_ID:${collectionId}] Prepended currentBaseUrl for relative image: ${imageUrl}`);
+
                           } else if (imageUrl.startsWith('ipfs://')) {
                             console.warn(`[UTIL C_ID:${collectionId}] Image URL in metadata (${imageUrl}) is an IPFS link, which is unsupported. Using placeholder.`);
                             imageUrl = placeholderImageUrl;
@@ -190,13 +186,15 @@ export async function fetchAndProcessCollectionDetails(
         image = placeholderImageUrl;
         finalMetaUriToLog = 'N/A - URI missing from contract';
     }
-    console.log(`[UTIL C_ID:${collectionId}] FINAL: MetaURI: ${finalMetaUriToLog}, Name: ${name}, Image: ${image}`);
+    console.log(`[UTIL C_ID:${collectionId}] FINAL: MetaURI: ${finalMetaUriToLog}, Name: ${name}, Image: ${image}, Desc: ${description}`);
     return {
       collectionId, startTokenId, totalSupply, mainTokenId, baseURI,
       collectionURI: finalMetaUriToLog, creator, isListed, price, seller,
-      name: name || `Collection ${collectionId.toString()}`,
+      // If name from metadata is 'N/A' or falsy, use a specific placeholder. Otherwise, use the name from metadata.
+      name: (name && name !== 'N/A') ? name : `Unnamed Collection #${collectionId.toString()}`,
       image: image || placeholderImageUrl,
-      description: description || 'No description available.'
+      // If description from metadata is 'N/A' or falsy, use a specific placeholder. Otherwise, use the description.
+      description: (description && description !== 'N/A') ? description : 'No description provided in metadata.'
     };
   } catch (error: any) {
     console.error(`❌ [UTIL] Error fetching details for collection ${collectionId}:`, error.message);

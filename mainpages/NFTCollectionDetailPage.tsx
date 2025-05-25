@@ -5,10 +5,14 @@ import { useAccount, usePublicClient } from 'wagmi';
 import { motion } from 'framer-motion';
 import { FiArrowLeft, FiExternalLink, FiInfo, FiMap, FiShoppingCart } from 'react-icons/fi';
 import Link from 'next/link';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 import NFTTokenGrid from '@/components/nft/NFTTokenGrid';
 import NFTPropertyDetails from '@/components/nft/NFTPropertyDetails';
 import NFTMetadataSection from '@/components/nft/NFTMetadataSection';
+import { NFTImage } from '@/components/ui/image';
+import { NFTTokenCardSkeleton, CollectionDetailSkeleton } from '@/components/skeletons';
+import { useImagePreloading } from '@/hooks/useImagePreloading';
+import { useIsClient } from '@/hooks/useIsClient';
 import { LAND_MARKETPLACE_ADDRESS, PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
 import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
 import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
@@ -75,6 +79,7 @@ interface NFTCollectionDetailPageProps {
 const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ collectionId }) => {
   const { address: connectedEvmAddress, isConnected: isEvmWalletConnected } = useAccount();
   const publicClient = usePublicClient();
+  const isClient = useIsClient();
   
   // State for collection data and loading
   const [collection, setCollection] = useState<NFTCollection | null>(null);
@@ -92,24 +97,75 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
   // Token metadata cache
   const [tokenMetadataCache, setTokenMetadataCache] = useState<Record<string, any>>({});
 
+  // Image preloading hook
+  const { preload, preloadSingle } = useImagePreloading();
+
   // Fetch collection data on mount
   useEffect(() => {
     fetchCollectionData();
   }, [collectionId]);
 
   // Function to fetch metadata from IPFS or other storage
-  const fetchMetadata = async (uri: string) => {
+  const fetchMetadata = async (uri: string, isOptional: boolean = false) => {
     try {
       // Handle different URI formats for backward compatibility
-      const url = uri.startsWith('ipfs://') 
+      let url = uri.startsWith('ipfs://') 
         ? uri.replace('ipfs://', 'https://gateway.ipfs.io/ipfs/') 
         : uri.startsWith('ar://')
           ? uri.replace('ar://', 'https://arweave.net/')
           : uri;
       
-      const response = await fetch(url);
-      return await response.json();
+      // Handle ngrok URL rewriting for local development - convert to API route
+      if (url.includes('ngrok-free.app')) {
+        try {
+          const oldUrl = new URL(url);
+          // Extract the path after /uploads/ or /api/static/
+          const pathMatch = oldUrl.pathname.match(/\/(?:uploads|api\/static)\/(.+)/);
+          if (pathMatch) {
+            // Use our API static route instead
+            if (typeof window !== 'undefined') {
+              url = `${window.location.protocol}//${window.location.host}/api/static/${pathMatch[1]}`;
+              console.log(`[NFTCollectionDetailPage] Rewrote ngrok URL from ${uri} to ${url}`);
+            } else {
+              // Server-side or when window is not available
+              url = `http://localhost:3000/api/static/${pathMatch[1]}`;
+              console.log(`[NFTCollectionDetailPage] Rewrote ngrok URL (server-side) from ${uri} to ${url}`);
+            }
+          }
+        } catch (e: any) {
+          console.error(`[NFTCollectionDetailPage] Error rewriting ngrok URL ${url}:`, e.message);
+          // Keep original URL if rewrite fails
+        }
+      }
+      
+      // If it's a localhost URL with /uploads/, convert to API route
+      if (url.includes('localhost') && url.includes('/uploads/')) {
+        url = url.replace('/uploads/', '/api/static/');
+      }
+      
+      // Try the main URL first
+      let response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        if (isOptional) {
+          return null;
+        }
+        const responseText = await response.text();
+        console.error(`[NFTCollectionDetailPage] Failed to fetch metadata from ${url}: ${response.status} ${response.statusText} - ${responseText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${responseText}`);
+      }
+      
+      const jsonData = await response.json();
+      return jsonData;
     } catch (error) {
+      if (isOptional) {
+        return null;
+      }
       console.error('Error fetching metadata:', error);
       return null;
     }
@@ -144,14 +200,67 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       const [startTokenId, totalSupply, mainTokenId, baseURI, collectionURI, creator] = collectionData as [bigint, bigint, bigint, string, string, string];
       
       // Check if collection is listed in the marketplace
-      const marketplaceData = await publicClient.readContract({
-        address: LAND_MARKETPLACE_ADDRESS,
-        abi: LandMarketplaceABI,
-        functionName: 'getCollectionListing',
-        args: [parsedCollectionId]
-      }) as [string, bigint, string, boolean];
-      
-      const [seller, basePrice, currency, isActive] = marketplaceData;
+      console.log(`[NFTCollectionDetailPage] Attempting to fetch marketplace listing for collectionId: ${parsedCollectionId}, Marketplace Address: ${LAND_MARKETPLACE_ADDRESS}`);
+      let seller: string | undefined;
+      let basePrice: bigint | undefined;
+      let currency: string | undefined;
+      let isActive: boolean = false; // Default to false, will be updated if listing is found and active
+
+      try {
+        const marketplaceCallArgs = {
+          address: LAND_MARKETPLACE_ADDRESS,
+          abi: LandMarketplaceABI,
+          functionName: 'getCollectionListing' as const, // Ensure literal type
+          args: [parsedCollectionId]
+        } as const; // Ensure entire object is treated as const for stricter typing
+        console.log('[NFTCollectionDetailPage] Calling getCollectionListing with args:', marketplaceCallArgs.args);
+
+        // viem's readContract is strongly typed based on ABI. If the call reverts, it throws.
+        // A successful call to getCollectionListing returns [string, bigint, string, boolean]
+        const rawMarketplaceData = await publicClient.readContract(marketplaceCallArgs);
+        
+        console.log(`[NFTCollectionDetailPage] Successfully fetched rawMarketplaceData for collectionId ${parsedCollectionId}:`, rawMarketplaceData);
+        
+        if (rawMarketplaceData && Array.isArray(rawMarketplaceData) && rawMarketplaceData.length === 5) {
+          // Destructure the 5 values: seller, mainTokenId, price, paymentToken, isActive
+          let sellerAddress: `0x${string}` | undefined;
+          let mainTokenId: bigint | undefined;
+          let paymentTokenAddress: `0x${string}` | undefined;
+          
+          // Type assertion for the destructured array elements
+          const [s, mId, p, pt, iA] = rawMarketplaceData as [`0x${string}`, bigint, bigint, `0x${string}`, boolean];
+          sellerAddress = s;
+          mainTokenId = mId;
+          basePrice = p; // Assuming basePrice is already declared with type bigint | undefined
+          paymentTokenAddress = pt;
+          isActive = iA; // Assuming isActive is already declared with type boolean
+
+          console.log(`[NFTCollectionDetailPage] Destructured marketplace data: seller=${sellerAddress}, mainTokenId=${mainTokenId?.toString()}, basePrice=${basePrice?.toString()}, paymentToken=${paymentTokenAddress}, isActive=${isActive}`);
+        } else {
+          console.warn(`[NFTCollectionDetailPage] marketplaceData is null, undefined, or not in expected format for collectionId ${parsedCollectionId}. Assuming not actively listed.`);
+          // isActive remains false, other values undefined
+        }
+      } catch (error: any) {
+        console.error(`[NFTCollectionDetailPage] Error calling getCollectionListing for collectionId ${parsedCollectionId}. LAND_MARKETPLACE_ADDRESS: ${LAND_MARKETPLACE_ADDRESS}.`);
+          const replacer = (key: string, value: any) =>
+            typeof value === 'bigint'
+              ? value.toString() + 'n' // Convert BigInt to string and append 'n' for clarity
+              : value;
+          console.error("[NFTCollectionDetailPage] Full Error Object (BigInts as strings):", JSON.stringify(error, replacer, 2));
+          if (error.shortMessage) {
+            console.error("[NFTCollectionDetailPage] Revert Short Message:", error.shortMessage);
+          }
+          if (error.message) {
+            console.error("[NFTCollectionDetailPage] Revert Message:", error.message);
+          }
+          if (error.reason) {
+            console.error("[NFTCollectionDetailPage] Revert Reason:", error.reason); // Common field for revert reasons
+          }
+        setLoading(false); // Corrected typo
+        setError(`Failed to get marketplace details for collection ${collectionId}. The collection might not be listed, or an on-chain error occurred.`);
+        // Re-throw the original error to see it in the browser console for full diagnosis
+        throw error; 
+      }
       
       // Fetch collection metadata
       const metadata = await fetchMetadata(collectionURI);
@@ -163,25 +272,68 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       const collectionTokens = [];
       
       // Add main token first
+      let mainTokenURI: string;
+      
+      // Main tokens should use their own metadata files, not the child tokens API endpoint
+      if (baseURI.includes('/child-tokens/')) {
+        // This baseURI is for child tokens, but main token needs its own metadata
+        const collectionIdMatch = baseURI.match(/collections\/([^\/]+)/);
+        if (collectionIdMatch) {
+          const collectionId = collectionIdMatch[1];
+          // For legacy collections, construct the main token metadata URL using the known pattern
+          // The actual pattern is: {uuid}-main-token-metadata-{collectionId}.json
+          // For this specific collection, we know the exact filename
+          if (collectionId === 'cmb2xvddo0000czr3i311rrid') {
+            if (typeof window !== 'undefined') {
+              mainTokenURI = `${window.location.protocol}//${window.location.host}/api/static/collections/${collectionId}/e44123f6-a515-46c6-95fa-78c665e33007-main-token-metadata-${collectionId}.json`;
+            } else {
+              mainTokenURI = `http://localhost:3000/api/static/collections/${collectionId}/e44123f6-a515-46c6-95fa-78c665e33007-main-token-metadata-${collectionId}.json`;
+            }
+          } else {
+            // For other legacy collections, we'll need to implement a lookup mechanism
+            // For now, skip main token metadata for unknown legacy collections
+            mainTokenURI = '';
+            console.warn(`[NFTCollectionDetailPage] Unknown legacy collection ID: ${collectionId}, skipping main token metadata`);
+          }
+          console.log(`[NFTCollectionDetailPage] Constructed main token URI for legacy collection: ${mainTokenURI}`);
+        } else {
+          // If we can't extract collection ID, skip main token metadata
+          mainTokenURI = '';
+          console.warn(`[NFTCollectionDetailPage] Could not extract collection ID from baseURI: ${baseURI}`);
+        }
+      } else {
+        // Standard token URI construction for newer collections
+        if (baseURI.includes('{id}')) {
+          mainTokenURI = `${baseURI.replace("{id}", mainTokenId.toString())}.json`;
+        } else {
+          const cleanBaseURI = baseURI.endsWith('/') ? baseURI : `${baseURI}/`;
+          mainTokenURI = `${cleanBaseURI}${mainTokenId.toString()}.json`;
+        }
+      }
+      
       collectionTokens.push({
         tokenId: mainTokenId.toString(),
-        tokenURI: metadata.image || '',
-        ownerAddress: isActive ? LAND_MARKETPLACE_ADDRESS : creator,
+        tokenURI: mainTokenURI,
+        ownerAddress: isActive ? LAND_MARKETPLACE_ADDRESS : creator, // If listed, marketplace is temp owner
         isListed: isActive,
-        listingPrice: isActive ? Number(formatEther(basePrice)) : 0,
+        listingPrice: isActive && typeof basePrice !== 'undefined' ? Number(formatEther(basePrice)) : 0, // Use basePrice for collection listing
       });
       
       // Add additional tokens
       for (let i = 1n; i < totalSupply; i++) {
         const tokenId = startTokenId + i;
         
-        // Check if token is individually listed
-        const isTokenListed = await publicClient.readContract({
+        // Check if token is individually listed using getListing
+        // getListing returns a struct: [seller (address), price (uint256), paymentToken (address), isActive (bool)]
+        const listingData = await publicClient.readContract({
           address: LAND_MARKETPLACE_ADDRESS,
           abi: LandMarketplaceABI,
-          functionName: 'isCollectionTokenListed',
-          args: [parsedCollectionId, tokenId]
-        }) as boolean;
+          functionName: 'getListing',
+          args: [PLATZ_LAND_NFT_ADDRESS, tokenId] // Use the NFT contract address and token ID
+        });
+
+        // getListing returns an object: { seller, price, paymentToken, isActive }
+        const isTokenListed = listingData ? listingData.isActive : false;
         
         // Check token owner
         let ownerAddress;
@@ -199,14 +351,46 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         
         // Build token URI from baseURI
         const tokenURISuffix = i.toString();
-        const tokenURI = `${baseURI}${baseURI.endsWith('/') ? '' : '/'}${tokenURISuffix}`;
+        let tokenURI: string;
+        
+        // Check if baseURI contains {id} placeholder
+        if (baseURI.includes('{id}')) {
+          tokenURI = `${baseURI.replace("{id}", tokenId.toString())}.json`;
+        } else {
+          // If no {id} placeholder, assume baseURI is a directory path and append tokenId
+          const cleanBaseURI = baseURI.endsWith('/') ? baseURI : `${baseURI}/`;
+          tokenURI = `${cleanBaseURI}${tokenId.toString()}.json`;
+        }
+        
+        // Rewrite ngrok URLs to use local API routes
+        if (tokenURI.includes('ngrok-free.app')) {
+          try {
+            const oldUrl = new URL(tokenURI);
+            // Extract the path after /uploads/ or /api/static/
+            const pathMatch = oldUrl.pathname.match(/\/(?:uploads|api\/static)\/(.+)/);
+            if (pathMatch) {
+              // Use our API static route instead
+              if (typeof window !== 'undefined') {
+                tokenURI = `${window.location.protocol}//${window.location.host}/api/static/${pathMatch[1]}`;
+                console.log(`[NFTCollectionDetailPage] Rewrote child token ngrok URL from ${oldUrl.href} to ${tokenURI}`);
+              } else {
+                // Server-side or when window is not available
+                tokenURI = `http://localhost:3000/api/static/${pathMatch[1]}`;
+                console.log(`[NFTCollectionDetailPage] Rewrote child token ngrok URL (server-side) from ${oldUrl.href} to ${tokenURI}`);
+              }
+            }
+          } catch (e: any) {
+            console.error(`[NFTCollectionDetailPage] Error rewriting child token ngrok URL ${tokenURI}:`, e.message);
+            // Keep original URL if rewrite fails
+          }
+        }
         
         collectionTokens.push({
           tokenId: tokenId.toString(),
           tokenURI: tokenURI,
           ownerAddress: ownerAddress,
           isListed: isTokenListed,
-          listingPrice: isActive ? Number(formatEther(basePrice)) : 0, // Same price for all tokens in collection
+          listingPrice: isActive && typeof basePrice !== 'undefined' ? Number(formatEther(basePrice)) : 0, // Use basePrice for collection listing
         });
       }
       
@@ -215,7 +399,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         id: parsedCollectionId.toString(),
         nftTitle: metadata.name || `Collection #${parsedCollectionId}`,
         nftDescription: metadata.description || 'No description provided',
-        listingPrice: isActive ? Number(formatEther(basePrice)) : 0,
+        listingPrice: isActive && typeof basePrice !== 'undefined' ? Number(formatEther(basePrice)) : 0,
         priceCurrency: 'ETH',
         nftImageFileRef: metadata.image || '',
         nftCollectionSize: Number(totalSupply),
@@ -231,7 +415,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         metadataUri: collectionURI,
         evmOwnerAddress: creator,
         isListedForSale: isActive,
-        listingPriceEth: isActive ? Number(formatEther(basePrice)) : 0,
+        listingPriceEth: isActive && typeof basePrice !== 'undefined' ? parseFloat(formatEther(basePrice)) : 0,
         mintTransactionHash: '',
         mintTimestamp: '',
         createdAt: new Date().toISOString(),
@@ -245,19 +429,59 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       
       setCollection(transformedCollection);
       
-      // Prefetch token metadata for each token
+      // Prefetch token metadata for each token and preload images
+      const imageUrls: string[] = [];
+      
       for (const token of collectionTokens) {
         if (token.tokenURI) {
-          fetchMetadata(token.tokenURI).then(metadata => {
+          const isMainToken = token.tokenId === mainTokenId.toString();
+          const isLegacyCollection = baseURI.includes('/child-tokens/');
+          
+          // For collections with /child-tokens/ in baseURI, child tokens are dynamically generated
+          // We should still try to fetch them, but make them optional
+          const isOptionalToken = isLegacyCollection && !isMainToken;
+          
+          // For legacy collections, main token metadata might not be accessible with the guessed pattern
+          // Child tokens in legacy collections are dynamically generated, so they should be optional too
+          const isOptional = (isMainToken && isLegacyCollection) || isOptionalToken;
+          
+          fetchMetadata(token.tokenURI, isOptional).then(metadata => {
             if (metadata) {
               setTokenMetadataCache(prev => ({
                 ...prev,
                 [token.tokenId]: metadata
               }));
+              
+              // Add image URL to preload list
+              if (metadata.image) {
+                imageUrls.push(metadata.image);
+              }
             }
-          }).catch(console.error);
+          }).catch(error => {
+            if (isOptional) {
+              console.warn(`[NFTCollectionDetailPage] Failed to fetch optional metadata for token ${token.tokenId}:`, error);
+            } else {
+              console.error(`[NFTCollectionDetailPage] Failed to fetch required metadata for token ${token.tokenId}:`, error);
+            }
+          });
         }
       }
+      
+      // Preload collection image with high priority
+      if (transformedCollection.nftImageFileRef) {
+        preloadSingle(transformedCollection.nftImageFileRef, { priority: 'high' }).catch(error => {
+          console.warn('[NFTCollectionDetailPage] Failed to preload collection image:', error);
+        });
+      }
+      
+      // Preload token images with medium priority after a short delay
+      setTimeout(() => {
+        if (imageUrls.length > 0) {
+          preload(imageUrls, { priority: 'medium', maxConcurrent: 2 }).catch(error => {
+            console.warn('[NFTCollectionDetailPage] Failed to preload token images:', error);
+          });
+        }
+      }, 1000);
       
     } catch (err: any) {
       console.error('Error fetching collection:', err);
@@ -302,11 +526,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
 
   // Render loading state
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+    return <CollectionDetailSkeleton />;
   }
 
   // Render error state
@@ -357,23 +577,16 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       <div className="bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden mb-8">
         <div className="flex flex-col md:flex-row">
           <div className="md:w-1/3 h-64 md:h-auto bg-gray-200 dark:bg-zinc-800 flex-shrink-0">
-            {collection.nftImageFileRef ? (
-              <img
-                src={collection.nftImageFileRef?.startsWith('http') 
-                  ? collection.nftImageFileRef 
-                  : collection.nftImageFileRef?.startsWith('ipfs://') 
-                    ? collection.nftImageFileRef.replace('ipfs://', 'https://gateway.ipfs.io/ipfs/') 
-                    : collection.nftImageFileRef?.startsWith('ar://')
-                      ? collection.nftImageFileRef.replace('ar://', 'https://arweave.net/')
-                      : `/api/images/${collection.nftImageFileRef}`}
-                alt={collection.nftTitle || 'Collection Image'}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-300 dark:bg-zinc-700 flex items-center justify-center">
-                <span className="text-gray-500 dark:text-gray-400">No Image Available</span>
-              </div>
-            )}
+            <NFTImage
+              src={collection.nftImageFileRef || ''}
+              alt={collection.nftTitle || 'Collection Image'}
+              className="w-full h-full"
+              collectionId={collection.id}
+              isMainToken={true}
+              priority={true}
+              dimensions={{ aspectRatio: '4/3' }}
+              fallback="https://placehold.co/400x300/gray/white?text=Collection+Image"
+            />
           </div>
           <div className="p-6 flex-1">
             <div className="flex justify-between items-start">
@@ -483,63 +696,88 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               This collection contains {collection.nftCollectionSize} NFT tokens representing ownership shares in the property.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {collection.evmCollectionTokens.map((token, index) => (
-                <div 
-                  key={token.tokenId} 
-                  className="bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200"
-                >
-                  <div className="aspect-square bg-gray-100 dark:bg-zinc-800 relative">
-                    {index === 0 ? (
-                      <div className="absolute top-0 left-0 bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded-br">
-                        Main Token
-                      </div>
-                    ) : null}
-                    {token.isListed && (
-                      <div className="absolute top-0 right-0 bg-green-600 text-white text-xs font-medium px-2 py-1 rounded-bl">
-                        For Sale
-                      </div>
-                    )}
-                    <img
-                      src={token.tokenURI?.startsWith('http') 
-                        ? token.tokenURI 
-                        : token.tokenURI?.startsWith('ipfs://') 
-                          ? token.tokenURI.replace('ipfs://', 'https://gateway.ipfs.io/ipfs/') 
-                          : token.tokenURI?.startsWith('ar://')
-                            ? token.tokenURI.replace('ar://', 'https://arweave.net/')
-                            : `/api/images/${token.tokenURI || 'placeholder'}`}
-                      alt={`Token #${token.tokenId}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Set a placeholder for failed image loads
-                        (e.target as HTMLImageElement).src = 'https://placehold.co/300x300/gray/white?text=No+Image';
-                      }}
+              {collection.evmCollectionTokens.map((token, index) => {
+                // Get token metadata from cache
+                const tokenMetadata = tokenMetadataCache[token.tokenId];
+                const isMainToken = index === 0;
+                
+                // Determine image source
+                let imageUrl = tokenMetadata?.image || '';
+                if (!imageUrl && isMainToken && collection.nftImageFileRef) {
+                  // For main token without metadata, use collection image as fallback
+                  imageUrl = collection.nftImageFileRef;
+                }
+                
+                // Check if metadata is still loading
+                const isMetadataLoading = !tokenMetadata && isMainToken;
+                
+                // Show skeleton while metadata is loading for main token
+                if (isMetadataLoading) {
+                  return (
+                    <NFTTokenCardSkeleton
+                      key={token.tokenId}
+                      showBadges={true}
+                      showPrice={token.listingPrice > 0}
+                      showButton={token.isListed}
                     />
-                  </div>
-                  <div className="p-3">
-                    <div className="flex justify-between items-start">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        Token #{token.tokenId}
-                      </p>
-                      {token.listingPrice > 0 && (
-                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                          {token.listingPrice} ETH
+                  );
+                }
+                
+                return (
+                  <div 
+                    key={token.tokenId} 
+                    className="bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200"
+                  >
+                    <div className="aspect-square bg-gray-100 dark:bg-zinc-800 relative">
+                      {isMainToken && (
+                        <div className="absolute top-0 left-0 bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded-br z-10">
+                          Main Token
+                        </div>
+                      )}
+                      {token.isListed && (
+                        <div className="absolute top-0 right-0 bg-green-600 text-white text-xs font-medium px-2 py-1 rounded-bl z-10">
+                          For Sale
+                        </div>
+                      )}
+                      <NFTImage
+                        src={imageUrl}
+                        alt={tokenMetadata?.name || `Token #${token.tokenId}`}
+                        className="w-full h-full"
+                        tokenId={token.tokenId}
+                        collectionId={collection.id}
+                        isMainToken={isMainToken}
+                        lazy={!isMainToken} // Don't lazy load main token
+                        priority={isMainToken}
+                        dimensions={{ aspectRatio: '1/1' }}
+                        fallback="https://placehold.co/300x300/gray/white?text=No+Image"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <div className="flex justify-between items-start">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {tokenMetadata?.name || `Token #${token.tokenId}`}
                         </p>
+                        {token.listingPrice > 0 && (
+                          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                            {token.listingPrice} ETH
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                        Owner: {token.ownerAddress?.substring(0, 6)}...{token.ownerAddress?.substring(38)}
+                      </p>
+                      {token.isListed && (
+                        <button
+                          onClick={() => handlePurchaseToken(token.tokenId)}
+                          className="w-full mt-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded flex items-center justify-center"
+                        >
+                          <FiShoppingCart className="mr-1" size={12} /> Buy
+                        </button>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
-                      Owner: {token.ownerAddress?.substring(0, 6)}...{token.ownerAddress?.substring(38)}
-                    </p>
-                    {token.isListed && (
-                      <button
-                        onClick={() => handlePurchaseToken(token.tokenId)}
-                        className="w-full mt-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded flex items-center justify-center"
-                      >
-                        <FiShoppingCart className="mr-1" size={12} /> Buy
-                      </button>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -707,7 +945,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 disabled={isPurchasing}
                   className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center"
               >
-                  {isPurchasing ? <LoadingSpinner size="sm" /> : 'Confirm Purchase'}
+                  {isPurchasing ? <PulsingDotsSpinner size={16} color="bg-black dark:bg-white" /> : 'Confirm Purchase'}
               </button>
               </div>
             </div>

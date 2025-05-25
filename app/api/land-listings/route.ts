@@ -23,8 +23,8 @@ const saveFile = async (file: File): Promise<string> => {
   // Create a unique filename to prevent collisions
   const uniqueFilename = `${uuidv4()}-${file.name}`;
   
-  // Ensure uploads directory exists
-  const uploadsDir = path.join(process.cwd(), 'uploads');
+  // Ensure public/uploads directory exists
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
@@ -130,6 +130,8 @@ export async function POST(req: NextRequest) {
 
     // --- NFT Minting Process ---
     const nftTitle = nftTitleForCheck;
+    const nftDescriptionFromForm = (formData as any).get('nftDescription') as string | null;
+    console.log('[API /api/land-listings] Received nftDescription from form:', nftDescriptionFromForm);
     const nftDescription = (formData as any).get('nftDescription') as string | null;
     let ownerEthAddressForDb: string | null = null; // Variable to store the Ethereum address used for minting
 
@@ -158,7 +160,7 @@ export async function POST(req: NextRequest) {
 
         const mintResult = await mintNft(
           nftTitle,
-          nftDescription || '',
+          nftDescriptionFromForm || '',
           imageBuffer,
           ownerEthAddressForDb || 'placeholder-ethereum-address', // Use placeholder if no address is available
           500 // Default 5% seller fee basis points
@@ -209,8 +211,12 @@ export async function POST(req: NextRequest) {
       propertyAreaSqm: (formData as any).get('propertyAreaSqm') ? parseFloat(((formData as any).get('propertyAreaSqm') as string)!) : null,
       legalDescription: (formData as any).get('legalDescription') as string | null,
       
+      // Store nftDescription directly in its own field or a suitable existing field
+      // Assuming you have a field like 'nftDescription' in your Prisma model
+      nftDescription: nftDescriptionFromForm, 
+      // If you were using propertyDescription for other structured data, adjust accordingly
+      // For now, let's assume propertyDescription might hold other notes or can be simplified
       propertyDescription: JSON.stringify({
-        nftDescription: nftDescription,
         notes: ((formData as any).get('additionalNotes') as string | null) || '',
         evmOwnerAddress: ownerEthAddressForDb
       }),

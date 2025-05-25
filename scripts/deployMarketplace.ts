@@ -8,7 +8,11 @@ async function main() {
 
   // Deploy LandMarketplace contract
   const LandMarketplace = await hre.ethers.getContractFactory("LandMarketplace");
-  const landMarketplace = await LandMarketplace.deploy(deployer.address);
+  const initialOwnerAddress = "0x3ec4bfe3167ba77A5906C034AABE5537BA7c4B07";
+  const platzNftContractAddress = "0x155e70f694E645907d36583Cca893BE52bf3A29f"; // This should match PLATZ_LAND_NFT_ADDRESS
+
+  console.log(`Deploying LandMarketplace with initialOwner: ${initialOwnerAddress} and platzNftContract: ${platzNftContractAddress}`);
+  const landMarketplace = await LandMarketplace.deploy(initialOwnerAddress, platzNftContractAddress);
   await landMarketplace.waitForDeployment();
 
   const landMarketplaceAddress = await landMarketplace.getAddress();

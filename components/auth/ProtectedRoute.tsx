@@ -3,7 +3,7 @@
 import React, { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import LoadingSpinner from '@/components/common/LoadingSpinner'; // Assuming you have this
+import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -25,7 +25,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <LoadingSpinner size={48} />
+        <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
       </div>
     );
   }

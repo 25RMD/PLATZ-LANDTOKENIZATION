@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
-import "@/styles/globals.css";
+import "@/app/globals.css";
 import Footer from "@/components/common/Footer";
 import Header from "@/components/common/Header";
 import { ThemeProvider } from 'next-themes'; 
@@ -9,6 +9,7 @@ import { WagmiProvider } from '@/components/providers/WagmiProvider';
 import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { Inter } from "next/font/google";
+import ErrorBoundary from '@/app/error-boundary';
 
 export const metadata: Metadata = {
   title: "NFT Marketplace",

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { FiAlertCircle, FiStar, FiInfo, FiX, FiExternalLink } from 'react-icons/fi';
 import { useAuth } from '@/context/AuthContext';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 import { getImageUrl } from '@/lib/utils/imageUtils';
 
 interface WatchlistItem {
@@ -106,7 +106,7 @@ const WatchlistPage = () => {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
       </div>
     );
   }

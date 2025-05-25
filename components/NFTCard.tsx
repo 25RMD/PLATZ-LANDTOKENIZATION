@@ -1,4 +1,4 @@
-import { NFT } from "@/lib/interdace";
+import { NFT } from "@/lib/interface"; // Corrected typo in import path
 import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -31,7 +31,7 @@ const NFTCard = ({ nft, index }: NFTCardProps) => {
         <div className="flex justify-between items-start mb-2 gap-2">
           <h3 className="text-xl font-bold text-text-light dark:text-text-dark flex-shrink truncate" title={nft.name}>{nft.name}</h3>
           <span className="bg-gray-100 dark:bg-zinc-900 text-text-light dark:text-text-dark px-2 py-1 rounded-md text-sm flex-shrink-0 whitespace-nowrap">
-            {nft.price} ETH
+            {nft.price}
           </span>
         </div>
         <p className="text-text-light dark:text-text-dark opacity-70 text-sm mb-4 line-clamp-2">

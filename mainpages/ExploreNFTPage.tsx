@@ -8,7 +8,7 @@ import { FiAlertCircle, FiLoader, FiPackage, FiSearch, FiFilter, FiGrid, FiList,
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import AnimatedButton from '@/components/common/AnimatedButton';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 import SkeletonLoader from '@/components/common/SkeletonLoader';
 import NFTImage from '@/components/nft/NFTImage';
 import { LAND_MARKETPLACE_ADDRESS, PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
@@ -19,71 +19,9 @@ import { sepolia } from 'viem/chains';
 import { getLogsInChunks, safeDecodeEventLog } from '@/lib/ethereum/blockchainUtils';
 import { SEPOLIA_RPC_URLS, getPrioritizedSepoliaRpcUrl, getSepoliaClientConfig } from '@/lib/ethereum/rpcConfig';
 import CollectionsGrid from '@/components/collections/CollectionsGrid';
-import CollectionCard from '@/components/CollectionCard'; // Adjust path if needed e.g. @/components/CollectionCard
+import CollectionCard from '@/components/CollectionCard'; // Restored import
 import { CollectionDetail } from '../lib/types';
 import { fetchAndProcessCollectionDetails } from '../lib/collectionUtils';
-
-// Define the DecodedArgs interface for typed event args
-interface DecodedArgs {
-  collectionId: bigint;
-  mainTokenId: bigint;
-  creator: string;
-}
-
-// Define types for NFT collections
-interface NFTCollection {
-  id: string;
-  nftTitle: string;
-  nftDescription: string;
-  listingPrice: number;
-  priceCurrency: string;
-  nftImageFileRef: string;
-  nftCollectionSize: number;
-  country: string;
-  state: string;
-  localGovernmentArea: number;
-  latitude: string;
-  longitude: string;
-  contractAddress: string;
-  collectionId: string;
-  mainTokenId: string;
-  metadataUri: string;
-  evmOwnerAddress: string;
-  isListedForSale: boolean;
-  listingPriceEth: number;
-  mintTransactionHash: string;
-  mintTimestamp: string;
-  createdAt: string;
-  user: {
-    id: string;
-    username: string;
-    evmAddress: string;
-  };
-  evmCollectionTokens: {
-    tokenId: string;
-    tokenURI: string;
-    ownerAddress: string;
-    isListed: boolean;
-    listingPrice: number;
-  }[];
-}
-
-// Define types for CollectionDetail (returned by fetchCollectionDetails)
-
-
-// Define types for on-chain collection data
-interface OnChainCollection {
-  collectionId: bigint;
-  mainTokenId: bigint;
-  startTokenId: bigint;
-  totalSupply: bigint;
-  baseURI: string;
-  collectionURI: string;
-  creator: string;
-  isListed: boolean;
-  price?: bigint;
-  seller?: string;
-}
 
 // Define types for filter state
 interface FilterState {
@@ -140,7 +78,6 @@ const ExploreNFTPage: React.FC = () => {
   }, []); // Removed publicClient from dependency array as fetchAndProcessCollectionDetails now accepts it as an argument
 
   // State for collections and loading
-  const [collections, setCollections] = useState<NFTCollection[]>([]);
   const [onChainCollections, setOnChainCollections] = useState<CollectionDetail[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -189,7 +126,7 @@ const ExploreNFTPage: React.FC = () => {
       console.log(`Found ${allCollectionIds?.length || 0} collection IDs: ${allCollectionIds?.join(', ')}`);
 
       if (!allCollectionIds || allCollectionIds.length === 0) {
-        setCollections([]);
+        setOnChainCollections([]);
         setLoading(false);
         return;
       }
@@ -207,46 +144,23 @@ const ExploreNFTPage: React.FC = () => {
       });
       
       console.log(`Loaded ${fetchedOnChainCollections.length} collections from chain.`, fetchedOnChainCollections);
+      // DETAILED LOG FOR DEBUGGING DESCRIPTIONS
+      console.log('[ExploreNFTPage] DETAILED LOG: fetchedOnChainCollections before setting state:', 
+        fetchedOnChainCollections.map(c => ({ 
+          id: c.collectionId, 
+          name: c.name, 
+          description: c.description, 
+          image: c.image 
+        }))
+      );
       setOnChainCollections(fetchedOnChainCollections.sort((a, b) => Number(b.collectionId) - Number(a.collectionId))); // Sort here if onChainCollections should be sorted
 
-      const transformedCollections: NFTCollection[] = fetchedOnChainCollections.map(detail => {
-        return {
-          id: detail.collectionId.toString(),
-          collectionId: detail.collectionId.toString(),
-          nftTitle: detail.name,
-          nftDescription: detail.description,
-          nftImageFileRef: detail.image,
-          isListedForSale: detail.isListed,
-          listingPrice: detail.price ? parseFloat(formatEther(detail.price)) : 0,
-          listingPriceEth: detail.price ? parseFloat(formatEther(detail.price)) : 0,
-          priceCurrency: 'ETH',
-          mainTokenId: detail.mainTokenId.toString(),
-          metadataUri: detail.collectionURI,
-          evmOwnerAddress: detail.seller || detail.creator, // Prefer seller if listed
-          contractAddress: PLATZ_LAND_NFT_ADDRESS, 
-          nftCollectionSize: Number(detail.totalSupply),
-          // Default/placeholder values for fields not in CollectionDetail
-          country: 'N/A',
-          state: 'N/A',
-          localGovernmentArea: 0,
-          latitude: '0',
-          longitude: '0',
-          mintTransactionHash: 'N/A',
-          mintTimestamp: new Date().toISOString(), 
-          createdAt: new Date().toISOString(), 
-          user: { 
-            id: detail.creator, 
-            username: 'Unknown User', 
-            evmAddress: detail.creator 
-          },
-          evmCollectionTokens: [], 
-        };
-      });
-
-      setCollections(transformedCollections.sort((a, b) => Number(b.collectionId) - Number(a.collectionId)));
-    } catch (e: any) {
-      console.error('Error loading collections:', e);
-      setError(e.message || 'Failed to load collections.');
+      setTotalCollections(fetchedOnChainCollections.length);
+      setTotalPages(Math.ceil(fetchedOnChainCollections.length / 12)); // Assuming 12 items per page
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Error loading collections:', err);
+      setError(err.message || 'Failed to load collections.');
     }
     setLoading(false);
   }, [publicClient]);
@@ -258,8 +172,7 @@ const ExploreNFTPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
-        <LoadingSpinner size={60} />
-        <p className="ml-4 mt-4 text-xl text-gray-600 dark:text-gray-300">Loading Collections...</p>
+        <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
       </div>
     );
   }
@@ -276,7 +189,7 @@ const ExploreNFTPage: React.FC = () => {
     );
   }
 
-  if (collections.length === 0) {
+  if (onChainCollections.length === 0) {
     return (
       <div className="container mx-auto py-8 px-4 text-center min-h-[calc(100vh-200px)] flex flex-col justify-center items-center">
         <FiPackage className="text-gray-400 dark:text-gray-500 text-6xl mx-auto mb-6" />
@@ -301,7 +214,7 @@ const ExploreNFTPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
-        {collections.map((collection) => (
+        {onChainCollections.map((collection: CollectionDetail) => (
           <motion.div
             key={collection.collectionId.toString()}
             initial={{ opacity: 0, y: 20 }}

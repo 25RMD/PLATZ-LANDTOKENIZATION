@@ -1,0 +1,8 @@
+{
+  "name": "Collection: teststsststs",
+  "description": "A collection of 10 NFTs representing fractional ownership or aspects of land listing cmb2xvddo0000czr3i311rrid. Includes one main token and 9 child tokens.",
+  "image": "http://localhost:3000/api/static/collections/cmb2xvddo0000czr3i311rrid/a6022470-67a7-4bea-b343-3ccf06cbade1-main-token-image-cmb2xvddo0000czr3i311rrid.jpeg",
+  "external_link": "http://localhost:3000/collections/cmb2xvddo0000czr3i311rrid",
+  "seller_fee_basis_points": 250,
+  "fee_recipient": "0x3ec4bfe3167ba77A5906C034AABE5537BA7c4B07"
+}

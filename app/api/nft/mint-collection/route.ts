@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import prisma from '@/lib/prisma';
 import { createCollection } from '@/lib/ethereum/contractUtils';
 import fs from 'fs';
 import path from 'path';
@@ -27,8 +27,8 @@ const saveBufferToFile = async (buffer: Buffer, fileName: string, contentType: s
   const fileExtension = contentType.split('/')[1] || 'png';
   const uniqueFilename = `${uuidv4()}-${fileName}.${fileExtension}`;
   
-  // Ensure uploads directory exists
-  const uploadsDir = path.join(process.cwd(), 'uploads');
+  // Ensure public/uploads directory exists
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
@@ -84,6 +84,8 @@ export async function POST(request: NextRequest) {
       ownerAddress,
       quantity = 2 // Default to 2 child tokens if not specified
     } = requestData;
+
+    console.log('Received nftDescription from request:', nftDescription);
 
     // Validate required fields
     if (!landListingId || !nftTitle || !imageBase64 || !ownerAddress) {
@@ -191,6 +193,7 @@ export async function POST(request: NextRequest) {
       external_url: `${normalizedBaseUrl}/listings/${landListingId}`,
     };
     
+    console.log('Using description for mainTokenMetadata:', mainTokenMetadata.description);
     // --- 4. Save Main Token Metadata JSON to local storage ---
     let mainTokenMetadataUrl;
     try {
@@ -212,12 +215,36 @@ export async function POST(request: NextRequest) {
     }
     
     // --- 5. Save Collection Metadata JSON ---
+    // Use nftTitle (from requestData) directly for collection name.
+    // Strip "Collection: " prefix from nftTitle if present, as it's often redundant for the collection name.
+    let processedCollectionName = nftTitle || `Unnamed Land Collection ${landListingId}`; // Fallback if nftTitle is empty
+    if (processedCollectionName.toLowerCase().startsWith('collection: ')) {
+        processedCollectionName = processedCollectionName.substring('collection: '.length).trim();
+    }
+    // If stripping the prefix made the name empty, revert to a fallback.
+    if (!processedCollectionName) {
+        processedCollectionName = `Unnamed Land Collection ${landListingId}`;
+    }
+
+    // Use nftDescription (from requestData) directly for collection description.
+    const processedCollectionDescription = nftDescription || `This is a collection of ${quantity + 1} unique land plots.`; // Fallback if nftDescription is empty
+
+    // DEBUG LOG FOR COLLECTION METADATA INPUTS
+    console.log(`[API MINT DEBUG] Preparing collectionMetadata. Inputs: nftTitle='${nftTitle}', nftDescription='${nftDescription}', quantity=${quantity}`);
+
     const collectionMetadata = {
-      ...mainTokenMetadata,
-      name: `${mainTokenMetadata.name} Collection`,
-      description: `Collection of ${quantity} land tokens for ${mainTokenMetadata.name}`,
+      // Inherit image and external_url from main token's metadata as a base.
+      // These could be made distinct for collections if needed in the future.
+      image: mainTokenMetadata.image, 
+      external_url: mainTokenMetadata.external_url, 
+
+      name: processedCollectionName,
+      description: processedCollectionDescription,
+      
       attributes: [
-        ...mainTokenMetadata.attributes.filter(attr => attr.trait_type !== "Token Type"),
+        // Filter out "Token Type" from mainTokenMetadata's attributes, then add collection-specific attributes.
+        // Ensure mainTokenMetadata.attributes exists before trying to filter.
+        ...((mainTokenMetadata.attributes || []).filter((attr: {trait_type: string; value: any;}) => attr.trait_type !== "Token Type")),
         { trait_type: "Token Type", value: "Collection" },
         { trait_type: "Total Tokens", value: quantity + 1 } // +1 for main token
       ]

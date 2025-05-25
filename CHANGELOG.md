@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **RPC Configuration**: Enhanced RPC configuration with multiple fallback endpoints and improved error handling
+- **Error Handling**: Added ErrorBoundary component to gracefully catch and display React errors
+- **Upload Handling**: Implemented fallback upload handler for missing uploads
+- **Rate Limiting**: Added rate limiting to API routes to prevent abuse
+
+### Fixed
+- **RPC Connection**: Improved reliability of Ethereum RPC connections with better error handling and retry logic
+- **Error Handling**: Added proper error boundaries and improved error messages throughout the application
+- **Uploads**: Fixed 404 errors for missing uploads with a proper fallback handler
+- Corrected destructuring of marketplace listing data in `NFTCollectionDetailPage.tsx` to align with the five values returned by the `getCollectionListing` smart contract function (seller, mainTokenId, price, paymentToken, isActive).
+- Improved type safety for contract interactions by defining an `Address` type (`0x${string}`) in `config/contracts.ts` and ensuring all exported contract addresses and the `getContractAddress` function utilize this stricter type. This resolves lint errors related to address type mismatches in consuming components.
+- Fixed individual token listing status check in `NFTCollectionDetailPage.tsx` by using the correct `getListing` smart contract function (instead of the non-existent `isCollectionTokenListed`) and correctly processing its object return type to access the `isActive` property.
+
+### Changed
+- Updated links on collection cards in the explore section to correctly navigate to their detail pages (`/explore/[id]`).
+- Replaced all instances of `LoadingSpinner` with a new `PulsingDotsSpinner` component for a consistent loading animation across the application. Removed the old `LoadingSpinner` component files.
+- Refactored `CollectionCard.tsx` to use `CollectionDetail` type directly, simplifying data flow and ensuring correct display of collection name, description, image, creator, and price.
+- Updated `ExploreNFTPage.tsx` to consistently use `onChainCollections` (of type `CollectionDetail[]`) for state management and rendering, removing legacy `NFTCollection` transformations and resolving associated lint errors.
+
+### Fixed
+- Resolved TypeScript errors in `app/api/collections/[collectionId]/route.ts` by:
+  - Correcting the Prisma relation name from `individualNfts` to `nfts` to match the schema.
+  - Aligning the `price` field type in `ProcessedNft` interface to `number | null` to match Prisma's `Float` type.
+  - Ensuring the `responseData` object uses the correct `nfts` key.
+- Resolved various lint errors in `ExploreNFTPage.tsx` and `CollectionCard.tsx` related to incorrect type usage, missing imports, and obsolete variable references after refactoring collection data handling.
+- Resolved lint errors by updating `tsconfig.json` to correctly alias the `@/context` path and by correcting prop usage for `ConfirmationModal` in the admin dashboard (changed `isOpen` to `open`, `onClose` to `onCancel`, and moved `title`/`message` to `children`).
+- Removed redundant "Loading Collections..." text from `ExploreNFTPage.tsx` as `PulsingDotsSpinner` is already present.
+- Fixed "Cannot find module '@/config/contracts'" error by adding the `@/config` path alias to `tsconfig.json`.
+- Removed redundant "Loading profile data..." text from `app/profile/page.tsx`.
+- Fixed lint error in `app/profile/page.tsx` by changing `isLoading` to `isPending` for the `useSignMessage` hook (wagmi API update).
+- Investigated and confirmed that redundant loading text has been removed from key pages (`ExploreNFTPage`, `ProfilePage`). Other pages (`CollectionsPage`, `NFTCollectionDetailPage`, `MarketplacePage`, `WatchlistPage`, `MyListingsPage`, `app/collections/[collectionId]/page`) correctly use skeleton loaders or only the `PulsingDotsSpinner` for their loading states.
+- Standardized `PulsingDotsSpinner` component usage across the application to default to `size={48}` and `color="bg-black dark:bg-white"` for general page loading states. Smaller sizes (e.g., `16`, `20`) are used for inline spinners within buttons or icons. Redundant loading text alongside spinners in `app/admin/dashboard/page.tsx` was also removed.
+
 ### Changed
 - Updated the post-login loading indicator in `ProtectedRoute.tsx` to be more minimalistic:
   - Corrected `LoadingSpinner` size prop to use a numeric value (`48`) instead of a string (`"lg"`), fixing potential rendering issues.

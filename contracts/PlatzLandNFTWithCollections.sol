@@ -290,4 +290,16 @@ contract PlatzLandNFTWithCollections is ERC721URIStorage, Ownable {
         // Clean up property data
         delete _properties[tokenId];
     }
-} 
+
+    /**
+     * @dev Updates the token URI for a given token.
+     * Can be used to update the URI of a main collection token or any individually minted token.
+     * Only the contract owner can call this function.
+     * @param tokenId The ID of the token to update.
+     * @param newTokenURI The new URI for the token.
+     */
+    function updateTokenURI(uint256 tokenId, string calldata newTokenURI) public onlyOwner {
+        require(_exists(tokenId), "ERC721URIStorage: URI update for nonexistent token");
+        _setTokenURI(tokenId, newTokenURI);
+    }
+}

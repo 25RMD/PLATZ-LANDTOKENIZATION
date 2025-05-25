@@ -32,8 +32,8 @@ const saveBufferToFile = async (buffer: Buffer, fileName: string, contentType: s
   const fileExtension = contentType.split('/')[1] || 'png';
   const uniqueFilename = `${uuidv4()}-${fileName}.${fileExtension}`;
   
-  // Ensure uploads directory and subfolder (if any) exists
-  const baseUploadsDir = path.join(process.cwd(), 'uploads');
+  // Ensure public/uploads directory and subfolder (if any) exists
+  const baseUploadsDir = path.join(process.cwd(), 'public', 'uploads');
   const targetDir = subfolder ? path.join(baseUploadsDir, subfolder) : baseUploadsDir;
 
   if (!fs.existsSync(targetDir)) {
@@ -262,21 +262,36 @@ export async function POST(request: NextRequest) {
       }
 
       // --- 8. Update database with Collection data ---
+      // Check if the collection data was already updated by createCollection
+      const currentListing = await prisma.landListing.findUnique({
+        where: { id: landListingId },
+        select: { collectionId: true, mainTokenId: true, mintStatus: true }
+      });
+
+      // Prepare update data - avoid updating collectionId if it's already set to prevent unique constraint violation
+      const updateData: any = {
+        mintStatus: 'COMPLETED_COLLECTION', // New status
+        mintTransactionHash: transactionHash, // Original collection mint tx
+        collectionNftTitle: nftTitle, 
+        marketplaceTransactionHash: marketplaceListingTxHash, // New field for prisma schema
+        marketplaceListingError: marketplaceListingError,
+        coverImageUrl: mainTokenImageUrlPath, 
+        collectionMetadataUrl: collectionMetadataFullUrl,
+        childTokensBaseUrl: childTokensBaseURI,
+        mainTokenMetadataUrl: mainTokenMetadataFullUrl
+      };
+
+      // Only update collectionId and mainTokenId if they're not already set or different
+      if (!currentListing?.collectionId || currentListing.collectionId !== collectionId.toString()) {
+        updateData.collectionId = collectionId.toString();
+      }
+      if (!currentListing?.mainTokenId || currentListing.mainTokenId !== mainTokenId.toString()) {
+        updateData.mainTokenId = mainTokenId.toString();
+      }
+
       await prisma.landListing.update({
         where: { id: landListingId },
-        data: {
-          mintStatus: 'COMPLETED_COLLECTION', // New status
-          mintTransactionHash: transactionHash, // Original collection mint tx
-          collectionId: collectionId.toString(), 
-          mainTokenId: mainTokenId.toString(),
-          collectionNftTitle: nftTitle, 
-          marketplaceTransactionHash: marketplaceListingTxHash, // New field for prisma schema
-          marketplaceListingError: marketplaceListingError,
-          coverImageUrl: mainTokenImageUrlPath, 
-          collectionMetadataUrl: collectionMetadataFullUrl,
-          childTokensBaseUrl: childTokensBaseURI,
-          mainTokenMetadataUrl: mainTokenMetadataFullUrl
-        },
+        data: updateData,
       });
 
       return NextResponse.json({ 

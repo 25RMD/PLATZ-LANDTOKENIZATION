@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute'; // Use the general protected route
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 import AnimatedButton from '@/components/common/AnimatedButton';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import toast from 'react-hot-toast';
@@ -381,7 +381,7 @@ const AdminDashboardContent = () => {
         if (loadingKycRequests) {
             return (
                 <div className="flex justify-center py-8">
-                    <LoadingSpinner size="lg" />
+                    <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
                 </div>
             );
         }
@@ -445,7 +445,7 @@ const AdminDashboardContent = () => {
                                             variant="success"
                                             onClick={() => handleApprove(request.updateRequestId, userIdSubstring)}
                                             disabled={actionLoadingKyc[request.updateRequestId]}
-                                            icon={actionLoadingKyc[request.updateRequestId] ? <LoadingSpinner size="sm" /> : <HiCheck />}
+                                            icon={actionLoadingKyc[request.updateRequestId] ? <PulsingDotsSpinner size={16} color="bg-black dark:bg-white" /> : <HiCheck />}
                                         >
                                             Approve
                                         </Button>
@@ -453,7 +453,7 @@ const AdminDashboardContent = () => {
                                             variant="danger"
                                             onClick={() => handleReject(request.updateRequestId, userIdSubstring)}
                                             disabled={actionLoadingKyc[request.updateRequestId]}
-                                            icon={actionLoadingKyc[request.updateRequestId] ? <LoadingSpinner size="sm" /> : <HiX />}
+                                            icon={actionLoadingKyc[request.updateRequestId] ? <PulsingDotsSpinner size={16} color="bg-black dark:bg-white" /> : <HiX />}
                                         >
                                             Reject
                                         </Button>
@@ -484,7 +484,7 @@ const AdminDashboardContent = () => {
     if (authLoading || (currentTab === 'kyc' && loadingKycRequests)) {
         return (
           <div className="flex justify-center items-center min-h-[60vh]">
-            <LoadingSpinner size="lg" />
+            <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
             <p className="ml-4 text-text-light dark:text-text-dark">Loading Admin Dashboard Content...</p>
           </div>
         );
@@ -563,148 +563,9 @@ const AdminDashboardContent = () => {
                             </button>
                         ))}
                     </div>
-
-                    {/* Content for 'Awaiting Review' Sub-tab */}
-                    {currentListingSubTab === 'review' && (
-                        <>
-                            {loadingListings ? (
-                                 <div className="flex justify-center items-center py-10"><LoadingSpinner /> <span className='ml-2'>Loading listings for review...</span></div>
-                            ) : landListings.length === 0 ? (
-                                <p className="text-center text-gray-500 dark:text-gray-400 py-10">No DRAFT or PENDING listings found for review.</p>
-                            ) : (
-                                <div className="space-y-6">
-                                    {landListings.map((listing) => (
-                                        <div key={listing.id} className="p-4 border border-gray-300 dark:border-zinc-700 rounded-lg bg-secondary-light dark:bg-zinc-800 shadow-md">
-                                            {/* ... existing display logic for review listings ... */}
-                                            <div className="flex flex-col sm:flex-row justify-between items-start mb-2">
-                                                <h3 className="text-xl font-semibold text-accent-light dark:text-accent-dark mb-1 sm:mb-0">
-                                                    {listing.nftTitle || 'Untitled Listing'}
-                                                </h3>
-                                                <span 
-                                                    className={`px-2.5 py-0.5 text-xs font-medium rounded-full 
-                                                        ${listing.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' : 
-                                                          listing.status === 'DRAFT' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 
-                                                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}
-                                                    `}
-                                                >
-                                                    {listing.status}
-                                                </span>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm text-text-light dark:text-text-dark mb-3">
-                                                <p><strong>Listing ID:</strong> <code className="text-xs bg-gray-200 dark:bg-zinc-700 px-1 py-0.5 rounded">{listing.id}</code></p>
-                                                <p><strong>Creator:</strong> {listing.user.username || 'N/A'} ({listing.user.email || 'No Email'})</p>
-                                                <p><strong>Created At:</strong> {formatDate(listing.createdAt)}</p>
-                                                <p><strong>Price:</strong> {listing.listingPrice ? `${listing.listingPrice} ${listing.priceCurrency || ''}` : 'N/A'}</p>
-                                                {!expandedListings[listing.id] && listing.nftDescription && (
-                                                    <p className="md:col-span-2"><strong>Description:</strong> {listing.nftDescription.length > 100 ? `${listing.nftDescription.substring(0, 100)}...` : listing.nftDescription}</p>
-                                                )}
-                                            </div>
-                                            
-                                            {expandedListings[listing.id] && (
-                                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-zinc-700 text-sm text-text-light dark:text-text-dark">
-                                                    <p><strong>Full Description:</strong> {listing.nftDescription || 'N/A'}</p>
-                                                    <p className="mt-2"><strong>Status Details:</strong> {listing.status === 'DRAFT' ? 'This listing is still in draft mode and has not been submitted for review.' : 'This listing has been submitted and is awaiting admin approval.'}</p>
-                                                    <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">Further details will appear here as they become available.</p>
-                                                </div>
-                                            )}
-
-                                            <div className="mt-4 pt-3 border-t border-gray-300 dark:border-zinc-700 flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-                                                <AnimatedButton 
-                                                    onClick={() => toggleExpandDetails(listing.id)}
-                                                    className="bg-gray-500 hover:bg-gray-600 text-white text-xs sm:text-sm flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md"
-                                                >
-                                                    <FiEye className="h-4 w-4" /> {expandedListings[listing.id] ? 'Hide Details' : 'View Full Details'}
-                                                </AnimatedButton>
-                                                <AnimatedButton 
-                                                    onClick={() => handleUpdateListingStatus(listing.id, 'ACTIVE')}
-                                                    disabled={listingActionLoading[listing.id]?.approve || listingActionLoading[listing.id]?.reject}
-                                                    className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md"
-                                                    data-testid={`approve-button-${listing.id}`}
-                                                >
-                                                    <FiCheckSquare className="h-4 w-4" /> {listingActionLoading[listing.id]?.approve ? 'Approving...' : 'Approve (Set ACTIVE)'}
-                                                </AnimatedButton>
-                                                <AnimatedButton 
-                                                    onClick={() => handleUpdateListingStatus(listing.id, 'REJECTED')}
-                                                    disabled={listingActionLoading[listing.id]?.approve || listingActionLoading[listing.id]?.reject}
-                                                    className="bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md"
-                                                    data-testid={`reject-button-${listing.id}`}
-                                                >
-                                                    <FiXCircle className="h-4 w-4" /> {listingActionLoading[listing.id]?.reject ? 'Rejecting...' : 'Reject (Set REJECTED)'}
-                                                </AnimatedButton>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    )}
-
-                    {/* Content for 'Active Listings' Sub-tab */}
-                    {currentListingSubTab === 'active' && (
-                        <>
-                            {loadingActiveListings ? (
-                                <div className="flex justify-center items-center py-10"><LoadingSpinner /> <span className='ml-2'>Loading active listings...</span></div>
-                            ) : activeListings.length === 0 ? (
-                                <p className="text-center text-gray-500 dark:text-gray-400 py-10">No active listings found.</p>
-                            ) : (
-                                <div className="space-y-6">
-                                    {activeListings.map((listing: AdminLandListing) => (
-                                        <div key={listing.id} className="p-4 border border-gray-300 dark:border-zinc-700 rounded-lg bg-secondary-light dark:bg-zinc-800 shadow-md">
-                                            <div className="flex flex-col sm:flex-row justify-between items-start mb-2">
-                                                <h3 className="text-xl font-semibold text-accent-light dark:text-accent-dark mb-1 sm:mb-0">
-                                                    {listing.nftTitle || 'Untitled Listing'}
-                                                </h3>
-                                                <span className={`px-2.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300`}>
-                                                    {listing.status}
-                                                </span>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm text-text-light dark:text-text-dark mb-3">
-                                                <p><strong>Listing ID:</strong> <code className="text-xs bg-gray-200 dark:bg-zinc-700 px-1 py-0.5 rounded">{listing.id}</code></p>
-                                                <p><strong>Creator:</strong> {listing.user.username || 'N/A'} ({listing.user.email || 'No Email'})</p>
-                                                <p><strong>Created At:</strong> {formatDate(listing.createdAt)}</p>
-                                                <p><strong>Price:</strong> {listing.listingPrice ? `${listing.listingPrice} ${listing.priceCurrency || ''}` : 'N/A'}</p>
-                                            </div>
-                                            {expandedListings[listing.id] && (
-                                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-zinc-700 text-sm text-text-light dark:text-text-dark">
-                                                    <p><strong>Full Description:</strong> {listing.nftDescription || 'N/A'}</p>
-                                                    {/* Add more details here as needed */}
-                                                    <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">Further details will appear here.</p>
-                                                </div>
-                                            )}
-                                            <div className="mt-4 pt-3 border-t border-gray-300 dark:border-zinc-700 flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-                                                <AnimatedButton 
-                                                    onClick={() => toggleExpandDetails(listing.id)}
-                                                    className="bg-gray-500 hover:bg-gray-600 text-white text-xs sm:text-sm flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md"
-                                                >
-                                                    <FiEye className="h-4 w-4" /> {expandedListings[listing.id] ? 'Hide Details' : 'View Full Details'}
-                                                </AnimatedButton>
-                                                <AnimatedButton 
-                                                    onClick={() => { setListingToDelist(listing); setShowDelistConfirmModal(true); }}
-                                                    disabled={listingActionLoading[listing.id]?.delist}
-                                                    className="bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md"
-                                                >
-                                                    <FiXCircle className="h-4 w-4" /> {listingActionLoading[listing.id]?.delist ? 'Delisting...' : 'Delist Listing'}
-                                                </AnimatedButton>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    )}
-
-                    {/* Content for 'Archived' Sub-tab */}
-                    {currentListingSubTab === 'archived' && (
-                        <>
-                            {loadingArchivedListings ? (
-                                <div className="flex justify-center items-center py-10"><LoadingSpinner /> <span className='ml-2'>Loading archived listings...</span></div>
-                            ) : archivedListings.length === 0 ? (
-                                <p className="text-center text-gray-500 dark:text-gray-400 py-10">No rejected or delisted listings found.</p>
-                            ) : (
-                                <div className="space-y-6">
-                                    {archivedListings.map((listing: AdminLandListing) => (
-                                        <div key={listing.id} className="p-4 border border-gray-300 dark:border-zinc-700 rounded-lg bg-secondary-light dark:bg-zinc-800 shadow-md opacity-75">
+                );
+            })}
+        </div>
                                             <div className="flex flex-col sm:flex-row justify-between items-start mb-2">
                                                 <h3 className="text-xl font-semibold text-accent-light dark:text-accent-dark mb-1 sm:mb-0">
                                                     {listing.nftTitle || 'Untitled Listing'}
@@ -750,16 +611,17 @@ const AdminDashboardContent = () => {
             )}
             {/* --- END: Land Listing Management Content --- */}
             <ConfirmationModal 
-                isOpen={showDelistConfirmModal}
-                onClose={() => { setShowDelistConfirmModal(false); setListingToDelist(null); }}
+                open={showDelistConfirmModal}
+                onCancel={() => { setShowDelistConfirmModal(false); setListingToDelist(null); }}
                 onConfirm={() => {
                     if (listingToDelist) {
                         handleUpdateListingStatus(listingToDelist.id, 'DELISTED');
                     }
                 }}
-                title="Confirm Delist"
-                message={`Are you sure you want to delist the listing "${listingToDelist?.nftTitle || 'this listing'}"? This action cannot be undone.`}
-            />
+            >
+                <h3>Confirm Delist</h3>
+                <p>{`Are you sure you want to delist the listing "${listingToDelist?.nftTitle || 'this listing'}"? This action cannot be undone.`}</p>
+            </ConfirmationModal>
         </motion.div>
     );
 };

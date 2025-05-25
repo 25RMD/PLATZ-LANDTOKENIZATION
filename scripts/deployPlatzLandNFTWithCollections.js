@@ -37,8 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 // scripts/deployPlatzLandNFTWithCollections.ts
-var hardhat_1 = require("hardhat");
-var ethers = hardhat_1.default.ethers;
+const { ethers } = require("hardhat");
 var fs = require("fs");
 var path = require("path");
 var CONTRACT_CONFIG_PATH = path.join(process.cwd(), "config/contracts.ts");
@@ -75,7 +74,7 @@ function main() {
                 case 7:
                     balanceAfter = _a.sent();
                     console.log("Account balance after deployment: ".concat(ethers.formatEther(balanceAfter), " ETH"));
-                    console.log("Deployment cost: ".concat(ethers.formatEther(balanceBefore.sub(balanceAfter)), " ETH"));
+                    console.log("Deployment cost: ".concat(ethers.formatEther(balanceBefore - balanceAfter), " ETH"));
                     // Update the contract addresses in config file
                     updateContractAddresses(contractAddress);
                     console.log("Deployment completed successfully!");

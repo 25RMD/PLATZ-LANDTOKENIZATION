@@ -1,0 +1,16 @@
+{
+  "name": "teststsststs",
+  "description": "tets",
+  "image": "http://localhost:3000/api/static/collections/cmb2xvddo0000czr3i311rrid/a6022470-67a7-4bea-b343-3ccf06cbade1-main-token-image-cmb2xvddo0000czr3i311rrid.jpeg",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmb2xvddo0000czr3i311rrid"
+    },
+    {
+      "trait_type": "Token Type",
+      "value": "Main Collection Token"
+    }
+  ],
+  "external_url": "http://localhost:3000/explore/cmb2xvddo0000czr3i311rrid"
+}

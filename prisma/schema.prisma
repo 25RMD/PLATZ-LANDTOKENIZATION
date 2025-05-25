@@ -169,67 +169,67 @@ model Watchlist {
 }
 
 model LandListing {
-  id                   String               @id @default(cuid())
-  userId               String
-  titleDeedFileRef     String?              @map("title_deed_file_ref")
-  deedNumber           String?
-  deedType             String?
-  grantorName          String?
-  granteeName          String?
-  deedDate             DateTime?            @db.Date
-  titleCertFileRef     String?              @map("title_cert_file_ref")
-  certNumber           String?
-  certIssueDate        DateTime?            @map("cert_issue_date") @db.Date
-  legalDescription     String?              @map("legal_description")
-  parcelNumber         String?              @map("parcel_number")
-  propertyAddress      String?              @map("property_address")
-  city                 String?
-  state                String?
-  zipCode              String?              @map("zip_code")
-  country              String?
-  latitude             Float?
-  longitude            Float?
-  propertyType         String?              @map("property_type")
-  propertyAreaSqm      Float?               @map("property_area_sqm")
-  propertyDescription  String?              @map("property_description")
-  listingTitle         String?              @map("listing_title")
-  listingPrice         Float?               @map("listing_price")
-  priceCurrency        String?              @map("price_currency")
-  status               String               @default("DRAFT")
-  createdAt            DateTime             @default(now()) @map("created_at")
-  updatedAt            DateTime             @updatedAt @map("updated_at")
-  mintStatus           String?              @map("mint_status")
-  mintErrorReason      String?              @map("mint_error_reason")
-  mintTimestamp        DateTime?            @map("mint_timestamp")
-  mintTransactionHash  String?              @map("mint_transaction_hash")
-  tokenId              Int?                 @map("token_id")
-  contractAddress      String?              @map("contract_address")
-  collectionId         String?              @unique @map("collection_id")
-  mainTokenId          String?              @map("main_token_id")
-  collectionNftTitle   String?              @map("collection_nft_title")
-  collectionMetadataUrl String?             @map("collection_metadata_url")
-  mainTokenMetadataUrl String?              @map("main_token_metadata_url")
-  childTokensBaseUrl   String?              @map("child_tokens_base_url")
-  slug                 String?              @unique
-  coverImageUrl        String?              @map("cover_image_url")
-  nftDescription       String?              @map("nft_description")
-  nftTitle             String?              @map("nft_title")
-  nftImageFileRef      String?              @map("nft_image_file_ref")
-  nftCollectionSize    Int?                 @map("nft_collection_size") @default(10)
-  marketplaceListingId Int?                 @map("marketplace_listing_id")
-  marketplaceTransactionHash String?         @map("marketplace_transaction_hash")
-  marketplaceListingError String?           @map("marketplace_listing_error")
-  nftImageIrysUri      String?              @map("nft_image_irys_uri")
-  nftMetadataIrysUri   String?              @map("nft_metadata_irys_uri")
-  localGovernmentArea  String?              @map("local_government_area")
-  propertyValuation    String?              @map("property_valuation")
-  zoningClassification String?              @map("zoning_classification")
-  evmCollectionTokens  EvmCollectionToken[] @relation("LandListingTokens")
-  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nfts                 NFT[]                @relation("LandListingToNFTs")
-  watchlist            Watchlist[]          @relation("WatchlistedCollections")
-  nftBids              NftBid[]
-  transactions         NftTransaction[]
+  id                         String               @id @default(cuid())
+  userId                     String
+  titleDeedFileRef           String?              @map("title_deed_file_ref")
+  deedNumber                 String?
+  deedType                   String?
+  grantorName                String?
+  granteeName                String?
+  deedDate                   DateTime?            @db.Date
+  titleCertFileRef           String?              @map("title_cert_file_ref")
+  certNumber                 String?
+  certIssueDate              DateTime?            @map("cert_issue_date") @db.Date
+  legalDescription           String?              @map("legal_description")
+  parcelNumber               String?              @map("parcel_number")
+  propertyAddress            String?              @map("property_address")
+  city                       String?
+  state                      String?
+  zipCode                    String?              @map("zip_code")
+  country                    String?
+  latitude                   Float?
+  longitude                  Float?
+  propertyType               String?              @map("property_type")
+  propertyAreaSqm            Float?               @map("property_area_sqm")
+  propertyDescription        String?              @map("property_description")
+  nftDescription             String?              @map("nft_description")
+  listingTitle               String?              @map("listing_title")
+  listingPrice               Float?               @map("listing_price")
+  priceCurrency              String?              @map("price_currency")
+  status                     String               @default("DRAFT")
+  createdAt                  DateTime             @default(now()) @map("created_at")
+  updatedAt                  DateTime             @updatedAt @map("updated_at")
+  mintStatus                 String?              @map("mint_status")
+  mintErrorReason            String?              @map("mint_error_reason")
+  mintTimestamp              DateTime?            @map("mint_timestamp")
+  mintTransactionHash        String?              @map("mint_transaction_hash")
+  tokenId                    Int?                 @map("token_id")
+  contractAddress            String?              @map("contract_address")
+  collectionId               String?              @unique @map("collection_id")
+  mainTokenId                String?              @map("main_token_id")
+  collectionNftTitle         String?              @map("collection_nft_title")
+  collectionMetadataUrl      String?              @map("collection_metadata_url")
+  mainTokenMetadataUrl       String?              @map("main_token_metadata_url")
+  childTokensBaseUrl         String?              @map("child_tokens_base_url")
+  slug                       String?              @unique
+  coverImageUrl              String?              @map("cover_image_url")
+  nftTitle                   String?              @map("nft_title")
+  nftImageFileRef            String?              @map("nft_image_file_ref")
+  nftCollectionSize          Int?                 @default(10) @map("nft_collection_size")
+  marketplaceListingId       Int?                 @map("marketplace_listing_id")
+  marketplaceTransactionHash String?              @map("marketplace_transaction_hash")
+  marketplaceListingError    String?              @map("marketplace_listing_error")
+  nftImageIrysUri            String?              @map("nft_image_irys_uri")
+  nftMetadataIrysUri         String?              @map("nft_metadata_irys_uri")
+  localGovernmentArea        String?              @map("local_government_area")
+  propertyValuation          String?              @map("property_valuation")
+  zoningClassification       String?              @map("zoning_classification")
+  evmCollectionTokens        EvmCollectionToken[] @relation("LandListingTokens")
+  user                       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nfts                       NFT[]                @relation("LandListingToNFTs")
+  watchlist                  Watchlist[]          @relation("WatchlistedCollections")
+  nftBids                    NftBid[]
+  transactions               NftTransaction[]
 
   @@index([userId])
   @@index([status])

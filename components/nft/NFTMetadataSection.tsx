@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiExternalLink, FiFileText, FiCode } from 'react-icons/fi';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 
 interface NFTMetadataSectionProps {
   contractAddress: string;
@@ -50,7 +50,7 @@ const NFTMetadataSection: React.FC<NFTMetadataSectionProps> = ({
       
       // If it's an IPFS URI, use a public gateway
       if (uri.startsWith('ipfs://')) {
-        uri = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
+        uri = uri.replace('ipfs://', 'https://gateway.ipfs.io/ipfs/');
       }
       
       // If it's an Arweave URI, use Arweave gateway
@@ -58,7 +58,31 @@ const NFTMetadataSection: React.FC<NFTMetadataSectionProps> = ({
         uri = uri.replace('ar://', 'https://arweave.net/');
       }
       
-      // For local storage, we're already using the correct API path format
+      // Handle ngrok URL rewriting for local development - convert to API route
+      if (uri.includes('ngrok-free.app')) {
+        try {
+          const oldUrl = new URL(uri);
+          // Extract the path after /uploads/
+          const pathMatch = oldUrl.pathname.match(/\/uploads\/(.+)/);
+          if (pathMatch) {
+            // Use our API static route instead
+            if (typeof window !== 'undefined') {
+              uri = `${window.location.protocol}//${window.location.host}/api/static/${pathMatch[1]}`;
+            } else {
+              // Server-side or when window is not available
+              uri = `http://localhost:3000/api/static/${pathMatch[1]}`;
+            }
+          }
+        } catch (e: any) {
+          console.error(`[NFTMetadataSection] Error rewriting ngrok URL ${uri}:`, e.message);
+          // Keep original URL if rewrite fails
+        }
+      }
+      
+      // If it's a localhost URL with /uploads/, convert to API route
+      if (uri.includes('localhost') && uri.includes('/uploads/')) {
+        uri = uri.replace('/uploads/', '/api/static/');
+      }
 
       // For demo purposes, we're simulating metadata if it's not available
       if (!uri || uri === 'placeholder') {
@@ -118,7 +142,7 @@ const NFTMetadataSection: React.FC<NFTMetadataSectionProps> = ({
       
       {loading ? (
         <div className="flex justify-center items-center py-12">
-          <LoadingSpinner size="lg" />
+          <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
         </div>
       ) : (
         <div className="space-y-8">

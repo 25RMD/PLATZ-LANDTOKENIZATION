@@ -947,88 +947,302 @@ export const createCollection = async (
   childTokensBaseURI: string
 ) => {
   try {
-    console.log('Creating collection with parameters:');
-    console.log({ landListingId, toAddress, mainTokenURI, quantity, collectionMetadataURI, childTokensBaseURI });
+    console.log('=== Starting Collection Creation ===');
+    console.log('Land Listing ID:', landListingId);
+    console.log('To Address:', toAddress);
+    console.log('Main Token URI:', mainTokenURI);
+    console.log('Quantity:', quantity);
+    console.log('Collection Metadata URI:', collectionMetadataURI);
+    console.log('Child Tokens Base URI:', childTokensBaseURI);
     
+    // Get contract instance
+    console.log('Getting contract instance...');
     const contract = await getContract();
-    // const signerAddress = await contract.runner?.getAddress(); // Removed: ContractRunner does not have getAddress
-    // console.log(`Contract instance obtained. Signer address: ${signerAddress}`);
+    const provider = contract.runner?.provider;
+    
+    // Get signer address if available
+    let signerAddress = '';
+    try {
+      if (contract.runner) {
+        signerAddress = await contract.runner.getAddress();
+        console.log('Signer address:', signerAddress);
+      }
+    } catch (error) {
+      console.warn('Could not get signer address:', error);
+    }
+    
+    // Log network information
+    if (provider) {
+      try {
+        const network = await provider.getNetwork();
+        console.log('Connected to network:', {
+          name: network.name,
+          chainId: network.chainId
+          // Removed ensAddress as it's not available in the Network type
+        });
+      } catch (error) {
+        console.warn('Could not get network info:', error);
+      }
+    }
     
     // Validate parameters before contract call
+    console.log('Validating parameters...');
     if (!toAddress || !ethers.isAddress(toAddress)) {
-      throw new Error('Invalid or missing toAddress for createCollection.');
+      const error = 'Invalid or missing toAddress for createCollection.';
+      console.error('Validation error:', error);
+      throw new Error(error);
     }
     if (quantity <= 0) {
-      throw new Error('Quantity of child tokens must be greater than 0.');
+      const error = 'Quantity of child tokens must be greater than 0.';
+      console.error('Validation error:', error);
+      throw new Error(error);
     }
     
-    console.log('Calling createCollection function on the contract with args:');
-    console.log(` To: ${toAddress}`);
-    console.log(` MainTokenURI: ${mainTokenURI}`);
-    console.log(` Quantity (child tokens): ${quantity}`);
-    console.log(` CollectionURI: ${collectionMetadataURI}`);
-    console.log(` BaseURI (for child tokens): ${childTokensBaseURI}`);
-
-    const tx = await contract.createCollection(
-      toAddress,
-      mainTokenURI,
-      quantity,
-      collectionMetadataURI,
-      childTokensBaseURI
-    );
+    // Log contract call details
+    console.log('\n=== Contract Call Details ===');
+    console.log('Contract Address:', contract.target);
+    console.log('From Address (signer):', await contract.runner?.getAddress());
+    console.log('To Address (recipient):', toAddress);
+    console.log('Main Token URI Length:', mainTokenURI.length);
+    console.log('Collection URI Length:', collectionMetadataURI.length);
+    console.log('Base URI Length:', childTokensBaseURI.length);
     
-    console.log(`Transaction hash: ${tx.hash}`);
-    console.log('Waiting for transaction to be mined...');
-    const receipt = await tx.wait();
-    console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
+    // Estimate gas before making the actual call
+    let estimatedGas;
+    try {
+      estimatedGas = await contract.createCollection.estimateGas(
+        toAddress,
+        mainTokenURI,
+        quantity,
+        collectionMetadataURI,
+        childTokensBaseURI
+      );
+      console.log(`Estimated gas: ${estimatedGas.toString()}`);
+    } catch (error) {
+      const estimateError = error as Error;
+      console.error('Gas estimation failed:', estimateError);
+      throw new Error(`Gas estimation failed: ${estimateError.message}`);
+    }
+
+    // Make the contract call
+    console.log('\n=== Sending Transaction ===');
+    let tx;
+    try {
+      // Convert estimatedGas to number for calculation, then back to bigint
+      const gasBuffer = BigInt(Math.floor(Number(estimatedGas) * 1.2));
+      
+      tx = await contract.createCollection(
+        toAddress,
+        mainTokenURI,
+        quantity,
+        collectionMetadataURI,
+        childTokensBaseURI,
+        { gasLimit: gasBuffer }
+      );
+      console.log(`Transaction sent. Hash: ${tx.hash}`);
+    } catch (error) {
+      const txError = error as Error;
+      console.error('Transaction failed:', txError);
+      throw new Error(`Transaction failed: ${txError.message}`);
+    }
+    
+    // Wait for transaction to be mined
+    console.log('\n=== Waiting for Transaction ===');
+    let receipt;
+    try {
+      receipt = await tx.wait();
+      console.log(`Transaction confirmed in block ${receipt?.blockNumber}`);
+      console.log('Transaction status:', receipt?.status === 1 ? 'Success' : 'Failed');
+      console.log('Gas used:', receipt?.gasUsed?.toString() || 'N/A');
+      console.log('Cumulative gas used:', receipt?.cumulativeGasUsed?.toString() || 'N/A');
+      
+      if (!receipt || receipt.status !== 1) {
+        throw new Error('Transaction reverted or receipt not available');
+      }
+    } catch (error) {
+      const receiptError = error as Error;
+      console.error('Error waiting for transaction receipt:', receiptError);
+      throw new Error(`Transaction receipt error: ${receiptError.message}`);
+    }
+    
+    console.log('\n=== Parsing Transaction Logs ===');
+    console.log(`Found ${receipt.logs.length} logs in transaction`);
     
     let event: any = null;
     let parsedCollectionId: string | null = null;
     let parsedMainTokenId: string | null = null;
 
-        for (const log of receipt.logs) {
-          try {
-        const parsedLog = contract.interface.parseLog(log);
-            if (parsedLog && parsedLog.name === 'CollectionCreated') {
-              event = parsedLog.args;
-          console.log('Found CollectionCreated event:', event);
+    // First try: Parse the CollectionCreated event
+    for (let i = 0; i < receipt.logs.length; i++) {
+      const log = receipt.logs[i];
+      console.log(`\n--- Log ${i} ---`);
+      console.log('Address:', log.address);
+      console.log('Topics:', log.topics);
+      console.log('Data:', log.data);
+      
+      try {
+        const parsedLog = contract.interface.parseLog({
+          data: log.data,
+          topics: [...log.topics]
+        });
+        
+        console.log('Parsed Log:', {
+          name: parsedLog?.name,
+          signature: parsedLog?.signature,
+          args: parsedLog?.args ? Object.keys(parsedLog.args) : 'No args'
+        });
+        
+        if (parsedLog && parsedLog.name === 'CollectionCreated') {
+          event = parsedLog.args;
+          console.log('Found CollectionCreated event:', {
+            collectionId: event.collectionId?.toString(),
+            mainTokenId: event.mainTokenId?.toString(),
+            creator: event.creator
+          });
+          
           parsedCollectionId = event.collectionId?.toString();
           parsedMainTokenId = event.mainTokenId?.toString();
-              break;
-            }
-      } catch (e) {
-        // Ignore logs that aren't from our contract or are not the event we want
-          }
+          break;
         }
+      } catch (e) {
+        console.debug('Could not parse log:', e);
+      }
+    }
 
-    if (!parsedCollectionId || !parsedMainTokenId) {
-      console.error('Could not find CollectionCreated event or parse IDs from transaction logs', receipt.logs);
-      // Attempt to update DB to FAILED and return error, but don't throw if DB update fails
+    // If we didn't find the CollectionCreated event, try to find a Transfer event
+    if (!event || !parsedMainTokenId) {
+      console.log('\n=== Looking for Transfer events ===');
+      
+      for (let i = 0; i < receipt.logs.length; i++) {
+        const log = receipt.logs[i];
+        console.log(`\n--- Checking Log ${i} for Transfer event ---`);
+        
+        try {
+          const parsedLog = contract.interface.parseLog({
+            data: log.data,
+            topics: [...log.topics]
+          });
+          
+          if (parsedLog) {
+            console.log('Parsed Log:', {
+              name: parsedLog.name,
+              signature: parsedLog.signature,
+              args: parsedLog.args ? Object.keys(parsedLog.args) : 'No args'
+            });
+            
+            if (parsedLog.name === 'Transfer') {
+              const [from, to, tokenId] = parsedLog.args as [string, string, bigint];
+              console.log('Found Transfer event:', {
+                from,
+                to,
+                tokenId: tokenId.toString(),
+                isMint: from === ethers.ZeroAddress
+              });
+              
+              if (from === ethers.ZeroAddress) {
+                parsedMainTokenId = tokenId.toString();
+                console.log('Identified as mint event. Using tokenId as mainTokenId:', parsedMainTokenId);
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          console.debug('Could not parse log as Transfer event:', e);
+        }
+      }
+    }
+
+    // If we still don't have a mainTokenId, we can't proceed
+    if (!parsedMainTokenId) {
+      const errorMsg = 'Could not determine mainTokenId from transaction events. No mint events found.';
+      console.error(errorMsg);
+      console.log('Raw transaction logs:', JSON.stringify(receipt.logs, null, 2));
+      
+      // Update the database to reflect the failure
+      await prisma.landListing.update({
+        where: { id: landListingId },
+        data: {
+          mintStatus: 'FAILED_COLLECTION',
+          mintErrorReason: errorMsg.substring(0, 255)
+        }
+      });
+      
+      throw new Error(errorMsg);
+    }
+    
+    // If we don't have a collectionId, we can't proceed
+    if (!parsedCollectionId) {
+      const errorMsg = 'Could not determine collectionId from transaction events. No CollectionCreated event found.';
+      console.error(errorMsg);
+      console.log('Raw transaction logs:', JSON.stringify(receipt.logs, null, 2));
+      
+      // Update the database to reflect the failure
       try {
         await prisma.landListing.update({
           where: { id: landListingId },
-          data: { mintStatus: 'FAILED', mintErrorReason: 'Event parsing failed after mint' },
+          data: {
+            mintStatus: 'FAILED_COLLECTION',
+            mintErrorReason: errorMsg.substring(0, 255)
+          }
         });
-      } catch (dbUpdateError) { console.error("DB update to FAILED status also failed after event parse error", dbUpdateError);}
-      return { success: false, error: 'Failed to get collection data from transaction events.' };
+      } catch (dbUpdateError) { 
+        console.error("DB update to FAILED_COLLECTION status failed:", dbUpdateError);
+      }
+      
+      return { 
+        success: false, 
+        error: errorMsg,
+        transactionHash: tx.hash
+      };
     }
     
     console.log(`Parsed Collection ID: ${parsedCollectionId}`);
     console.log(`Parsed Main Token ID: ${parsedMainTokenId}`);
 
+    try {
+      // First, check if this land listing already has a collectionId to avoid unique constraint violation
+      const existingListing = await prisma.landListing.findUnique({
+        where: { id: landListingId },
+        select: { collectionId: true, mintStatus: true }
+      });
+
+      if (existingListing?.collectionId && existingListing.collectionId !== parsedCollectionId) {
+        console.warn(`Land listing ${landListingId} already has collectionId ${existingListing.collectionId}, but trying to set ${parsedCollectionId}`);
+        // If the collection was already created successfully, just return success
+        if (existingListing.mintStatus === 'COMPLETED') {
+          return {
+            success: true,
+            collectionId: existingListing.collectionId,
+            mainTokenId: parsedMainTokenId,
+            transactionHash: tx.hash,
+          };
+        }
+      }
+
+      // Prepare update data - only include collectionId if it's not already set
+      const updateData: any = {
+        mintStatus: 'COMPLETED',
+        mintTimestamp: new Date(),
+        mintTransactionHash: tx.hash,
+        mainTokenId: parsedMainTokenId,
+        contractAddress: NFT_CONTRACT_ADDRESS,
+      };
+
+      // Only update collectionId if it's not already set or if it's different
+      if (!existingListing?.collectionId || existingListing.collectionId !== parsedCollectionId) {
+        updateData.collectionId = parsedCollectionId;
+      }
+
       await prisma.landListing.update({
         where: { id: landListingId },
-        data: {
-          mintStatus: 'COMPLETED',
-          mintTimestamp: new Date(),
-          mintTransactionHash: tx.hash,
-          collectionId: parsedCollectionId,
-          mainTokenId: parsedMainTokenId,
-          contractAddress: NFT_CONTRACT_ADDRESS,
-        },
+        data: updateData,
       });
       
       console.log(`Successfully updated land listing ${landListingId} in createCollection utility (status COMPLETED etc.)`);
+    } catch (dbError) {
+      console.error('Failed to update land listing status to COMPLETED:', dbError);
+      throw new Error(`Collection created but failed to update database: ${dbError.message}`);
+    }
     
     return {
       success: true,
@@ -1043,10 +1257,13 @@ export const createCollection = async (
     try {
       await prisma.landListing.update({
         where: { id: landListingId },
-        data: { mintStatus: 'FAILED', mintErrorReason: errorMessage.substring(0, 255) },
+        data: { 
+          mintStatus: 'FAILED_COLLECTION', 
+          mintErrorReason: errorMessage.substring(0, 255) 
+        },
       });
     } catch (dbError) {
-      console.error('Failed to update land listing status to FAILED:', dbError);
+      console.error('Failed to update land listing status to FAILED_COLLECTION:', dbError);
     }
     return { success: false, error: errorMessage };
   }
@@ -1315,11 +1532,39 @@ export const listCollectionOnMarketplace = async (
       }
 
       const marketplaceContract = await getMarketplaceContract(); // Uses LandMarketplaceAbi.abi by default
+      const nftContract = await getNFTContract();
       
       // Verify the contract has the listCollection function (assuming ABI is updated)
       if (typeof marketplaceContract.listCollection !== 'function') {
         console.error('LandMarketplaceABI might be outdated or contract at', MARKETPLACE_CONTRACT_ADDRESS, 'does not have listCollection function.');
         throw new Error(`Marketplace contract at ${MARKETPLACE_CONTRACT_ADDRESS} does not have a listCollection function. Ensure ABI is updated after contract changes.`);
+      }
+
+      // First, get the collection details to find the main token ID
+      console.log(`Getting collection details for collection ${collectionId}...`);
+      const collectionDetails = await nftContract.getCollection(BigInt(collectionId));
+      const mainTokenId = collectionDetails[2]; // mainTokenId is the 3rd element (index 2)
+      console.log(`Collection ${collectionId} main token ID: ${mainTokenId}`);
+
+      // Check if the main token is already approved for the marketplace
+      const approvedAddress = await nftContract.getApproved(mainTokenId);
+      console.log(`Current approved address for token ${mainTokenId}: ${approvedAddress}`);
+      
+      if (approvedAddress.toLowerCase() !== MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()) {
+        console.log(`Approving marketplace ${MARKETPLACE_CONTRACT_ADDRESS} for main token ${mainTokenId}...`);
+        const approveTx = await nftContract.approve(MARKETPLACE_CONTRACT_ADDRESS, mainTokenId);
+        console.log(`Approval transaction submitted: ${approveTx.hash}`);
+        await approveTx.wait();
+        console.log(`Approval transaction confirmed`);
+        
+        // Verify approval was successful
+        const newApprovedAddress = await nftContract.getApproved(mainTokenId);
+        console.log(`New approved address for token ${mainTokenId}: ${newApprovedAddress}`);
+        if (newApprovedAddress.toLowerCase() !== MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()) {
+          throw new Error(`Failed to approve marketplace for main token ${mainTokenId}`);
+        }
+      } else {
+        console.log(`Main token ${mainTokenId} is already approved for marketplace`);
       }
 
       const priceInWei = ethers.parseEther(price); // Assuming price is in ETH

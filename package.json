@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "next-dev": "next dev",
-    "dev": "concurrently \"ngrok http 3000\" \"sleep 10 && npm run update-ngrok && npm run next-dev\" --names \"NGROK,APP\" --kill-others-on-fail",
+    "dev": "concurrently -k -s first \"ngrok http 3000\" \"sleep 15 && npm run update-ngrok && npm run next-dev\" --names \"NGROK,APP\" --kill-others --success first",
     "build": "next build",
     "build:optimized": "NODE_ENV=production next build",
     "start": "next start",
@@ -70,6 +70,7 @@
     "@types/chai": "^4.3.20",
     "@types/cookie": "^0.6.0",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/lodash": "^4.17.17",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.17.47",
     "@types/react": "^18",

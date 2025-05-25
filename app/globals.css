@@ -12,3 +12,56 @@
 }
 
 /* Add any other global styles or custom component styles below */
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Fade in animation for loaded images */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scale in animation for skeleton elements */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Utility classes for animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Progressive image loading blur effect */
+.image-blur-placeholder {
+  filter: blur(5px);
+  transform: scale(1.05);
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.image-blur-placeholder.loaded {
+  filter: blur(0);
+  transform: scale(1);
+}
