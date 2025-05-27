@@ -25,7 +25,7 @@ import { type OwnerKycFormData, type OwnerKycFileFieldNames } from '@/components
 import { type ChainOfTitleFormData, type ChainOfTitleFileFieldNames } from '@/components/create-listing/ChainOfTitleSection';
 import { type AdditionalInfoFormData, type AdditionalInfoFileFieldNames } from '@/components/create-listing/AdditionalInfoSection';
 
-import { FormDataInterface } from '@/types/createListing'; // Import FormDataInterface
+import { FormDataInterface } from '../types/createListing'; // Import FormDataInterface
 
 // Define initial state for the new Land Listing form
 const initialFormData: FormDataInterface = { // Explicitly type initialFormData

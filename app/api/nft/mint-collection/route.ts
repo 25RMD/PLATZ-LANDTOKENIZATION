@@ -372,12 +372,12 @@ export async function POST(request: NextRequest) {
         data: {
           mintStatus: 'COMPLETED',
           mintTransactionHash: { set: result.transactionHash },
-          tokenId: { set: result.mainTokenId }, // Explicitly set String
+          tokenId: { set: parseInt(result.mainTokenId) }, // Convert to number
           collectionId: { set: result.collectionId }, // Explicitly set String
           nftTitle: { set: nftTitle },
           nftDescription: { set: nftDescription || '' },
           nftImageFileRef: { set: imageUrl },
-          metadataUri: { set: mainTokenMetadataFullUrl },
+          nftMetadataIrysUri: { set: mainTokenMetadataFullUrl },
         },
       });
       

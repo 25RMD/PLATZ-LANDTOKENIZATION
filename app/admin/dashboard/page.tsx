@@ -563,50 +563,13 @@ const AdminDashboardContent = () => {
                             </button>
                         ))}
                     </div>
-                );
-            })}
-        </div>
-                                            <div className="flex flex-col sm:flex-row justify-between items-start mb-2">
-                                                <h3 className="text-xl font-semibold text-accent-light dark:text-accent-dark mb-1 sm:mb-0">
-                                                    {listing.nftTitle || 'Untitled Listing'}
-                                                </h3>
-                                                <span 
-                                                    className={`px-2.5 py-0.5 text-xs font-medium rounded-full 
-                                                        ${listing.status === 'REJECTED' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : 
-                                                          listing.status === 'DELISTED' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300' : 
-                                                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}
-                                                    `}
-                                                >
-                                                    {listing.status}
-                                                </span>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm text-text-light dark:text-text-dark mb-3">
-                                                <p><strong>Listing ID:</strong> <code className="text-xs bg-gray-200 dark:bg-zinc-700 px-1 py-0.5 rounded">{listing.id}</code></p>
-                                                <p><strong>Creator:</strong> {listing.user.username || 'N/A'} ({listing.user.email || 'No Email'})</p>
-                                                <p><strong>Processed At:</strong> {formatDate(listing.createdAt)}</p> {/* Assuming createdAt is close enough or add updatedAt if available */}
-                                                <p><strong>Price:</strong> {listing.listingPrice ? `${listing.listingPrice} ${listing.priceCurrency || ''}` : 'N/A'}</p>
-                                            </div>
-                                            {expandedListings[listing.id] && (
-                                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-zinc-700 text-sm text-text-light dark:text-text-dark">
-                                                    <p><strong>Full Description:</strong> {listing.nftDescription || 'N/A'}</p>
-                                                     {/* Add more details here as needed */}
-                                                    <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">Further details will appear here.</p>
-                                                </div>
-                                            )}
-                                            <div className="mt-4 pt-3 border-t border-gray-300 dark:border-zinc-700 flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-                                                <AnimatedButton 
-                                                    onClick={() => toggleExpandDetails(listing.id)}
-                                                    className="bg-gray-500 hover:bg-gray-600 text-white text-xs sm:text-sm flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md"
-                                                >
-                                                    <FiEye className="h-4 w-4" /> {expandedListings[listing.id] ? 'Hide Details' : 'View Full Details'}
-                                                </AnimatedButton>
-                                            </div>
-                                        </div>
-                                    ))}
+
+                    {/* Listings content placeholder */}
+                    <div className="text-center py-16 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <p className="text-gray-500 dark:text-gray-400">
+                            Listing management functionality will be implemented here.
+                        </p>
                                 </div>
-                            )}
-                        </>
-                    )}
                 </>
             )}
             {/* --- END: Land Listing Management Content --- */}

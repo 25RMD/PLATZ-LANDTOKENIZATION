@@ -175,7 +175,14 @@ async function handleBuyListing(body: any, userId: string) {
 
     // Find the land listing that has this marketplace listing ID
     const landListing = await prisma.landListing.findFirst({
-      where: { marketplaceListingId: listingId }
+      where: { marketplaceListingId: listingId },
+      include: {
+        user: {
+          select: {
+            walletAddress: true
+          }
+        }
+      }
     });
 
     if (landListing) {
@@ -355,6 +362,13 @@ async function handleAcceptBid(body: any, userId: string) {
       where: {
         marketplaceListingId: listingId,
         userId: userId
+      },
+      include: {
+        user: {
+          select: {
+            walletAddress: true
+          }
+        }
       }
     });
 
@@ -473,7 +487,7 @@ async function handleGetBids(body: any) {
       bids.map(async (bid: any) => {
         const user = await prisma.user.findFirst({
           where: { walletAddress: bid.bidder },
-          select: { id: true, email: true, name: true, profileImageUrl: true }
+          select: { id: true, email: true, username: true }
         });
 
         return {
@@ -561,9 +575,8 @@ async function handleGetListings(page: number, limit: number, sort: string, orde
         user: {
           select: {
             id: true,
-            name: true,
-            email: true,
-            profileImageUrl: true
+            username: true,
+            email: true
           }
         }
       },
@@ -599,7 +612,7 @@ async function handleGetListings(page: number, limit: number, sort: string, orde
           id: listing.id,
           tokenId: listing.tokenId,
           listingId: listing.marketplaceListingId,
-          title: listing.title,
+          title: listing.nftTitle,
           description: listing.propertyDescription,
           price: listing.listingPrice,
           currency: listing.priceCurrency,
@@ -647,9 +660,8 @@ async function handleGetListing(listingId: number) {
         user: {
           select: {
             id: true,
-            name: true,
+            username: true,
             email: true,
-            profileImageUrl: true,
             walletAddress: true
           }
         }
@@ -671,7 +683,7 @@ async function handleGetListing(listingId: number) {
       id: landListing.id,
       tokenId: landListing.tokenId,
       listingId: landListing.marketplaceListingId,
-      title: landListing.title,
+      title: landListing.nftTitle,
       description: landListing.propertyDescription,
       price: landListing.listingPrice,
       currency: landListing.priceCurrency,

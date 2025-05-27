@@ -33,13 +33,15 @@ export async function POST(request: Request) {
     // Add more robust validation as needed (e.g., password complexity, email format)
 
     // Check if user already exists (by username or email if provided)
+    const orConditions = [
+      { username: username },
+      // Only check email if it's provided
+      ...(email ? [{ email: email }] : []),
+    ];
+
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { username: username },
-          // Only check email if it's provided
-          email ? { email: email } : undefined,
-        ].filter(Boolean), // Remove undefined entry if email is null/empty
+        OR: orConditions,
       },
     });
 

@@ -75,12 +75,13 @@ const SignUpPage = () => {
     }`;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="max-w-md mx-auto mt-12 mb-12 p-8 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-xl bg-primary-light dark:bg-card-dark"
-    >
+    <div className="min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-96px)] container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 flex items-center justify-center">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-md w-full p-8 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-xl bg-primary-light dark:bg-card-dark"
+      >
       <h1 className="text-3xl font-semibold text-center text-text-light dark:text-text-dark mb-8">
         Create Account
       </h1>
@@ -177,6 +178,7 @@ const SignUpPage = () => {
         </p>
       </div>
     </motion.div>
+    </div>
   );
 };
 

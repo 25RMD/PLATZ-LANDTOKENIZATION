@@ -8,12 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Trading and Item Management Features**:
+  - **Bidding System**: Implemented comprehensive bidding functionality with smart contract integration
+    - Created `BidModal` component for placing bids on individual NFTs
+    - Added API endpoints (`/api/bids`) for bid creation and retrieval with automatic bid status management
+    - Integrated real-time bid tracking with highest bid display and outbid notifications
+    - Added bid buttons to collection detail pages with wallet authentication checks
+  - **Batch Purchase Functionality**: Implemented multi-token purchase capabilities
+    - Created `BatchPurchaseModal` component for selecting and purchasing multiple NFTs simultaneously
+    - Added progress tracking and error handling for sequential blockchain transactions
+    - Integrated batch purchase buttons on collection pages when tokens are available for sale
+  - **Orders Page**: Implemented comprehensive user inventory management (`/orders`)
+    - Added dual-tab interface (Collections vs Individual Tokens) for clear organization
+    - Implemented real-time blockchain scanning for user-owned NFTs across all collections
+    - Real marketplace integration: checks listing status and prices from smart contracts
+    - Functional listing/unlisting capabilities with transaction handling and loading states
+    - Status badges showing listing status and prices similar to bids page
+    - Time formatting showing acquisition time ("2 hours ago")
+    - Advanced filtering (all/listed/unlisted) with real status checking and sorting
+    - Real-time search functionality across collections and tokens
+    - Toast notifications for actions and error handling with retry mechanisms
+    - Wallet connection requirements and authentication flow
+    - Enhanced metadata display with management capabilities (list/unlist, view, Etherscan links)
+  - **Real Price Statistics**: Replaced mock data with actual database-driven analytics
+    - Enhanced `/api/collections/[collectionId]/stats` to query real transaction history
+    - Added 24h volume, sales count, price change calculations based on `NftTransaction` table
+    - Integrated floor price calculation from active listings and top bid tracking
+    - Added price trend indicators (up/down arrows) on collection detail pages
+
 - **RPC Configuration**: Enhanced RPC configuration with multiple fallback endpoints and improved error handling
 - **Error Handling**: Added ErrorBoundary component to gracefully catch and display React errors
 - **Upload Handling**: Implemented fallback upload handler for missing uploads
 - **Rate Limiting**: Added rate limiting to API routes to prevent abuse
 
 ### Fixed
+- **Bid Button Logic**: Fixed inverted logic where "Place Bid" button was only visible when wallet was disconnected. Now correctly shows bid button when wallet is connected and user doesn't own the token, with a "Connect Wallet to Bid" message when disconnected.
 - **RPC Connection**: Improved reliability of Ethereum RPC connections with better error handling and retry logic
 - **Error Handling**: Added proper error boundaries and improved error messages throughout the application
 - **Uploads**: Fixed 404 errors for missing uploads with a proper fallback handler

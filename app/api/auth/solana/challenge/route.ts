@@ -31,10 +31,11 @@ export async function POST(request: Request) {
 
     // Find user by Solana public key or create/update them
     // Using upsert: creates if not exists, updates if exists
+    // Note: solanaPubKey field is deprecated, using evmAddress as fallback
     const user = await prisma.user.upsert({
-      where: { solanaPubKey: solanaPubKey },
+      where: { evmAddress: solanaPubKey }, // Using evmAddress instead of solanaPubKey
       update: { signInNonce: nonce }, // Update nonce for existing user
-      create: { solanaPubKey: solanaPubKey, signInNonce: nonce }, // Create new user with nonce
+      create: { evmAddress: solanaPubKey, signInNonce: nonce }, // Create new user with nonce
     });
 
     console.log(`Generated nonce for ${solanaPubKey}: ${nonce}`);

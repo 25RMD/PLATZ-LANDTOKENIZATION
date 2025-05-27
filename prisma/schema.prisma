@@ -230,6 +230,7 @@ model LandListing {
   watchlist                  Watchlist[]          @relation("WatchlistedCollections")
   nftBids                    NftBid[]
   transactions               NftTransaction[]
+  priceHistory               CollectionPriceHistory[] @relation("CollectionPriceHistory")
 
   @@index([userId])
   @@index([status])
@@ -297,6 +298,7 @@ model Session {
 model NftBid {
   id              String      @id @default(cuid())
   landListingId   String      @map("land_listing_id")
+  tokenId         Int         @default(0) @map("token_id")
   bidderUserId    String      @map("bidder_user_id")
   bidAmount       Float       @map("bid_amount")
   bidStatus       String      @map("bid_status") @db.VarChar(20)
@@ -306,6 +308,10 @@ model NftBid {
   bidder          User        @relation(fields: [bidderUserId], references: [id])
   landListing     LandListing @relation(fields: [landListingId], references: [id])
 
+  @@index([tokenId])
+  @@index([landListingId])
+  @@index([bidderUserId])
+  @@index([bidStatus])
   @@map("nft_bids")
 }
 
@@ -330,4 +336,23 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model CollectionPriceHistory {
+  id                 String      @id @default(cuid())
+  landListingId      String      @map("land_listing_id")
+  priceType          String      @map("price_type") @db.VarChar(20) // 'FLOOR_PRICE', 'AVG_PRICE', 'BID_PLACED', 'BID_ACCEPTED', 'BID_REJECTED', 'SALE'
+  price              Float
+  previousPrice      Float?      @map("previous_price")
+  changePercentage   Float?      @map("change_percentage")
+  bidId              String?     @map("bid_id") // Reference to NftBid if this is bid-related
+  transactionId      String?     @map("transaction_id") // Reference to NftTransaction if this is sale-related
+  metadata           Json?       // Additional metadata about the price change
+  createdAt          DateTime    @default(now()) @map("created_at")
+  landListing        LandListing @relation("CollectionPriceHistory", fields: [landListingId], references: [id], onDelete: Cascade)
+
+  @@index([landListingId])
+  @@index([priceType])
+  @@index([createdAt])
+  @@map("collection_price_history")
 }

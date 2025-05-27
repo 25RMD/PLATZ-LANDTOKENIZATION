@@ -4,10 +4,11 @@ import path from 'path';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { landListingDbId: string } }
+  { params }: { params: Promise<{ landListingDbId: string }> }
 ) {
   try {
-    const { landListingDbId } = params;
+    const resolvedParams = await params;
+    const { landListingDbId } = resolvedParams;
     
     // Define the directory path
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'collections', landListingDbId);

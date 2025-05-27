@@ -1,4 +1,4 @@
-import { NFT } from "@/lib/interface"; // Corrected typo in import path
+import { NFT } from "@/lib/interdace"; // Import from the actual file
 import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";

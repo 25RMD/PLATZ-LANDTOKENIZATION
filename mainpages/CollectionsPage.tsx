@@ -16,6 +16,7 @@ import CollectionListCard from "@/components/CollectionListCard";
 import PulsingDotsSpinner from "@/components/common/PulsingDotsSpinner";
 import CollectionCardSkeleton from '@/components/skeletons/CollectionCardSkeleton';
 import CollectionListCardSkeleton from '@/components/skeletons/CollectionListCardSkeleton';
+import { CollectionDetail } from '@/lib/types';
 
 export interface LandListingForCollection {
   id: string;
@@ -33,6 +34,31 @@ export interface LandListingForCollection {
   createdAt: string; 
   // Add other fields if they were included in GET /api/collections select
 }
+
+// Helper function to convert LandListingForCollection to CollectionDetail
+const convertToCollectionDetail = (listing: LandListingForCollection): CollectionDetail => {
+  const getPriceAsNumber = (price: string | number | null | undefined): number => {
+    if (price === null || price === undefined) return 0;
+    if (typeof price === 'string') return parseFloat(price) || 0;
+    return price;
+  };
+
+  return {
+    collectionId: BigInt(listing.id), // Convert string ID to bigint
+    startTokenId: BigInt(0), // Default value since not available in LandListingForCollection
+    totalSupply: BigInt(listing.nftCollectionSize || 0),
+    mainTokenId: BigInt(0), // Default value since not available in LandListingForCollection
+    baseURI: '', // Default value since not available in LandListingForCollection
+    collectionURI: listing.nftImageFileRef || '', // Use image as collection URI
+    creator: listing.user?.solanaPubKey || 'Unknown', // Use user's Solana public key as creator
+    isListed: listing.listingPrice !== null && listing.listingPrice !== undefined && getPriceAsNumber(listing.listingPrice) > 0,
+    price: listing.listingPrice ? BigInt(Math.floor(getPriceAsNumber(listing.listingPrice) * 1e18)) : undefined, // Convert to wei if price exists
+    seller: listing.user?.solanaPubKey || undefined,
+    name: listing.nftTitle || 'Untitled Collection',
+    image: listing.nftImageFileRef || '',
+    description: listing.nftDescription || 'No description available'
+  };
+};
 
 const CollectionsPage = () => {
   const [allCollections, setAllCollections] = useState<LandListingForCollection[]>([]);
@@ -99,65 +125,71 @@ const CollectionsPage = () => {
         transition={{ duration: 0.5 }}
         className="mb-12"
       >
-        <h1 className="text-4xl md:text-5xl font-bold text-text-light dark:text-text-dark mb-3">
-          Browse Properties
-        </h1>
-        <p className="text-base text-gray-500 dark:text-gray-400">
-          Discover unique digital assets and land tokens.
-        </p>
-      </motion.div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-2">
+              Land Collections
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              Discover tokenized land properties available for investment
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            <span className="bg-gray-100 dark:bg-zinc-800 px-2 sm:px-3 py-1 rounded-full">
+              {allCollections.length} Properties
+            </span>
+            <span className="bg-gray-100 dark:bg-zinc-800 px-2 sm:px-3 py-1 rounded-full">
+              {filteredCollections.length} Showing
+            </span>
+          </div>
+        </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="mb-10"
-      >
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-6">
-          <div className="relative w-full md:w-2/5">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FiSearch className="text-gray-400 dark:text-gray-500" />
-            </div>
+        <div className="mb-6 sm:mb-8">
+          <div className="relative mb-4 sm:mb-6">
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
             <input
               type="text"
-              placeholder="Search properties..."
-              className="w-full bg-gray-50 dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2.5 pl-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-200 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors text-sm"
+              placeholder="Search by name, location, or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 sm:py-3 bg-gray-50 dark:bg-zinc-800 text-text-light dark:text-text-dark placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-200 dark:border-zinc-700 transition-colors text-sm sm:text-base"
             />
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto flex-wrap">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1.5 px-4 py-2 border rounded-lg text-sm transition-colors duration-150 ${ 
-                showFilters 
-                  ? 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 text-text-light dark:text-text-dark' 
-                  : 'bg-transparent border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600'
-              }`}
-            >
-              <FiFilter className="w-4 h-4"/>
-              <span>Filters</span>
-            </button>
-
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none bg-gray-50 dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2.5 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-200 dark:border-zinc-700 transition-colors text-sm"
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 border rounded-lg text-xs sm:text-sm transition-colors duration-150 ${ 
+                  showFilters 
+                    ? 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 text-text-light dark:text-text-dark' 
+                    : 'bg-transparent border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600'
+                }`}
               >
-                {sortOptions.map((option) => (
-                  <option key={option.id} value={option.id} className="bg-primary-light dark:bg-primary-dark text-text-light dark:text-text-dark">
-                    Sort: {option.name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <FiChevronDown className="text-gray-400 dark:text-gray-500 w-4 h-4" />
+                <FiFilter className="w-4 h-4"/>
+                <span>Filters</span>
+              </button>
+
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="appearance-none bg-gray-50 dark:bg-zinc-800 text-text-light dark:text-text-dark px-3 sm:px-4 py-2 sm:py-2.5 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-200 dark:border-zinc-700 transition-colors text-xs sm:text-sm"
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.id} value={option.id} className="bg-primary-light dark:bg-primary-dark text-text-light dark:text-text-dark">
+                      Sort: {option.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <FiChevronDown className="text-gray-400 dark:text-gray-500 w-4 h-4" />
+                </div>
               </div>
             </div>
 
-            <div className="hidden md:flex gap-1 bg-gray-100 dark:bg-zinc-800 p-1 rounded-lg border border-gray-200 dark:border-zinc-700">
+            <div className="hidden sm:flex gap-1 bg-gray-100 dark:bg-zinc-800 p-1 rounded-lg border border-gray-200 dark:border-zinc-700">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-1.5 rounded-md transition-colors ${
@@ -269,7 +301,7 @@ const CollectionsPage = () => {
               transition={{ duration: 0.5, delay: index * 0.05 }}
               whileHover={{ y: -5 }}
             >
-              <CollectionCard collection={collection} />
+              <CollectionCard collection={convertToCollectionDetail(collection)} />
             </motion.div>
           ))}
         </motion.div>

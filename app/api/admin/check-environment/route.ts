@@ -87,7 +87,7 @@ export async function GET() {
   } catch (e) {
     checks.uploads.value = 'Error checking directory';
     checks.uploads.status = 'error';
-    checks.uploads.message = `Error checking uploads directory: ${e.message}`;
+    checks.uploads.message = `Error checking uploads directory: ${e instanceof Error ? e.message : String(e)}`;
   }
 
   // Provide overall status

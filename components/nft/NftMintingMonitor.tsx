@@ -23,7 +23,7 @@ export function NftMintingMonitor({
 }: NftMintingMonitorProps) {
   const [status, setStatus] = useState<MintingStatus>({ status: 'NOT_STARTED' });
   const [loading, setLoading] = useState(false);
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [intervalId, setIntervalId] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Function to fetch the minting status
@@ -224,7 +224,7 @@ export function NftMintingMonitor({
               {status.data?.mintErrorReason || status.error || "Failed to mint the NFT. Please try again."}
               
               <Button 
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 className="mt-2"
                 onClick={resetMintingStatus}
@@ -257,7 +257,7 @@ export function NftMintingMonitor({
       
       <div className="flex justify-end">
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={fetchMintingStatus}
           disabled={loading}

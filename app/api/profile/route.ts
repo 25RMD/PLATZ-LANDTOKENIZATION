@@ -3,7 +3,8 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import prisma, { Prisma } from '@/lib/db';
+import prisma from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { ProfileUpdateSchema } from '@/lib/schemas';
 
 // --- Define KYC-related fields --- 
@@ -154,7 +155,7 @@ export async function PUT(request: NextRequest) {
       }
 
       if (incomingValue !== currentValue) {
-        if (kycFields.includes(typedKey)) {
+        if (kycFields.includes(typedKey as any)) {
           kycChanges[typedKey] = incomingValue;
           hasKycChanges = true;
         } else {

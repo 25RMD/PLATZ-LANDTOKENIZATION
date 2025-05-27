@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletName } from '@solana/wallet-adapter-base';
+// Solana wallet functionality disabled
+// import { useWallet } from '@solana/wallet-adapter-react';
+// import { WalletName } from '@solana/wallet-adapter-base';
 import { FaWallet, FaSignOutAlt, FaExclamationTriangle } from 'react-icons/fa';
 import { isWalletConnected } from '@/lib/wallet-config';
 
@@ -17,7 +18,15 @@ import { isWalletConnected } from '@/lib/wallet-config';
  * - Error handling
  */
 const CustomWalletButton = () => {
-    const { connected, publicKey, disconnect, wallet, select, wallets, connecting } = useWallet();
+    // Solana wallet functionality disabled - using placeholder
+    const connected = false;
+    const publicKey: { toString: () => string } | null = null;
+    const disconnect = () => {};
+    const wallet = null;
+    const select = (walletName?: string) => {};
+    const wallets: any[] = [];
+    const connecting = false;
+    
     const [showDropdown, setShowDropdown] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -51,7 +60,7 @@ const CustomWalletButton = () => {
             setShowDropdown(false);
             
             if (walletName) {
-                select(walletName as WalletName);
+                select(walletName);
             } else if (wallets.length === 1) {
                 select(wallets[0].adapter.name);
             } else {
@@ -90,12 +99,7 @@ const CustomWalletButton = () => {
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
                 <FaWallet className="w-4 h-4" />
-                {connected && publicKey 
-                    ? formatPublicKey(publicKey.toString())
-                    : connecting 
-                        ? 'Connecting...' 
-                        : 'Connect Wallet'
-                }
+                {connecting ? 'Connecting...' : 'Connect Wallet'}
             </button>
 
             {/* Wallet Selection Dropdown */}

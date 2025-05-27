@@ -12,7 +12,7 @@ const getLinkChallengeMessage = (nonce: string): string => {
 export async function POST(request: Request) {
   try {
     // 1. Authenticate user via JWT from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const tokenCookie = cookieStore.get('token');
 
     if (!tokenCookie) {

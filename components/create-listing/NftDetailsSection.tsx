@@ -1,5 +1,5 @@
 import React from 'react';
-import { FormDataInterface } from '@/types/createListing'; 
+import { FormDataInterface } from '../../types/createListing'; 
 import FileInputField from '@/components/common/FileInputField'; 
 
 export type NftDetailsFileFieldNames = 'nftImageFile';

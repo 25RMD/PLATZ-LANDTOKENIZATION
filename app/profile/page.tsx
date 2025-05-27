@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 import { ProfileUpdateSchema, FieldErrors } from '@/lib/schemas'; 
 import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi'; 
 import { useAccount, useSignMessage } from 'wagmi'; 
+import { useCurrency } from '@/context/CurrencyContext';
+import { CURRENCY_OPTIONS, SupportedCurrency } from '@/lib/utils/currencyConversion';
 
 import { RegisterSchema } from '@/lib/schemas';
 import { z } from 'zod';
@@ -42,7 +44,8 @@ const ProfileContent = () => {
     isError: isSignMessageError, 
     error: signMessageHookError, 
     status: signMessageStatus 
-  } = useSignMessage(); 
+  } = useSignMessage();
+  const { preferredCurrency, setPreferredCurrency, exchangeRates, isLoading: currencyLoading } = useCurrency(); 
 
   const [profileData, setProfileData] = useState<ProfileFormData>({});
   const [isEditing, setIsEditing] = useState(false);
@@ -518,6 +521,52 @@ const ProfileContent = () => {
           )}
           {!isEvmWalletConnected && !profileData.evmAddress && (
               <p className="text-sm text-yellow-500 mt-2">Please connect your wallet (in the header) to link it.</p>
+          )}
+        </div>
+
+        {/* Currency Preference Section */}
+        <div className="mb-6 p-4 border border-gray-300 dark:border-zinc-700 rounded-lg">
+          <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Currency Preference</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Choose your preferred currency for price display. ETH prices will be shown with conversions to your selected currency.
+          </p>
+          
+          <div className="space-y-3">
+            {Object.values(CURRENCY_OPTIONS).map((option) => (
+              <label key={option.currency} className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="currencyPreference"
+                  value={option.currency}
+                  checked={preferredCurrency === option.currency}
+                  onChange={(e) => setPreferredCurrency(e.target.value as SupportedCurrency)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg font-medium">{option.symbol}</span>
+                  <span className="text-gray-900 dark:text-gray-100">{option.name} ({option.currency})</span>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          {exchangeRates && !currencyLoading && (
+            <div className="mt-4 p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Current Exchange Rates:</p>
+              <div className="space-y-1 text-sm">
+                <div>1 ETH = ${exchangeRates.USD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                <div>1 ETH = ₦{exchangeRates.NGN.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} NGN</div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Rates updated every 5 minutes via CoinGecko
+              </p>
+            </div>
+          )}
+
+          {currencyLoading && (
+            <div className="mt-4 p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Loading exchange rates...</p>
+            </div>
           )}
         </div>
 

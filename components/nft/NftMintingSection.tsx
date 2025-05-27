@@ -5,7 +5,7 @@ import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
 import { FiAlertCircle, FiCheckCircle, FiInfo } from 'react-icons/fi';
 import AnimatedButton from '@/components/common/AnimatedButton';
-import { FormDataInterface } from '@/types/createListing';
+import { FormDataInterface } from '../../types/createListing';
 
 interface NftMintingProps {
   landListingId?: string;
@@ -112,15 +112,23 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
       const imageBase64 = await fileToBase64(nftImageFile);
 
       console.log('[NftMintingSection] Value of formData.nftCollectionSize before payload construction:', formData.nftCollectionSize);
+      console.log('[NftMintingSection] Connected wallet address (will be NFT recipient):', connectedEvmAddress);
+      
       const payload = {
         landListingId,
         nftTitle,
         nftDescription: nftDescription || '',
         imageBase64,
         ownerAddress: connectedEvmAddress,
-      collectionSize: formData.nftCollectionSize, // Send the desired collection size
+        collectionSize: formData.nftCollectionSize, // Send the desired collection size
       };
-      console.log('[NftMintingSection] Payload for /api/nft/mint-json:', payload);
+      
+      console.log('[NftMintingSection] Payload for /api/nft/mint-json:', {
+        ...payload,
+        imageBase64: '[BASE64_DATA_TRUNCATED]', // Don't log the full base64 data
+        ownerAddress: payload.ownerAddress // Explicitly log the recipient address
+      });
+      
       setMintingProgressMessage('Sending mint request to server...');
       const response = await fetch('/api/nft/mint-json', {
         method: 'POST',

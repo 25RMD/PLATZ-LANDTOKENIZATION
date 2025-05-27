@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 export async function POST(request: Request) {
   try {
     // 1. Authenticate user via JWT from cookies
-    const cookieStore = cookies(); // Get the cookie store
+    const cookieStore = await cookies(); // Get the cookie store
     const tokenCookie = cookieStore.get('token'); // Access the 'get' method on the store
 
     if (!tokenCookie) {

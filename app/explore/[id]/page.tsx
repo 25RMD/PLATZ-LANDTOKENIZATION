@@ -9,7 +9,7 @@ const CollectionDetailPage = () => {
   const collectionId = params.id as string;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-96px)]">
       <NFTCollectionDetailPage collectionId={collectionId} />
     </div>
   );

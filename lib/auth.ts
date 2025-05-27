@@ -1,16 +1,16 @@
-import { NextAuthOptions } from "next-auth";
-import { JWT } from "next-auth/jwt";
-import CredentialsProvider from "next-auth/providers/credentials";
+import NextAuth from "next-auth";
+import type { NextAuthConfig } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import { verifyJwt } from "./authUtils";
 import prisma from "./prisma";
 
 /**
- * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
+ * Configuration for NextAuth.js v5 used to configure adapters, providers, callbacks, etc.
  * This bridges the custom JWT authentication with NextAuth for API routes.
  */
-export const authOptions: NextAuthOptions = {
+export const authConfig: NextAuthConfig = {
   providers: [
-    CredentialsProvider({
+    Credentials({
       name: "Credentials",
       credentials: {
         token: { label: "Token", type: "text" }
@@ -19,7 +19,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.token) return null;
         
         // Verify the JWT token using the existing verifyJwt function
-        const payload = await verifyJwt(credentials.token);
+        const payload = await verifyJwt(credentials.token as string);
         if (!payload) return null;
         
         // Fetch the user from the database
@@ -49,20 +49,17 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }: { token: JWT; user: any }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.isAdmin = user.isAdmin;
+        token.isAdmin = (user as any).isAdmin;
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: JWT }) {
+    async session({ session, token }) {
       if (token) {
-        session.user = {
-          ...session.user,
-          id: token.id,
-          isAdmin: token.isAdmin
-        };
+        (session.user as any).id = token.id as string;
+        (session.user as any).isAdmin = token.isAdmin as boolean;
       }
       return session;
     }
@@ -73,6 +70,8 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.JWT_SECRET,
 };
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
 
 // Helper function to check if a user is an admin in API routes
 export async function isAdmin(req: Request) {

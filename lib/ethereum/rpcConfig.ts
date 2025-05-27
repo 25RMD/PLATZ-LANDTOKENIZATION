@@ -190,7 +190,6 @@ export function createProvider() {
 
 // Get a client configuration for viem
 import { http, createPublicClient } from 'viem';
-import { sepolia } from 'viem/chains';
 
 export function getSepoliaClientConfig() {
   const rpcUrl = currentRpcUrl || getWeightedRandomRpcUrl();
@@ -209,7 +208,19 @@ export function getSepoliaClientConfig() {
   });
   
   return createPublicClient({
-    chain: sepolia,
+    chain: {
+      id: 11155111,
+      name: 'Sepolia',
+      nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+      rpcUrls: {
+        default: { http: [rpcUrl] },
+        public: { http: [rpcUrl] }
+      },
+      blockExplorers: {
+        default: { name: 'Etherscan', url: 'https://sepolia.etherscan.io' }
+      },
+      testnet: true
+    },
     transport,
     batch: {
       multicall: false, // Disable multicall to reduce complexity

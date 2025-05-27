@@ -1,12 +1,16 @@
 import Link from "next/link";
 import React from "react";
 import { formatEther } from 'viem';
-import { CollectionDetail } from '../lib/types'; 
+import { CollectionDetail } from '../lib/types';
+import { useCurrency } from '@/context/CurrencyContext'; 
 
 const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
+  const { formatPriceWithConversion } = useCurrency();
+  
   const formatDisplayPrice = (priceInWei?: bigint): string => {
     if (!collection.isListed || typeof priceInWei === 'undefined' || priceInWei === 0n) return "Not Listed";
-    return `${formatEther(priceInWei)} ETH`;
+    const priceInEth = parseFloat(formatEther(priceInWei));
+    return formatPriceWithConversion(priceInEth);
   }
 
   const displayCreator = (address?: string) => { 

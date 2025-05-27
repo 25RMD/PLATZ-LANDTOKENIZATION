@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default-jwt-secret-for-development';
+const JWT_SECRET = process.env.JWT_SECRET as string || 'default-jwt-secret-for-development';
 
 /**
  * Generate a JWT token for a user
@@ -11,7 +11,7 @@ export const generateJwtToken = (
   payload: Record<string, any>,
   expiresIn: string | number = '7d'
 ): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn } as any);
 };
 
 /**

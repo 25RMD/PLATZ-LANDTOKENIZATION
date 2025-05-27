@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCollectionById } from '../route';
+import { getCollectionById } from '@/lib/services/nftCollectionService';
 
 /**
  * GET /api/nft/collections/[id]

@@ -13,6 +13,11 @@ interface CollectionsGridProps {
   showLoadMore?: boolean;
 }
 
+// Type guard to check if it's CollectionDetail
+const isDetailedCollection = (col: any): col is CollectionDetail => {
+  return col && typeof col.name === 'string' && typeof col.description === 'string' && typeof col.image === 'string';
+};
+
 const CollectionsGrid: React.FC<CollectionsGridProps> = ({
   collectionsData, // Use the passed data if available
   limit = 12,
@@ -53,7 +58,7 @@ const CollectionsGrid: React.FC<CollectionsGridProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {displayCollections.map((collection) => (
             <CollectionCard 
-              key={collection.id} 
+              key={isDetailedCollection(collection) ? collection.collectionId.toString() : collection.id.toString()} 
               collection={collection}
             />
           ))}
@@ -96,10 +101,6 @@ interface CollectionCardProps {
 }
 
 const CollectionCard: React.FC<CollectionCardProps> = ({ collection }) => {
-  // Type guard to check if it's CollectionDetail
-  const isDetailedCollection = (col: any): col is CollectionDetail => {
-    return col && typeof col.name === 'string' && typeof col.description === 'string' && typeof col.image === 'string';
-  };
 
   let name, imageUrl, description, creatorAddress, itemCount, collectionIdString;
 

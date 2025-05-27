@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         mintTransactionHash: landListing.mintTransactionHash || null,
         collectionId: landListing.collectionId || null,
         mainTokenId: landListing.mainTokenId || null,
-        metadataUri: landListing.metadataUri || null,
+        metadataUri: landListing.nftMetadataIrysUri || null,
         marketplaceListingId: landListing.marketplaceListingId || null,
         marketplaceListingError: landListing.marketplaceListingError || null,
       }

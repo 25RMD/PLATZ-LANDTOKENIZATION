@@ -146,8 +146,8 @@ export function safeDecodeEventLog({ abi, data, topics, eventName }: {
   try {
     return decodeEventLog({
       abi,
-      data,
-      topics,
+      data: data as `0x${string}`,
+      topics: topics as [`0x${string}`, ...`0x${string}`[]],
       eventName
     });
   } catch (error) {

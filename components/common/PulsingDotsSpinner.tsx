@@ -32,10 +32,10 @@ const PulsingDotsSpinner: React.FC<PulsingDotsSpinnerProps> = ({
     delay,
   });
 
-  // If a Tailwind bg color class is passed, use it. Otherwise, use a neutral default.
+  // Updated default colors to be more visible and consistent
   const effectiveDotClassName = color 
     ? color 
-    : 'bg-gray-500 dark:bg-gray-400';
+    : 'bg-black dark:bg-white';
 
   return (
     <div className={`flex items-center justify-center space-x-1 ${className}`} role="status" aria-label="Loading...">

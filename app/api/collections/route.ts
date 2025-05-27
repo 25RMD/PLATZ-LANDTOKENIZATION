@@ -3,79 +3,109 @@ import prisma from '@/lib/db';
 import path from 'path';
 import { mkdir, writeFile } from 'fs/promises';
 
-// GET Handler - Fetch active land listings
+/**
+ * GET /api/collections
+ * 
+ * Returns all collections from the database as a fallback when smart contract calls fail
+ */
 export async function GET(request: NextRequest) {
-  console.log("API GET /api/collections: Starting request...");
-  
   try {
-    console.log("API GET /api/collections: Testing database connection...");
-    try {
-      // Simple query to test database connection
-      await prisma.$queryRaw`SELECT 1 as test`;
-      console.log("API GET /api/collections: Database connection successful");
-    } catch (dbConnError: any) {
-      console.error("API GET /api/collections: Database connection error:", {
-        name: dbConnError.name,
-        message: dbConnError.message,
-        code: dbConnError.code,
-      });
-      return NextResponse.json({ 
-        message: "Database connection error", 
-        error: dbConnError.message 
-      }, { status: 500 });
-    }
+    console.log('[API /api/collections] Fetching collections from database...');
     
-    // Now fetch the actual land listings
-    console.log("API GET /api/collections: Fetching land listings intended for collection display...");
+    // Get all land listings that have been minted as collections
     const collections = await prisma.landListing.findMany({
       where: {
-        // We should only show listings that have been successfully minted
-        // and have the necessary contract/collection details.
-        mintStatus: 'SUCCESS', // Verify this value for successful mints
-        contractAddress: {
-          not: null, // Ensure contractAddress is set
-        },
-        collectionId: {
-          not: null, // Ensure collectionId is set
-        },
-        // Optionally, add other statuses like 'ACTIVE' if you have a general status field
-        // status: 'ACTIVE',
+        AND: [
+          { collectionId: { not: null } },
+          { 
+            OR: [
+              { mintStatus: 'COMPLETED' },
+              { mintStatus: 'COMPLETED_COLLECTION' },
+              { mintStatus: 'SUCCESS' } // Legacy status
+            ]
+          }
+        ]
       },
       select: {
         id: true,
+        collectionId: true,
+        mainTokenId: true,
         nftTitle: true,
         nftDescription: true,
-        listingPrice: true, 
-        priceCurrency: true,
         nftImageFileRef: true,
         nftCollectionSize: true,
-        createdAt: true, 
+        listingPrice: true,
+        priceCurrency: true,
+        country: true,
+        state: true,
+        localGovernmentArea: true,
+        propertyAreaSqm: true,
+        latitude: true,
+        longitude: true,
+        contractAddress: true,
+        mintTransactionHash: true,
+        mintTimestamp: true,
+        createdAt: true,
         user: {
           select: {
             id: true,
             username: true,
-            evmAddress: true, // Changed from solanaPubKey for Ethereum context
-          },
-        },
+            evmAddress: true
+          }
+        }
       },
       orderBy: {
-        createdAt: 'desc', // Default sort by newest
-      },
+        createdAt: 'desc'
+      }
     });
 
-    console.log(`API GET /api/collections: Found ${collections.length} collections.`);
-    return NextResponse.json(collections);
+    console.log(`[API /api/collections] Found ${collections.length} collections in database`);
+
+    // Transform the data to match the expected format
+    const transformedCollections = collections.map(collection => ({
+      id: collection.id,
+      collectionId: collection.collectionId,
+      mainTokenId: collection.mainTokenId,
+      nftTitle: collection.nftTitle,
+      nftDescription: collection.nftDescription,
+      nftImageFileRef: collection.nftImageFileRef,
+      nftCollectionSize: collection.nftCollectionSize,
+      listingPrice: collection.listingPrice,
+      priceCurrency: collection.priceCurrency,
+      country: collection.country,
+      state: collection.state,
+      localGovernmentArea: collection.localGovernmentArea,
+      propertyAreaSqm: collection.propertyAreaSqm,
+      latitude: collection.latitude,
+      longitude: collection.longitude,
+      contractAddress: collection.contractAddress,
+      mintTransactionHash: collection.mintTransactionHash,
+      mintTimestamp: collection.mintTimestamp,
+      createdAt: collection.createdAt,
+      user: collection.user
+    }));
+
+    return NextResponse.json({
+      success: true,
+      collections: transformedCollections,
+      count: transformedCollections.length
+    });
 
   } catch (error: any) {
-    console.error('API GET /api/collections: Unexpected error:', { 
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    });
+    console.error('[API /api/collections] Error fetching collections:', error);
     
-    return NextResponse.json({ 
-      message: "Internal Server Error",
-      error: error.message
+    // More detailed error logging
+    if (error.code) {
+      console.error('[API /api/collections] Database error code:', error.code);
+    }
+    if (error.meta) {
+      console.error('[API /api/collections] Database error meta:', error.meta);
+    }
+    
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch collections',
+      details: error.message
     }, { status: 500 });
   }
 }

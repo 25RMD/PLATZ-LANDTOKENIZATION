@@ -1,6 +1,5 @@
 import { ethers } from 'ethers';
 import { createPublicClient, http, createWalletClient, custom } from 'viem';
-import { sepolia } from 'viem/chains';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import PlatzLandNFTAbi from '../../artifacts/contracts/PlatzLandNFTWithCollections.sol/PlatzLandNFTWithCollections.json';
@@ -674,7 +673,19 @@ export const getProviderAndSignerV2 = async () => {
   const createViemPublicClient = (rpcUrl: string) => {
     console.log(`Creating Viem public client with RPC URL: ${rpcUrl.substring(0, 20)}...`);
     return createPublicClient({
-      chain: sepolia,
+      chain: {
+        id: 11155111,
+        name: 'Sepolia',
+        nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: {
+          default: { http: [rpcUrl] },
+          public: { http: [rpcUrl] }
+        },
+        blockExplorers: {
+          default: { name: 'Etherscan', url: 'https://sepolia.etherscan.io' }
+        },
+        testnet: true
+      },
       transport: http(rpcUrl),
     });
   };
@@ -759,7 +770,19 @@ export const getProviderAndSignerV2 = async () => {
           try {
             // Create Viem client with better configuration
             const client = createPublicClient({
-              chain: sepolia,
+              chain: {
+                id: 11155111,
+                name: 'Sepolia',
+                nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+                rpcUrls: {
+                  default: { http: [url] },
+                  public: { http: [url] }
+                },
+                blockExplorers: {
+                  default: { name: 'Etherscan', url: 'https://sepolia.etherscan.io' }
+                },
+                testnet: true
+              },
               transport: http(url, {
                 timeout: timeoutMs - 1000, // Slightly shorter than our overall timeout
                 retryCount: 2,
@@ -963,8 +986,8 @@ export const createCollection = async (
     // Get signer address if available
     let signerAddress = '';
     try {
-      if (contract.runner) {
-        signerAddress = await contract.runner.getAddress();
+      if (contract.runner && 'getAddress' in contract.runner) {
+        signerAddress = await (contract.runner as ethers.Signer).getAddress();
         console.log('Signer address:', signerAddress);
       }
     } catch (error) {
@@ -1001,11 +1024,13 @@ export const createCollection = async (
     // Log contract call details
     console.log('\n=== Contract Call Details ===');
     console.log('Contract Address:', contract.target);
-    console.log('From Address (signer):', await contract.runner?.getAddress());
+    console.log('From Address (signer):', contract.runner && 'getAddress' in contract.runner ? await (contract.runner as ethers.Signer).getAddress() : 'N/A');
     console.log('To Address (recipient):', toAddress);
     console.log('Main Token URI Length:', mainTokenURI.length);
     console.log('Collection URI Length:', collectionMetadataURI.length);
     console.log('Base URI Length:', childTokensBaseURI.length);
+    console.log('IMPORTANT: NFTs will be minted TO:', toAddress);
+    console.log('IMPORTANT: Transaction will be sent FROM server wallet:', contract.runner && 'getAddress' in contract.runner ? await (contract.runner as ethers.Signer).getAddress() : 'N/A');
     
     // Estimate gas before making the actual call
     let estimatedGas;
@@ -1131,7 +1156,7 @@ export const createCollection = async (
             });
             
             if (parsedLog.name === 'Transfer') {
-              const [from, to, tokenId] = parsedLog.args as [string, string, bigint];
+              const [from, to, tokenId] = parsedLog.args as unknown as [string, string, bigint];
               console.log('Found Transfer event:', {
                 from,
                 to,
@@ -1241,7 +1266,7 @@ export const createCollection = async (
       console.log(`Successfully updated land listing ${landListingId} in createCollection utility (status COMPLETED etc.)`);
     } catch (dbError) {
       console.error('Failed to update land listing status to COMPLETED:', dbError);
-      throw new Error(`Collection created but failed to update database: ${dbError.message}`);
+      throw new Error(`Collection created but failed to update database: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
     }
     
     return {
@@ -1492,7 +1517,6 @@ export const prepareLandListingForMinting = async (landListingId: string) => {
     await prisma.landListing.update({
       where: { id: landListingId },
       data: {
-        metadataUri: mainTokenURI,
         mintStatus: 'PENDING',
       },
     });

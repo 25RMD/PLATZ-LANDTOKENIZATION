@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balance Detection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .balance-info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Balance Detection Test</h1>
+        <p>This page tests if wallet balance detection is working correctly on Sepolia testnet.</p>
+        
+        <div id="status" class="status info">
+            Click "Connect Wallet" to test balance detection
+        </div>
+        
+        <button id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+        <button id="checkBalanceBtn" onclick="checkBalance()" disabled>Check Balance</button>
+        <button id="switchNetworkBtn" onclick="switchToSepolia()" disabled>Switch to Sepolia</button>
+        
+        <div id="walletInfo" style="display: none;">
+            <h3>Wallet Information</h3>
+            <div class="balance-info">
+                <p><strong>Address:</strong> <span id="walletAddress"></span></p>
+                <p><strong>Network:</strong> <span id="networkInfo"></span></p>
+                <p><strong>Balance:</strong> <span id="balanceAmount"></span></p>
+                <p><strong>Can Place Bid:</strong> <span id="canPlaceBid"></span></p>
+            </div>
+        </div>
+        
+        <div id="bidTest" style="display: none;">
+            <h3>Bid Test</h3>
+            <p>Test bid amount: <input type="number" id="bidAmount" value="0.001" step="0.001" min="0.001"> ETH</p>
+            <p>Estimated gas: <span id="estimatedGas">Calculating...</span></p>
+            <p>Total cost: <span id="totalCost">Calculating...</span></p>
+            <p>Sufficient funds: <span id="sufficientFunds">Checking...</span></p>
+        </div>
+    </div>
+
+    <script>
+        let provider = null;
+        let signer = null;
+        let userAddress = null;
+        
+        const SEPOLIA_CHAIN_ID = 11155111;
+        const SEPOLIA_CHAIN_ID_HEX = '0xaa36a7';
+        
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    updateStatus('MetaMask is not installed!', 'error');
+                    return;
+                }
+                
+                updateStatus('Connecting to wallet...', 'info');
+                
+                // Request account access
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
+                userAddress = accounts[0];
+                
+                // Get network info
+                const chainId = await window.ethereum.request({ 
+                    method: 'eth_chainId' 
+                });
+                
+                updateWalletInfo(userAddress, chainId);
+                
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('checkBalanceBtn').disabled = false;
+                document.getElementById('switchNetworkBtn').disabled = false;
+                
+                updateStatus('Wallet connected successfully!', 'success');
+                
+                // Auto-check balance
+                await checkBalance();
+                
+            } catch (error) {
+                console.error('Error connecting wallet:', error);
+                updateStatus(`Error connecting wallet: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkBalance() {
+            try {
+                if (!userAddress) {
+                    updateStatus('Please connect wallet first', 'error');
+                    return;
+                }
+                
+                updateStatus('Checking balance...', 'info');
+                
+                // Get balance
+                const balance = await window.ethereum.request({
+                    method: 'eth_getBalance',
+                    params: [userAddress, 'latest']
+                });
+                
+                // Convert from wei to ETH
+                const balanceInEth = parseInt(balance, 16) / Math.pow(10, 18);
+                
+                document.getElementById('balanceAmount').textContent = `${balanceInEth.toFixed(6)} ETH`;
+                
+                // Check if on Sepolia
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                const isOnSepolia = parseInt(chainId, 16) === SEPOLIA_CHAIN_ID;
+                
+                // Test bid calculation
+                const bidAmount = parseFloat(document.getElementById('bidAmount').value) || 0.001;
+                const estimatedGas = 0.01; // Rough estimate
+                const totalCost = bidAmount + estimatedGas;
+                const sufficientFunds = balanceInEth >= totalCost && isOnSepolia;
+                
+                document.getElementById('estimatedGas').textContent = `${estimatedGas.toFixed(4)} ETH`;
+                document.getElementById('totalCost').textContent = `${totalCost.toFixed(4)} ETH`;
+                document.getElementById('sufficientFunds').textContent = sufficientFunds ? 'Yes ✅' : 'No ❌';
+                document.getElementById('canPlaceBid').textContent = sufficientFunds ? 'Yes ✅' : 'No ❌';
+                
+                document.getElementById('bidTest').style.display = 'block';
+                
+                if (sufficientFunds) {
+                    updateStatus(`Balance check complete! You have ${balanceInEth.toFixed(6)} ETH and can place bids.`, 'success');
+                } else if (!isOnSepolia) {
+                    updateStatus(`You have ${balanceInEth.toFixed(6)} ETH but you're not on Sepolia network. Please switch networks.`, 'error');
+                } else {
+                    updateStatus(`You have ${balanceInEth.toFixed(6)} ETH but need at least ${totalCost.toFixed(4)} ETH to place a ${bidAmount.toFixed(4)} ETH bid.`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error checking balance:', error);
+                updateStatus(`Error checking balance: ${error.message}`, 'error');
+            }
+        }
+        
+        async function switchToSepolia() {
+            try {
+                updateStatus('Switching to Sepolia network...', 'info');
+                
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: SEPOLIA_CHAIN_ID_HEX }],
+                });
+                
+                updateStatus('Switched to Sepolia network!', 'success');
+                
+                // Update network info
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                updateWalletInfo(userAddress, chainId);
+                
+                // Re-check balance
+                await checkBalance();
+                
+            } catch (error) {
+                console.error('Error switching network:', error);
+                updateStatus(`Error switching network: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateWalletInfo(address, chainId) {
+            const chainIdDecimal = parseInt(chainId, 16);
+            const networkName = chainIdDecimal === SEPOLIA_CHAIN_ID ? 'Sepolia Testnet' : `Unknown (${chainIdDecimal})`;
+            
+            document.getElementById('walletAddress').textContent = address;
+            document.getElementById('networkInfo').textContent = `${networkName} (${chainIdDecimal})`;
+            document.getElementById('walletInfo').style.display = 'block';
+        }
+        
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        // Listen for account changes
+        if (typeof window.ethereum !== 'undefined') {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length === 0) {
+                    updateStatus('Wallet disconnected', 'info');
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('checkBalanceBtn').disabled = true;
+                    document.getElementById('switchNetworkBtn').disabled = true;
+                    document.getElementById('walletInfo').style.display = 'none';
+                    document.getElementById('bidTest').style.display = 'none';
+                } else {
+                    userAddress = accounts[0];
+                    updateWalletInfo(userAddress, window.ethereum.chainId);
+                    checkBalance();
+                }
+            });
+            
+            window.ethereum.on('chainChanged', (chainId) => {
+                updateWalletInfo(userAddress, chainId);
+                if (userAddress) {
+                    checkBalance();
+                }
+            });
+        }
+        
+        // Update bid calculation when amount changes
+        document.getElementById('bidAmount').addEventListener('input', () => {
+            if (userAddress) {
+                checkBalance();
+            }
+        });
+    </script>
+</body>
+</html> 

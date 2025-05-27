@@ -32,13 +32,9 @@ export async function fetchAndProcessCollectionDetails(
   marketplaceAbi: Abi,
   placeholderImageUrl: string = PLACEHOLDER_IMAGE_URL // Corrected const name
 ): Promise<CollectionDetail | null> {
-  console.log(`[UTIL] Base URL received: ${currentBaseUrl}`);
-  console.log(`🔄 [UTIL] Fetching details for collection ${collectionId}`);
   let name, image = placeholderImageUrl, description;
-  let finalMetaUriToLog = '';
 
   try {
-    console.log(`🔄 [UTIL] Reading collection data from NFT contract ${platzLandNftAddress}`);
     const collectionData = await client.readContract({
       address: platzLandNftAddress,
       abi: nftContractAbi,
@@ -47,7 +43,7 @@ export async function fetchAndProcessCollectionDetails(
     });
 
     if (!collectionData) {
-      console.log(`⚠️ [UTIL] No data found for collection ${collectionId} from NFT contract.`);
+      console.warn(`⚠️ No data found for collection ${collectionId}`);
       return null;
     }
     
@@ -58,7 +54,6 @@ export async function fetchAndProcessCollectionDetails(
     let seller: string | undefined = undefined;
 
     try {
-      console.log(`🔄 [UTIL] Checking marketplace listing for coll ${collectionId} on ${landMarketplaceAddress}`);
       const marketplaceData = await client.readContract({
         address: landMarketplaceAddress,
         abi: marketplaceAbi,
@@ -73,11 +68,7 @@ export async function fetchAndProcessCollectionDetails(
         seller = _mpSeller;
       }
     } catch (marketplaceError: any) {
-      if (marketplaceError?.message?.includes("Listing not found") || marketplaceError?.message?.includes("Collection not listed") || marketplaceError?.message?.includes("Invalid collection ID")) {
-        console.info(`ℹ️ [UTIL] Collection ${collectionId} is not listed on the marketplace or ID is invalid.`);
-      } else {
-        console.warn(`⚠️ [UTIL] Error checking marketplace for collection ${collectionId}:`, marketplaceError.message);
-      }
+      // Silently handle marketplace errors - most collections won't be listed
     }
 
     if (collectionMetaURI) {
@@ -86,7 +77,6 @@ export async function fetchAndProcessCollectionDetails(
             name = 'Unsupported IPFS Metadata URI';
             description = `The metadata URI for this collection points to IPFS (${collectionMetaURI}), which is not fetched.`;
             image = placeholderImageUrl;
-            finalMetaUriToLog = collectionMetaURI;
         } else {
             // Proceed with fetching and processing for non-IPFS metadata URIs
             try {
@@ -117,7 +107,6 @@ export async function fetchAndProcessCollectionDetails(
                         meta = JSON.parse(responseTextForLogging);
 
 
-                        finalMetaUriToLog = validCollectionMetaURI;
                         name = meta.name || 'N/A';
                         description = meta.description || 'N/A';
                         let imageUrl = meta.image || placeholderImageUrl;
@@ -161,7 +150,6 @@ export async function fetchAndProcessCollectionDetails(
                         name = 'Invalid Metadata';
                         description = `Failed to parse: ${e.message}`;
                         image = placeholderImageUrl;
-                        finalMetaUriToLog = validCollectionMetaURI;
                     }
                 } else { // if !metaResponse.ok (fetch failed)
                     const responseText = await metaResponse.text();
@@ -169,14 +157,12 @@ export async function fetchAndProcessCollectionDetails(
                     name = 'Metadata Fetch Failed';
                     description = `Failed to fetch metadata. Status: ${metaResponse.status}`;
                     image = placeholderImageUrl;
-                    finalMetaUriToLog = validCollectionMetaURI;
                 }
             } catch (metaError: any) { // Catch for fetch or other errors in this 'else' block (processing non-IPFS collectionMetaURI)
                 console.warn(`[UTIL C_ID:${collectionId}] Error processing non-IPFS metadata from ${collectionMetaURI}:`, metaError.message);
                 name = 'Metadata Processing Error';
                 description = `Failed to process metadata: ${metaError.message}`;
                 image = placeholderImageUrl;
-                finalMetaUriToLog = collectionMetaURI; // Use original if validCollectionMetaURI caused error or wasn't formed
             }
         }
     } else { // if collectionMetaURI itself is null/empty from contract
@@ -184,12 +170,10 @@ export async function fetchAndProcessCollectionDetails(
         name = 'Missing Metadata URI';
         description = 'The smart contract did not provide a metadata URI for this collection.';
         image = placeholderImageUrl;
-        finalMetaUriToLog = 'N/A - URI missing from contract';
     }
-    console.log(`[UTIL C_ID:${collectionId}] FINAL: MetaURI: ${finalMetaUriToLog}, Name: ${name}, Image: ${image}, Desc: ${description}`);
     return {
       collectionId, startTokenId, totalSupply, mainTokenId, baseURI,
-      collectionURI: finalMetaUriToLog, creator, isListed, price, seller,
+      collectionURI: collectionMetaURI, creator, isListed, price, seller,
       // If name from metadata is 'N/A' or falsy, use a specific placeholder. Otherwise, use the name from metadata.
       name: (name && name !== 'N/A') ? name : `Unnamed Collection #${collectionId.toString()}`,
       image: image || placeholderImageUrl,

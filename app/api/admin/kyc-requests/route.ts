@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       try {
         const payload = await verifyJwt(authCookie.value);
         isAdmin = payload?.isAdmin === true;
-        userId = payload?.sub;
+        userId = (payload as any)?.sub;
         console.log(`User authenticated via JWT: userId=${userId}, isAdmin=${isAdmin}`);
       } catch (jwtError) {
         console.error('JWT verification failed:', jwtError);
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     // Transform the data with minimal processing
     const transformedRequests = pendingRequests.map(req => {
         // Create safe copies of nested objects to avoid reference issues
-        const user = req.user ? { ...req.user } : {};
+        const user = req.user || {};
         
         return {
             updateRequestId: req.id,
@@ -74,10 +74,10 @@ export async function GET(request: NextRequest) {
             changes: req.changes,
             adminNotes: req.adminNotes,
             submittedAt: req.createdAt,
-            username: user.username || null,
-            email: user.email || null,
-            fullName: user.fullName || null,
-            kycVerified: user.kycVerified || false,
+            username: (user as any).username || null,
+            email: (user as any).email || null,
+            fullName: (user as any).fullName || null,
+            kycVerified: (user as any).kycVerified || false,
         };
     });
 

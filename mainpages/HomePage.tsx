@@ -58,13 +58,13 @@ const HomePage = () => {
   // --- End Tilt Effect Logic --- 
 
   return (
-    <div className="space-y-24 md:space-y-32 pb-16"> {/* Add spacing between sections */}
+    <div className="space-y-16 sm:space-y-20 md:space-y-24 lg:space-y-32 pb-8 sm:pb-12 md:pb-16"> {/* Responsive spacing between sections */}
       {/* --- Slide 1: Hero --- */}
       <motion.section
         variants={sectionVariants}
         initial="hidden"
         animate="visible" // Animate hero immediately
-        className="text-center min-h-screen flex flex-col justify-center" // Apply full height and vertical centering
+        className="text-center min-h-[80vh] sm:min-h-screen flex flex-col justify-center px-3 sm:px-4 md:px-6 lg:px-8" // Responsive padding and height
         onMouseMove={handleMouseMove} // Track mouse move on the section
         onMouseLeave={handleMouseLeave} // Reset on leave
         style={{ perspective: 800 }} // Add perspective to the parent for 3D effect
@@ -72,38 +72,31 @@ const HomePage = () => {
         {/* Apply complex text styling: clamp size/leading, tracking, gradient */}
         <motion.h1 
           className="
-            text-[clamp(2.625rem,_0.7086rem_+_8.1768vw,_7.25rem)] 
+            text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl
             font-bold 
-            leading-[clamp(2.938rem,_0.8144rem_+_9.0608vw,_8.063rem)] 
-            tracking-[-0.04em] /* Approximated -tracking-4 */ 
+            leading-tight sm:leading-tight md:leading-tight lg:leading-tight
+            tracking-tight
             bg-gradient-to-b from-black via-black to-neutral-600 /* Light mode gradient */ 
             dark:from-white dark:via-white dark:to-neutral-400 /* Dark mode gradient */ 
             bg-clip-text text-transparent 
-            mb-6 max-w-4xl mx-auto
+            mb-4 sm:mb-6 max-w-4xl mx-auto
           "
           style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} // Apply dynamic rotation
         >
           Tokenize Your Land, Unlock Global Opportunity
         </motion.h1>
-        <p className="text-lg md:text-xl text-text-light dark:text-text-dark opacity-70 mb-8 max-w-2xl mx-auto">
+        <p className="text-base sm:text-lg md:text-xl text-text-light dark:text-text-dark opacity-70 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
           Transform your property into digital tokens. Enable fractional ownership and global liquidity for your assets.
         </p>
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
           <Link href="/collections">
             {/* Added hover/tap scale effect */}
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <AnimatedButton className="bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white hover:bg-white hover:text-black hover:border-black dark:hover:bg-black dark:hover:text-white dark:hover:border-white">
+              <AnimatedButton className="w-full sm:w-auto bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white hover:bg-white hover:text-black hover:border-black dark:hover:bg-black dark:hover:text-white dark:hover:border-white px-6 sm:px-8 py-3">
                 Get Started
               </AnimatedButton>
             </motion.div>
           </Link>
-          {/* Optional secondary button */}
-          {/* <AnimatedButton 
-            variant="outline" 
-            className="border-black text-black dark:border-white dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
-          >
-            Learn More
-          </AnimatedButton> */}
         </div>
       </motion.section>
 
@@ -113,13 +106,13 @@ const HomePage = () => {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
-        className="container mx-auto px-4"
+        className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8"
       >
-        <h2 className="text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-12 text-center">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-8 sm:mb-12 text-center">
           Features
         </h2>
         {/* Added perspective for 3D effect */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 [perspective:1000px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 md:gap-12 [perspective:1000px]">
           {[ // Feature data
             { icon: FiPieChart, title: "Fractional Ownership", description: "Each token represents a fractional share of your property, lowering the entry barrier for investors." },
             { icon: FiRepeat, title: "Enhanced Liquidity", description: "Trade tokens 24/7 on blockchain-based marketplaces for near-instant transactions." },
@@ -134,19 +127,19 @@ const HomePage = () => {
               transition={flipTransition}
             >
               {/* Card Front */}
-              <div className="relative z-10 p-6 border border-black/10 dark:border-white/10 rounded-lg h-full bg-primary-light dark:bg-card-dark [backface-visibility:hidden]">
-                <feature.icon className="text-3xl text-text-light dark:text-text-dark mb-4 mx-auto md:mx-0" />
-                <h3 className="text-xl font-semibold text-text-light dark:text-text-dark mb-2">
+              <div className="relative z-10 p-4 sm:p-6 border border-black/10 dark:border-white/10 rounded-lg h-full bg-primary-light dark:bg-card-dark [backface-visibility:hidden]">
+                <feature.icon className="text-2xl sm:text-3xl text-text-light dark:text-text-dark mb-3 sm:mb-4 mx-auto sm:mx-0" />
+                <h3 className="text-lg sm:text-xl font-semibold text-text-light dark:text-text-dark mb-2 text-center sm:text-left">
                   {feature.title}
                 </h3>
-                <p className="text-text-light dark:text-text-dark opacity-70">
+                <p className="text-sm sm:text-base text-text-light dark:text-text-dark opacity-70 text-center sm:text-left">
                   {feature.description}
                 </p>
               </div>
               {/* Card Back */}
-              <div className="absolute inset-0 p-6 border border-black/10 dark:border-white/10 rounded-lg h-full bg-primary-light dark:bg-card-dark [backface-visibility:hidden] [transform:rotateY(180deg)] flex flex-col justify-center items-center">
+              <div className="absolute inset-0 p-4 sm:p-6 border border-black/10 dark:border-white/10 rounded-lg h-full bg-primary-light dark:bg-card-dark [backface-visibility:hidden] [transform:rotateY(180deg)] flex flex-col justify-center items-center">
                  {/* Example back content */}
-                 <h3 className="text-xl font-semibold text-text-light dark:text-text-dark mb-2 text-center">
+                 <h3 className="text-lg sm:text-xl font-semibold text-text-light dark:text-text-dark mb-2 text-center">
                   {feature.title}
                  </h3>
                  <p className="text-sm text-text-light dark:text-text-dark opacity-70 text-center">
@@ -164,13 +157,13 @@ const HomePage = () => {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
-        className="container mx-auto px-4"
+        className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8"
       >
-        <h2 className="text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-12 text-center">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-8 sm:mb-12 text-center">
           How It Works
         </h2>
         {/* Added perspective for 3D effect */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 [perspective:1000px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 md:gap-12 [perspective:1000px]">
           {[ // Steps data
             { icon: FiUserCheck, title: "1. Verify & Onboard", description: "Upload your title deeds and complete our secure KYC process to verify property ownership." },
             { icon: FiCpu, title: "2. Tokenize Asset", description: "Smart contracts mint digital tokens representing your land's equity, ready for distribution." },
@@ -183,18 +176,18 @@ const HomePage = () => {
               transition={flipTransition}
             >
               {/* Card Front */}
-              <div className="relative z-10 p-6 border border-black/10 dark:border-white/10 rounded-lg h-full bg-primary-light dark:bg-card-dark [backface-visibility:hidden]">
-                <step.icon className="text-4xl text-text-light dark:text-text-dark mb-5 mx-auto" />
-                <h3 className="text-xl font-semibold text-text-light dark:text-text-dark mb-2 text-center">
+              <div className="relative z-10 p-4 sm:p-6 border border-black/10 dark:border-white/10 rounded-lg h-full bg-primary-light dark:bg-card-dark [backface-visibility:hidden]">
+                <step.icon className="text-3xl sm:text-4xl text-text-light dark:text-text-dark mb-4 sm:mb-5 mx-auto" />
+                <h3 className="text-lg sm:text-xl font-semibold text-text-light dark:text-text-dark mb-2 text-center">
                   {step.title}
                 </h3>
-                <p className="text-text-light dark:text-text-dark opacity-70 text-center">
+                <p className="text-sm sm:text-base text-text-light dark:text-text-dark opacity-70 text-center">
                   {step.description}
                 </p>
               </div>
               {/* Card Back */}
-              <div className="absolute inset-0 p-6 border border-black/10 dark:border-white/10 rounded-lg h-full bg-primary-light dark:bg-card-dark [backface-visibility:hidden] [transform:rotateY(180deg)] flex flex-col justify-center items-center">
-                 <h3 className="text-xl font-semibold text-text-light dark:text-text-dark mb-2 text-center">
+              <div className="absolute inset-0 p-4 sm:p-6 border border-black/10 dark:border-white/10 rounded-lg h-full bg-primary-light dark:bg-card-dark [backface-visibility:hidden] [transform:rotateY(180deg)] flex flex-col justify-center items-center">
+                 <h3 className="text-lg sm:text-xl font-semibold text-text-light dark:text-text-dark mb-2 text-center">
                   {step.title}
                  </h3>
                  <p className="text-sm text-text-light dark:text-text-dark opacity-70 text-center">
@@ -212,12 +205,12 @@ const HomePage = () => {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
-        className="container mx-auto px-4 text-center"
+        className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 text-center"
       >
-        <h2 className="text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-8">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-6 sm:mb-8">
           About Us
         </h2>
-        <div className="max-w-3xl mx-auto space-y-4 text-lg text-text-light dark:text-text-dark opacity-80">
+        <div className="max-w-3xl mx-auto space-y-4 text-base sm:text-lg text-text-light dark:text-text-dark opacity-80">
           <p>
             At Platz, our mission is to democratize real estate ownership by leveraging blockchain technology.
           </p>
@@ -236,17 +229,17 @@ const HomePage = () => {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
-        className="container mx-auto px-4 text-center border-t border-black/10 dark:border-white/10 pt-16"
+        className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 text-center border-t border-black/10 dark:border-white/10 pt-12 sm:pt-16"
       >
-        <h2 className="text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-6">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-text-light dark:text-text-dark mb-4 sm:mb-6">
           Ready to unlock the potential of your land?
         </h2>
-        <p className="text-lg text-text-light dark:text-text-dark opacity-70 mb-8 max-w-2xl mx-auto">
+        <p className="text-base sm:text-lg text-text-light dark:text-text-dark opacity-70 mb-6 sm:mb-8 max-w-2xl mx-auto">
           Get started today with a free consultation or join our platform to tokenize your property.
         </p>
         {/* Added hover/tap scale effect */}
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block mb-8">
-          <AnimatedButton className="bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white hover:bg-white hover:text-black hover:border-black dark:hover:bg-black dark:hover:text-white dark:hover:border-white">
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block mb-6 sm:mb-8">
+          <AnimatedButton className="w-full sm:w-auto bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white hover:bg-white hover:text-black hover:border-black dark:hover:bg-black dark:hover:text-white dark:hover:border-white px-6 sm:px-8 py-3">
             Request Consultation
           </AnimatedButton>
         </motion.div>

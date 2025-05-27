@@ -4,10 +4,18 @@
 // Define the Address type for Ethereum addresses, compatible with viem
 export type Address = `0x${string}`;
 
+// For Sepolia testnet - Use NEXT_PUBLIC_ prefixed variables for browser access
+export const PLATZ_LAND_NFT_ADDRESS: Address = (
+  process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || 
+  process.env.NFT_CONTRACT_ADDRESS || 
+  "0x837527fa3206Adcba2a8909CAE39280D606540c4"
+) as Address;
 
-// For Sepolia testnet
-export const PLATZ_LAND_NFT_ADDRESS: Address = (process.env.NFT_CONTRACT_ADDRESS || "0x837527fa3206Adcba2a8909CAE39280D606540c4") as Address;
-export const LAND_MARKETPLACE_ADDRESS: Address = (process.env.MARKETPLACE_CONTRACT_ADDRESS || "0xfAE9Ef51fea4D220cD427EC47C8dFDA4a6426De8") as Address;
+export const LAND_MARKETPLACE_ADDRESS: Address = (
+  process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS || 
+  process.env.MARKETPLACE_CONTRACT_ADDRESS || 
+  "0xfAE9Ef51fea4D220cD427EC47C8dFDA4a6426De8"
+) as Address;
 
 // For local development
 export const LOCALHOST_PLATZ_LAND_NFT_ADDRESS: Address = "0x837527fa3206Adcba2a8909CAE39280D606540c4" as Address;

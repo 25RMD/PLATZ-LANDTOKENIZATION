@@ -65,7 +65,6 @@ export const testRpcConnection = async (rpcUrl: string): Promise<boolean> => {
     const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, {
       polling: true,
       pollingInterval: 4000,
-      timeout: 10000,
     });
     
     const blockNumber = await provider.getBlockNumber();

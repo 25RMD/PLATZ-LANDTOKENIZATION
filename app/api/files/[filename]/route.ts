@@ -11,10 +11,11 @@ import mime from 'mime-types';
  */
 export async function GET(
   request: NextRequest,
-  context: { params: { filename: string } }
+  context: { params: Promise<{ filename: string }> }
 ) {
   try {
-    const { filename } = context.params;
+    const resolvedParams = await context.params;
+    const { filename } = resolvedParams;
     
     // Sanitize filename to prevent directory traversal attacks
     const sanitizedFilename = path.basename(filename);

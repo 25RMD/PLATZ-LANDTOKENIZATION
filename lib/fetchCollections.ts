@@ -59,7 +59,7 @@ export async function fetchCollections(
       
       if (collectionIds && collectionIds.length > 0) {
         // Fetch all collections in parallel
-        const collectionPromises = collectionIds.map(id => 
+        const collectionPromises = collectionIds.map((id: bigint) => 
           contract.getCollection(id).then(result => ({
             id: id.toString(),
             startTokenId: result[0].toString(),
@@ -106,6 +106,10 @@ export async function fetchCollections(
     
     // Convert events to collections
     const collections: Collection[] = paginatedEvents.map(event => {
+      // Type guard to ensure we have an EventLog with args
+      if (!('args' in event) || !event.args) {
+        throw new Error('Invalid event log format');
+      }
       const { args } = event;
       return {
         id: args.collectionId.toString(),

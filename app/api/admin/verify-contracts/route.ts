@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ethers } from 'ethers';
-import PlatzLandNFTAbi from '@/artifacts/contracts/PlatzLandNFT.sol/PlatzLandNFT.json';
-import LandMarketplaceAbi from '@/artifacts/contracts/LandMarketplace.sol/LandMarketplace.json';
+import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
+import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
 
 /**
  * Contract Verification API
@@ -49,7 +49,7 @@ const verifyNFTContract = async () => {
   try {
     const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL;
     const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const contract = new ethers.Contract(contractAddress, PlatzLandNFTAbi.abi, provider);
+    const contract = new ethers.Contract(contractAddress, PlatzLandNFTABI, provider);
     
     // Verify basic contract information
     const name = await contract.name();
@@ -86,7 +86,7 @@ const verifyMarketplaceContract = async () => {
   try {
     const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL;
     const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const contract = new ethers.Contract(contractAddress, LandMarketplaceAbi.abi, provider);
+    const contract = new ethers.Contract(contractAddress, LandMarketplaceABI, provider);
     
     // Check if required functions exist
     const hasCreateListing = typeof contract.createListing === 'function';
@@ -94,14 +94,16 @@ const verifyMarketplaceContract = async () => {
     const hasCancelListing = typeof contract.cancelListing === 'function';
     
     // Check function parameter count
-    let createListingParams = [];
+    let createListingParams: any[] = [];
     try {
       // Try to inspect function parameters (this is imperfect but gives some info)
       const fragment = contract.interface.getFunction('createListing');
+      if (fragment) {
       createListingParams = fragment.inputs.map((input: any) => ({
         name: input.name,
         type: input.type
       }));
+      }
     } catch (e) {
       console.error('Error getting createListing parameters:', e);
     }

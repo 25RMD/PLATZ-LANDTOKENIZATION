@@ -93,6 +93,12 @@ export async function POST(request: NextRequest) {
 
     const { landListingId, nftTitle, nftDescription, imageBase64, ownerAddress, collectionSize = 100 } = requestData;
 
+    console.log('[mint-json API] Extracted parameters:');
+    console.log('- landListingId:', landListingId);
+    console.log('- nftTitle:', nftTitle);
+    console.log('- ownerAddress (NFT recipient):', ownerAddress);
+    console.log('- collectionSize:', collectionSize);
+
     if (!landListingId || !nftTitle || !imageBase64 || !ownerAddress) {
       return NextResponse.json({ 
         success: false, 

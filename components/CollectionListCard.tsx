@@ -2,15 +2,24 @@ import Link from "next/link";
 import React from "react";
 import { LandListingForCollection } from "@/mainpages/CollectionsPage";
 import { getImageUrl, getPlaceholderImage } from "@/lib/utils/imageUtils";
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface CollectionListCardProps {
   collection: LandListingForCollection;
 }
 
 const CollectionListCard: React.FC<CollectionListCardProps> = ({ collection }) => {
+  const { formatPriceWithConversion } = useCurrency();
+  
   const formatPrice = (price: string | number | null | undefined, currency: string | null | undefined): string => {
     if (price === null || price === undefined) return "N/A";
     const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+    
+    // If it's ETH, use currency conversion, otherwise use the original format
+    if (currency?.toUpperCase() === 'ETH') {
+      return formatPriceWithConversion(numericPrice);
+    }
+    
     return `${numericPrice.toFixed(2)} ${currency || 'SOL'}`;
   };
 

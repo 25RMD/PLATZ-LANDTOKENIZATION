@@ -77,7 +77,7 @@ async function testRpcUrl(url: string) {
       const blockNumber = await provider.getBlockNumber();
       
       // Get the gas price
-      const gasPrice = await provider.getGasPrice();
+      const gasPrice = await provider.getFeeData();
       
       // Calculate latency
       const endTime = Date.now();
@@ -87,7 +87,7 @@ async function testRpcUrl(url: string) {
       result.status = 'healthy';
       result.latency = latency;
       result.blockNumber = Number(blockNumber);
-      result.gasPrice = ethers.formatUnits(gasPrice, 'gwei');
+      result.gasPrice = gasPrice.gasPrice ? ethers.formatUnits(gasPrice.gasPrice, 'gwei') : 'Unknown';
       
       // Additional check for stale blocks
       if (latency > 5000) {
@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
       
       const network = await provider.getNetwork();
       const blockNumber = await provider.getBlockNumber();
-      const gasPrice = await provider.getGasPrice();
+      const feeData = await provider.getFeeData();
       
       const endTime = Date.now();
       const latency = endTime - startTime;
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
             chainId: network.chainId,
           },
           blockNumber: Number(blockNumber),
-          gasPrice: ethers.formatUnits(gasPrice, 'gwei'),
+          gasPrice: feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : 'Unknown',
           latency,
         }
       });

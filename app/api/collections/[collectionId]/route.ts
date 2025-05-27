@@ -58,9 +58,10 @@ const getFileUrl = (fileRef: string | null): string => {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { collectionId: string } }
+  { params }: { params: Promise<{ collectionId: string }> }
 ) {
-  const landListingId = params.collectionId;
+  const resolvedParams = await params;
+  const landListingId = resolvedParams.collectionId;
 
   if (!landListingId) {
     return NextResponse.json({ message: 'LandListing ID is required' }, { status: 400 });

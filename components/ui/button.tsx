@@ -48,11 +48,35 @@ export const Button: React.FC<ButtonProps> = ({
   // Combine styles
   const buttonStyles = `${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${widthStyle} ${disabledStyle} ${className}`;
   
+  // Extract only the props we need for the button element
+  const { onClick, disabled, type, form, formAction, formEncType, formMethod, formNoValidate, formTarget, name, value, autoFocus, tabIndex, 'aria-label': ariaLabel, 'aria-describedby': ariaDescribedby, id, role, title } = props;
+  
+  const buttonProps = {
+    onClick,
+    disabled,
+    type,
+    form,
+    formAction,
+    formEncType,
+    formMethod,
+    formNoValidate,
+    formTarget,
+    name,
+    value,
+    autoFocus,
+    tabIndex,
+    'aria-label': ariaLabel,
+    'aria-describedby': ariaDescribedby,
+    id,
+    role,
+    title
+  };
+  
   return (
     <motion.button
       className={buttonStyles}
-      whileTap={{ scale: props.disabled ? 1 : 0.97 }}
-      {...props}
+      whileTap={{ scale: disabled ? 1 : 0.97 }}
+      {...buttonProps}
     >
       {icon && iconPosition === 'left' && <span className="mr-2">{icon}</span>}
       {children}

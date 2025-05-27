@@ -38,8 +38,9 @@ export async function POST(request: Request) {
     }
 
     // Find the user and their expected nonce (User MUST exist at this point)
+    // Note: solanaPubKey field is deprecated, using evmAddress as fallback
     const user = await prisma.user.findUnique({
-      where: { solanaPubKey: solanaPubKey },
+      where: { evmAddress: solanaPubKey },
     });
 
     if (!user || !user.signInNonce) {
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     const message = `Please sign this message to verify your identity.\nNonce: ${nonce}`;
     let signatureBytes: Buffer;
     try {
-        signatureBytes = bs58.decode(signatureBase58);
+        signatureBytes = Buffer.from(bs58.decode(signatureBase58));
     } catch (decodeError) {
         console.error(`[API /solana/verify] Failed to decode Base58 signature for pubkey ${solanaPubKey}:`, decodeError);
         return NextResponse.json({ message: 'Invalid signature format.' }, { status: 400 });
