@@ -49,7 +49,7 @@ const BidModal: React.FC<BidModalProps> = ({
   // Check if user is on the correct network
   const isOnSepoliaNetwork = chainId === SEPOLIA_CHAIN_ID;
 
-    const [bidAmount, setBidAmount] = useState<string>('');
+  const [bidAmount, setBidAmount] = useState<string>('');
   const [bidEthValue, setBidEthValue] = useState<number>(0);
   const [isPlacingBid, setIsPlacingBid] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -221,8 +221,6 @@ const BidModal: React.FC<BidModalProps> = ({
       setIsPlacingBid(false);
     }
   };
-
-  // Remove the old handleBidAmountChange function as it's now handled by CurrencyInput
 
   if (!isOpen) return null;
 
@@ -416,4 +414,4 @@ const BidModal: React.FC<BidModalProps> = ({
   );
 };
 
-export default BidModal; 
+export default BidModal;
