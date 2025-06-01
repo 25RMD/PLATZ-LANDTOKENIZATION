@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   try {
     // 1. Authenticate user via JWT from cookies
     const cookieStore = await cookies(); // Get the cookie store
-    const tokenCookie = cookieStore.get('token'); // Access the 'get' method on the store
+    const tokenCookie = cookieStore.get('auth-token'); // Access the 'get' method on the store
 
     if (!tokenCookie) {
       return NextResponse.json({ message: 'Authentication token not found.' }, { status: 401 });

@@ -6,10 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
 import AnimatedButton from '@/components/common/AnimatedButton';
-/*
-import CustomWalletButton from '@/components/common/CustomWalletButton'; // Custom wallet button
-import { useWallet } from '@solana/wallet-adapter-react';
-*/
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { FaWallet } from 'react-icons/fa'; // Icon for wallet button
 import toast from 'react-hot-toast'; // Import toast
 import { LoginSchema, FieldErrors } from '@/lib/schemas'; // Import schema and error type
@@ -17,10 +14,12 @@ import { LoginSchema, FieldErrors } from '@/lib/schemas'; // Import schema and e
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { user, login, isLoading, error: contextError, clearError: clearContextError, isAuthenticated } = useAuth();
+  const { user, login, isLoading, error: contextError, clearError: clearContextError, isAuthenticated, connectAndLoginEvmWallet, fetchCurrentUser } = useAuth();
   const [formErrors, setFormErrors] = useState<FieldErrors>({}); // State for validation errors
-  // const { connected, publicKey } = useWallet(); // Get wallet connection status
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
   const router = useRouter();
+  const [hasRedirected, setHasRedirected] = useState(false); // Prevent double redirects
 
   // Display context error toast when it changes
   useEffect(() => {
@@ -30,9 +29,15 @@ const LoginPage = () => {
     }
   }, [contextError, clearContextError]);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated when page loads
   useEffect(() => {
-    if (isAuthenticated && user) {
+    console.log("Login useEffect triggered:", { isAuthenticated, user: !!user, hasRedirected, isLoading });
+    
+    // Only redirect if we're authenticated, have user data, haven't redirected yet, and not currently loading
+    if (isAuthenticated && user && !hasRedirected && !isLoading) {
+      console.log("Conditions met for redirect, setting hasRedirected and redirecting...");
+      setHasRedirected(true);
+      
       if (user.isAdmin) {
         console.log("Login: Detected admin, redirecting to /admin/dashboard");
         router.push('/admin/dashboard');
@@ -41,12 +46,11 @@ const LoginPage = () => {
         router.push('/profile');
       }
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, hasRedirected, isLoading]);
 
   const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setFormErrors({}); // Clear previous form errors
-    // clearContextError(); // Handled by useEffect
 
     // Frontend Validation
     const validationResult = LoginSchema.safeParse({ username, password });
@@ -63,24 +67,59 @@ const LoginPage = () => {
     if (!success) {
       console.error("Login failed (toast displayed by context)");
     }
+    // Note: Redirect is handled by useEffect above
   };
 
-  /*
   const handleWalletLogin = async () => {
-    // clearContextError(); // Handled by useEffect
-    if (!connected || !publicKey) {
-      toast.error('Please connect your Solana wallet first using the button above.');
-      console.error('Wallet not connected for login attempt');
+    if (!isConnected || !address) {
+      toast.error('Please connect your EVM wallet first using the button below.');
+      console.error('EVM Wallet not connected for login attempt');
       return;
     }
+    
+    console.log("Starting EVM wallet login process...");
+    console.log("Connected address:", address);
+    console.log("Is connected:", isConnected);
+    console.log("Initial auth state before login:", { isAuthenticated, user: !!user });
+    
     const loadingToastId = toast.loading("Requesting signature...");
-    const success = await connectAndLoginWallet(); // This function in AuthContext might also need adjustment if it's Solana specific
-    toast.dismiss(loadingToastId);
-    if (!success) {
-      console.error("Wallet sign-in failed (toast displayed by context)");
+    
+    try {
+      console.log("Calling connectAndLoginEvmWallet...");
+      const success = await connectAndLoginEvmWallet();
+      console.log("connectAndLoginEvmWallet returned:", success);
+      console.log("Auth state immediately after connectAndLoginEvmWallet:", { isAuthenticated, user: !!user });
+      
+      toast.dismiss(loadingToastId);
+      
+      if (success) {
+        console.log("EVM Wallet login successful, refreshing authentication state...");
+        
+        // Manually refresh the authentication state to ensure context is updated
+        const refreshedUser = await fetchCurrentUser();
+        console.log("fetchCurrentUser returned:", !!refreshedUser);
+        console.log("Updated auth state after fetchCurrentUser:", { isAuthenticated, user: !!user });
+        
+        // Log the final state before useEffect should trigger redirect
+        console.log("Final state check before redirect should trigger:", {
+          isAuthenticated,
+          user: !!user,
+          hasRedirected,
+          isLoading,
+          userIsAdmin: user?.isAdmin
+        });
+        
+        // The useEffect should now trigger with the updated authentication state
+        console.log("Updated auth state - isAuthenticated:", isAuthenticated, "user:", !!user);
+        
+      } else {
+        console.error("EVM Wallet sign-in failed (toast displayed by context)");
+      }
+    } catch (error) {
+      toast.dismiss(loadingToastId);
+      console.error("Error during EVM wallet login:", error);
     }
   };
-  */
 
   // Helper for input classes (same as signup)
   const inputClasses = (hasError: boolean) =>
@@ -164,29 +203,40 @@ const LoginPage = () => {
         </span>
       </div>
 
-       {/* Solana Wallet Login Section - Commented Out
+      {/* EVM Wallet Login Section */}
       <div className="space-y-4">
          <p className="text-sm text-center text-gray-500 dark:text-gray-400">
-            Connect and sign in with your Solana wallet.
+            Connect and sign in with your EVM wallet.
          </p>
          
-         <div className="flex justify-center">
-             
-             {/* <CustomWalletButton /> * /} // Also comment out the usage if CustomWalletButton itself is Solana-specific
-         </div>
-          
-         {/* {connected && (
+         {!isConnected ? (
+           <AnimatedButton
+             onClick={() => connect({ connector: connectors[0] })}
+             disabled={isLoading}
+             className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-black/20 dark:border-white/20 rounded-lg shadow-sm text-sm font-medium text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60 transition"
+           >
+             <FaWallet className="w-4 h-4"/>
+             Connect Wallet
+           </AnimatedButton>
+         ) : (
+           <div className="space-y-3">
+             <div className="flex items-center justify-center p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-zinc-800">
+               <FaWallet className="text-text-light dark:text-text-dark mr-2" />
+               <span className="text-sm text-text-light dark:text-text-dark">
+                 {address?.slice(0,6)}...{address?.slice(-4)}
+               </span>
+             </div>
              <AnimatedButton
-                onClick={handleWalletLogin}
-                disabled={isLoading || !publicKey} // Disable if auth loading or no public key
-                className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-60"
-            >
-                 <FaWallet className="w-4 h-4"/>
-                 {isLoading ? 'Verifying...' : 'Sign In with Wallet'}
+               onClick={handleWalletLogin}
+               disabled={isLoading}
+               className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60"
+             >
+               <FaWallet className="w-4 h-4"/>
+               {isLoading ? 'Verifying...' : 'Sign In with Wallet'}
              </AnimatedButton>
-         )} * /}
+           </div>
+         )}
       </div>
-      */}
 
       {/* Link to Sign Up */}
       <div className="mt-8 text-center">

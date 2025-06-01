@@ -4,22 +4,67 @@
 
 @layer base {
   body {
-    /* Base styles are now handled by @tailwind base */
-    /* and direct classes in layout.tsx */
-    /* Ensure necessary transitions or base overrides are applied elsewhere */
-    /* For example, apply transitions in layout.tsx or specific components */
+    /* Ensure smooth transitions and proper text rendering */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* Add any other global styles or custom component styles below */
+/* Cyber-themed animations and effects */
+@keyframes cyber-glitch {
+  0%, 100% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-1px, 1px);
+  }
+  40% {
+    transform: translate(-1px, -1px);
+  }
+  60% {
+    transform: translate(1px, 1px);
+  }
+  80% {
+    transform: translate(1px, -1px);
+  }
+}
+
+@keyframes cyber-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes data-stream {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
 
 /* Shimmer animation for skeleton loading */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
   }
   100% {
     transform: translateX(100%);
+    opacity: 0;
   }
 }
 
@@ -27,41 +72,134 @@
 @keyframes fadeIn {
   from {
     opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
 /* Scale in animation for skeleton elements */
 @keyframes scaleIn {
   from {
-    transform: scale(0.95);
     opacity: 0;
+    transform: scale(0.95);
   }
   to {
-    transform: scale(1);
     opacity: 1;
+    transform: scale(1);
   }
+}
+
+/* Cyber-themed utility classes */
+.cyber-glitch {
+  animation: cyber-glitch 0.3s ease-in-out;
+}
+
+.cyber-pulse {
+  animation: cyber-pulse 2s ease-in-out infinite;
+}
+
+.data-stream {
+  animation: data-stream 3s linear infinite;
 }
 
 /* Utility classes for animations */
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.4s ease-out;
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.2s ease-out;
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
 }
 
 /* Progressive image loading blur effect */
 .image-blur-placeholder {
-  filter: blur(5px);
-  transform: scale(1.05);
-  transition: filter 0.3s ease, transform 0.3s ease;
+  filter: blur(8px) brightness(0.8);
+  transform: scale(1.02);
+  transition: all 0.5s ease;
 }
 
 .image-blur-placeholder.loaded {
-  filter: blur(0);
+  filter: blur(0) brightness(1);
   transform: scale(1);
+}
+
+/* Cyber-themed scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Modern glassmorphism effect */
+.glass-effect {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-effect {
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Cyber grid background pattern - improved for day mode */
+.cyber-grid {
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.dark .cyber-grid {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Modern focus states - improved for both themes */
+.focus-cyber:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+.dark .focus-cyber:focus {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* Selection styling - improved for both themes */
+::selection {
+  background: rgba(0, 0, 0, 0.15);
+  color: inherit;
+}
+
+.dark ::selection {
+  background: rgba(255, 255, 255, 0.2);
 }

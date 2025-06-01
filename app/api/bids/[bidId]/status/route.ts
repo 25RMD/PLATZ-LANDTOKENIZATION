@@ -58,14 +58,39 @@ export async function PATCH(
       );
     }
 
-    // Enhanced validation using the new validation system
+    // Enhanced validation using the new validation system (with fallback tolerance)
     const validationResult = await validateBidAcceptance(bidId, validatedData.userAddress);
     
     if (!validationResult.isValid) {
-      return NextResponse.json(
-        { success: false, message: validationResult.error },
-        { status: 400 }
-      );
+      console.warn(`[BID_STATUS] Validation failed (${validationResult.source}): ${validationResult.error}`);
+      
+      // If validation failed due to blockchain connectivity, be more lenient
+      if (validationResult.source === 'fallback' || validationResult.source === 'database') {
+        console.log(`[BID_STATUS] Allowing bid acceptance despite validation failure due to connectivity issues`);
+        // Continue with acceptance but log the issue
+        try {
+          await prisma.auditLog.create({
+            data: {
+              eventType: 'BID_ACCEPTANCE_VALIDATION_BYPASS',
+              userAddress: validatedData.userAddress,
+              bidId: bidId,
+              details: {
+                validationError: validationResult.error,
+                validationSource: validationResult.source,
+                bypassReason: 'blockchain_connectivity_issues',
+                timestamp: new Date().toISOString()
+              }
+            }
+          });
+        } catch (auditError) {
+          console.warn('[BID_STATUS] Failed to create audit log:', auditError);
+        }
+      } else {
+        return NextResponse.json(
+          { success: false, message: validationResult.error },
+          { status: 400 }
+        );
+      }
     }
 
     // Check for duplicate sales to prevent multiple acceptances

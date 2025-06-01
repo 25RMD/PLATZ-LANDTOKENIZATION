@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/db';
+import { createPublicClient, http, getContract } from 'viem';
+import { sepolia } from 'viem/chains';
+import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
+import { PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
 
-const prisma = new PrismaClient();
-
+/**
+ * GET /api/collections/user-owned?userAddress=ADDRESS
+ * 
+ * Returns collections where the user either:
+ * 1. Owns individual tokens in the collection, OR
+ * 2. Created the collection (is the original creator)
+ * This endpoint scans the blockchain for actual token ownership and checks database for created collections
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,76 +21,52 @@ export async function GET(request: NextRequest) {
     if (!userAddress) {
       return NextResponse.json({
         success: false,
-        error: 'User address is required'
+        error: 'userAddress parameter is required'
       }, { status: 400 });
     }
 
-    console.log(`[API] Fetching owned collections for user: ${userAddress}`);
+    console.log(`[API /api/collections/user-owned] Fetching collections for user: ${userAddress}`);
 
-    // Find all users with matching EVM address (ignoring case)
-    const users = await prisma.user.findMany({
-      where: {
-        evmAddress: {
-          equals: userAddress,
-          mode: 'insensitive'
-        }
-      }
+    // Create public client for blockchain queries
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY')
     });
 
-    if (!users || users.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'User not found'
-      }, { status: 404 });
-    }
-
-    const userIds = users.map(user => user.id);
-    console.log(`[API] Found ${users.length} user records for address ${userAddress}: ${userIds.join(', ')}`);
-
-    // Use the first user for metadata, but search across all user IDs
-    const primaryUser = users[0];
-
-    // APPROACH 1: Get all tokens owned by the user across all collections
-    const ownedTokens = await prisma.evmCollectionToken.findMany({
+    // Get all collections from database
+    const allCollections = await prisma.landListing.findMany({
       where: {
-        ownerAddress: {
-          equals: userAddress,
-          mode: 'insensitive'
-        },
-        mintStatus: 'COMPLETED'
-      },
-      include: {
-        landListing: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                evmAddress: true
-              }
-            }
+        AND: [
+          { collectionId: { not: null } },
+          { 
+            OR: [
+              { mintStatus: 'COMPLETED' },
+              { mintStatus: 'COMPLETED_COLLECTION' },
+              { mintStatus: 'SUCCESS' }
+            ]
           }
-        }
+        ]
       },
-      orderBy: [
-        { landListingId: 'asc' },
-        { tokenId: 'asc' }
-      ]
-    });
-
-    console.log(`[API] Found ${ownedTokens.length} owned tokens for user ${userAddress}`);
-
-    // APPROACH 2: Get collections where user owns the main listing (collection creator/owner)
-    const ownedCollectionListings = await prisma.landListing.findMany({
-      where: {
-        userId: {
-          in: userIds
-        },
-        collectionId: {
-          not: null
-        }
-      },
-      include: {
+      select: {
+        id: true,
+        collectionId: true,
+        mainTokenId: true,
+        nftTitle: true,
+        nftDescription: true,
+        nftImageFileRef: true,
+        nftCollectionSize: true,
+        listingPrice: true,
+        priceCurrency: true,
+        country: true,
+        state: true,
+        localGovernmentArea: true,
+        propertyAreaSqm: true,
+        latitude: true,
+        longitude: true,
+        contractAddress: true,
+        mintTransactionHash: true,
+        mintTimestamp: true,
+        createdAt: true,
         user: {
           select: {
             id: true,
@@ -90,179 +76,119 @@ export async function GET(request: NextRequest) {
         }
       },
       orderBy: {
-        collectionId: 'asc'
+        createdAt: 'desc'
       }
     });
 
-    console.log(`[API] Found ${ownedCollectionListings.length} collection listings owned by user ${userAddress}`);
+    console.log(`[API /api/collections/user-owned] Found ${allCollections.length} total collections`);
 
-    // Group by collection and build collection details
-    const collectionsMap = new Map();
+    // Check ownership for each collection
+    const userOwnedCollections = [];
+    
+    for (const collection of allCollections) {
+      try {
+        if (!collection.collectionId) continue;
 
-    // Process owned tokens first (higher priority)
-    ownedTokens.forEach(token => {
-      const listing = token.landListing;
-      if (!listing || !listing.collectionId) return;
+        let userTokenCount = 0;
+        let totalTokens = 0;
+        let ownershipType: 'TOKEN_OWNER' | 'COLLECTION_CREATOR' | 'BOTH' = 'TOKEN_OWNER';
 
-      const collectionId = listing.collectionId;
-      
-      if (!collectionsMap.has(collectionId)) {
-        collectionsMap.set(collectionId, {
-          collectionId,
-          name: listing.nftTitle || `Collection ${collectionId}`,
-          description: listing.nftDescription || '',
-          image: listing.nftImageFileRef || '',
-          totalSupply: listing.nftCollectionSize || 1,
-          itemsOwned: 0,
-          listedItems: 0,
-          unlistedItems: 0,
-          listings: [],
-          mainTokenId: listing.mainTokenId,
-          contractAddress: listing.contractAddress,
-          createdAt: listing.createdAt,
-          owner: listing.user,
-          floorPrice: null,
-          totalValue: 0,
-          tokens: [],
-          ownershipType: 'TOKEN_OWNER' // User owns individual tokens
-        });
-      }
+        // Check if user is the collection creator
+        const isCreator = collection.user?.evmAddress?.toLowerCase() === userAddress.toLowerCase();
 
-      const collection = collectionsMap.get(collectionId);
-      collection.itemsOwned += 1;
-      
-      // Track individual tokens
-      collection.tokens.push({
-        id: token.id,
-        tokenId: token.tokenId,
-        isListed: token.isListed,
-        listingPrice: token.listingPrice || 0,
-        tokenURI: token.tokenURI,
-        ownerAddress: token.ownerAddress,
-        createdAt: token.createdAt
-      });
+        try {
+          // Get the contract instance
+          const contract = getContract({
+            address: PLATZ_LAND_NFT_ADDRESS as `0x${string}`,
+            abi: PlatzLandNFTABI,
+            client: publicClient
+          });
 
-      // Add to listings array for backward compatibility
-      collection.listings.push({
-        id: token.id,
-        mainTokenId: token.tokenId.toString(),
-        isListed: token.isListed,
-        listingPrice: token.listingPrice || 0,
-        createdAt: token.createdAt
-      });
-
-      // Count listed/unlisted items
-      if (token.isListed) {
-        collection.listedItems += 1;
-      } else {
-        collection.unlistedItems += 1;
-      }
-
-      // Calculate floor price (lowest listing price)
-      if (token.isListed && token.listingPrice && token.listingPrice > 0) {
-        if (collection.floorPrice === null || token.listingPrice < collection.floorPrice) {
-          collection.floorPrice = token.listingPrice;
+          // Get all token IDs in this collection
+          const tokenIds = await contract.read.getTokensInCollection([BigInt(collection.collectionId)]) as bigint[];
+          totalTokens = tokenIds.length;
+          
+          // Check ownership of each token
+          for (const tokenId of tokenIds) {
+            try {
+              const owner = await contract.read.ownerOf([tokenId]) as string;
+              if (owner.toLowerCase() === userAddress.toLowerCase()) {
+                userTokenCount++;
+              }
+            } catch (error) {
+              // Token might not exist or other error, skip
+              console.warn(`[API /api/collections/user-owned] Error checking ownership of token ${tokenId}:`, error);
+            }
+          }
+        } catch (contractError) {
+          console.error(`[API /api/collections/user-owned] Error accessing contract for collection ${collection.collectionId}:`, contractError);
+          // If we can't check blockchain, but user is creator, still include it
+          if (isCreator) {
+            totalTokens = collection.nftCollectionSize || 0;
+          }
         }
-        collection.totalValue += token.listingPrice;
-      }
-    });
 
-    // Process collection listings owned by user (collection creator/owner)
-    ownedCollectionListings.forEach(listing => {
-      const collectionId = listing.collectionId!;
-      
-      if (!collectionsMap.has(collectionId)) {
-        collectionsMap.set(collectionId, {
-          collectionId,
-          name: listing.nftTitle || `Collection ${collectionId}`,
-          description: listing.nftDescription || '',
-          image: listing.nftImageFileRef || '',
-          totalSupply: listing.nftCollectionSize || 1,
-          itemsOwned: 1, // User owns the collection itself
-          listedItems: listing.status === 'LISTED' ? 1 : 0,
-          unlistedItems: listing.status !== 'LISTED' ? 1 : 0,
-          listings: [],
-          mainTokenId: listing.mainTokenId,
-          contractAddress: listing.contractAddress,
-          createdAt: listing.createdAt,
-          owner: listing.user,
-          floorPrice: listing.listingPrice || null,
-          totalValue: listing.listingPrice || 0,
-          tokens: [],
-          ownershipType: 'COLLECTION_OWNER' // User owns the collection
-        });
-      }
-
-      const collection = collectionsMap.get(collectionId);
-      
-      // Add to listings array
-      collection.listings.push({
-        id: listing.id,
-        mainTokenId: listing.mainTokenId,
-        isListed: listing.status === 'LISTED',
-        listingPrice: listing.listingPrice || 0,
-        createdAt: listing.createdAt
-      });
-
-      // Update floor price if this listing has a lower price
-      if (listing.listingPrice && listing.listingPrice > 0) {
-        if (collection.floorPrice === null || listing.listingPrice < collection.floorPrice) {
-          collection.floorPrice = listing.listingPrice;
+        // Determine ownership type
+        if (isCreator && userTokenCount > 0) {
+          ownershipType = 'BOTH';
+        } else if (isCreator) {
+          ownershipType = 'COLLECTION_CREATOR';
+        } else if (userTokenCount > 0) {
+          ownershipType = 'TOKEN_OWNER';
         }
-        if (listing.status === 'LISTED') {
-          collection.totalValue += listing.listingPrice;
+
+        // Include collection if user is creator OR owns tokens
+        if (isCreator || userTokenCount > 0) {
+          userOwnedCollections.push({
+            ...collection,
+            userTokenCount,
+            totalTokens,
+            ownershipType,
+            // Transform for frontend compatibility
+            name: collection.nftTitle || `Collection ${collection.collectionId}`,
+            description: collection.nftDescription || '',
+            image: collection.nftImageFileRef || '',
+            totalSupply: totalTokens,
+            itemsOwned: userTokenCount,
+            listedItems: collection.listingPrice && collection.listingPrice > 0 ? 1 : 0,
+            unlistedItems: totalTokens - (collection.listingPrice && collection.listingPrice > 0 ? 1 : 0),
+            floorPrice: collection.listingPrice ? parseFloat(collection.listingPrice.toString()) : null,
+            totalValue: userTokenCount * (collection.listingPrice ? parseFloat(collection.listingPrice.toString()) : 0),
+            owner: collection.user || { id: '', username: null, evmAddress: null },
+            listings: [{
+              id: collection.id,
+              mainTokenId: collection.mainTokenId,
+              isListed: !!(collection.listingPrice && collection.listingPrice > 0),
+              listingPrice: collection.listingPrice ? parseFloat(collection.listingPrice.toString()) : 0,
+              createdAt: collection.createdAt
+            }]
+          });
+          
+          console.log(`[API /api/collections/user-owned] User ${ownershipType.toLowerCase()} for collection ${collection.collectionId}: owns ${userTokenCount}/${totalTokens} tokens`);
         }
+
+      } catch (error) {
+        console.error(`[API /api/collections/user-owned] Error checking collection ${collection.collectionId}:`, error);
+        // Continue with next collection
       }
-    });
+    }
 
-    // Convert map to array and prepare final response
-    const ownedCollections = Array.from(collectionsMap.values()).map(collection => ({
-      collectionId: collection.collectionId,
-      mainTokenId: collection.mainTokenId,
-      name: collection.name,
-      description: collection.description,
-      image: collection.image,
-      totalSupply: collection.totalSupply,
-      itemsOwned: collection.itemsOwned,
-      listedItems: collection.listedItems,
-      unlistedItems: collection.unlistedItems,
-      floorPrice: collection.floorPrice,
-      totalValue: collection.totalValue,
-      contractAddress: collection.contractAddress,
-      createdAt: collection.createdAt,
-      owner: collection.owner,
-      listings: collection.listings,
-      tokens: collection.tokens,
-      ownershipType: collection.ownershipType // Include ownership type for debugging
-    }));
-
-    console.log(`[API] Found ${ownedCollections.length} owned collections for user ${userAddress}`);
+    console.log(`[API /api/collections/user-owned] User has ownership in ${userOwnedCollections.length} collections`);
 
     return NextResponse.json({
       success: true,
-      collections: ownedCollections,
-      metadata: {
-        totalCollections: ownedCollections.length,
-        totalItemsOwned: ownedCollections.reduce((sum, col) => sum + col.itemsOwned, 0),
-        totalListedItems: ownedCollections.reduce((sum, col) => sum + col.listedItems, 0),
-        totalUnlistedItems: ownedCollections.reduce((sum, col) => sum + col.unlistedItems, 0),
-        totalValue: ownedCollections.reduce((sum, col) => sum + col.totalValue, 0),
-        tokenOwnershipCount: ownedCollections.filter(c => c.ownershipType === 'TOKEN_OWNER').length,
-        collectionOwnershipCount: ownedCollections.filter(c => c.ownershipType === 'COLLECTION_OWNER').length
-      }
+      collections: userOwnedCollections,
+      count: userOwnedCollections.length,
+      userAddress
     });
 
-  } catch (error) {
-    console.error('[API] Error fetching user owned collections:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch owned collections',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  } finally {
-    await prisma.$disconnect();
+  } catch (error: any) {
+    console.error('[API /api/collections/user-owned] Error:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch user-owned collections',
+      details: error.message
+    }, { status: 500 });
   }
 } 

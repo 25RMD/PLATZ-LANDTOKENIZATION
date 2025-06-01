@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { FiSun, FiMoon } from 'react-icons/fi';
-import { FaSun, FaMoon } from 'react-icons/fa';
 
 const ThemeSwitcher = () => {
   const [mounted, setMounted] = useState(false);
@@ -15,7 +14,7 @@ const ThemeSwitcher = () => {
   }, []);
 
   // Use actual icons based on resolvedTheme
-  const Icon = resolvedTheme === "dark" ? FaSun : FaMoon;
+  const Icon = resolvedTheme === "dark" ? FiSun : FiMoon;
 
   // Return null until mounted to prevent hydration mismatch
   if (!mounted) return null;
@@ -24,11 +23,9 @@ const ThemeSwitcher = () => {
     <button
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
-      // Use border, transparent bg, black/white icon, subtle gray hover bg
-      className="p-2 rounded-lg border border-black dark:border-white text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-900 transition-colors duration-200"
+      className="p-2 rounded-cyber border border-black/20 dark:border-white/20 text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-300 hover:border-black/40 dark:hover:border-white/40 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-white/10 group"
     >
-      {/* Use the actual icon component */}
-      <Icon className="w-4 h-4" /> 
+      <Icon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" /> 
     </button>
   );
 };

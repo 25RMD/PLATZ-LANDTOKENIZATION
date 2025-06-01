@@ -48,15 +48,25 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Initialize preferred currency from localStorage
+  // Handle hydration
   useEffect(() => {
-    const savedCurrency = getUserCurrencyPreference();
-    setPreferredCurrencyState(savedCurrency);
+    setMounted(true);
   }, []);
 
-  // Fetch exchange rates on mount and set up refresh interval
+  // Initialize preferred currency from localStorage only after mount
   useEffect(() => {
+    if (mounted) {
+      const savedCurrency = getUserCurrencyPreference();
+      setPreferredCurrencyState(savedCurrency);
+    }
+  }, [mounted]);
+
+  // Fetch exchange rates on mount and set up refresh interval only after mount
+  useEffect(() => {
+    if (!mounted) return;
+
     const loadExchangeRates = async () => {
       setIsLoading(true);
       setError(null);
@@ -78,7 +88,7 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     const interval = setInterval(loadExchangeRates, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [mounted]);
 
   const setPreferredCurrency = useCallback((currency: SupportedCurrency) => {
     setPreferredCurrencyState(currency);

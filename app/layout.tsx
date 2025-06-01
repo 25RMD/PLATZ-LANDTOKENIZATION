@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body 
-        className={`${GeistSans.variable} ${GeistMono.variable} font-mono bg-secondary-light dark:bg-primary-dark text-text-light dark:text-text-dark transition-colors duration-300`}
+        className={`${GeistSans.variable} ${GeistMono.variable} font-mono bg-primary-light dark:bg-primary-dark text-text-light dark:text-text-dark transition-all duration-500 cyber-grid`}
       >        
         <ThemeProvider 
           attribute="class" 
@@ -36,14 +36,20 @@ export default function RootLayout({
           <WagmiProvider>
             <AuthProvider>
               <CurrencyProvider>
-                <div className="flex flex-col min-h-screen">
+                <div className="flex flex-col min-h-screen relative overflow-hidden">
                   <Header />
-                  <main className="flex-grow pt-20 sm:pt-24">
+                  <main className="flex-grow pt-20 sm:pt-24 relative z-10">
                     <div className="min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-96px)]">
                       {children}
                     </div>
                   </main>
                   <Footer />
+                  
+                  {/* Cyber ambient effects */}
+                  <div className="fixed inset-0 pointer-events-none z-0">
+                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyber-glow/30 to-transparent animate-pulse"></div>
+                    <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyber-glow/30 to-transparent animate-pulse"></div>
+                  </div>
                 </div>
                 <Toaster 
                   position="bottom-right"
@@ -51,20 +57,34 @@ export default function RootLayout({
                     className: '',
                     duration: 5000,
                     style: {
-                      background: '#363636',
-                      color: '#fff',
+                      background: 'rgba(0, 0, 0, 0.9)',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px',
+                      fontFamily: 'var(--font-geist-mono)',
+                      fontSize: '14px',
+                      backdropFilter: 'blur(12px)',
                     },
                     success: {
                       duration: 3000,
                       style: {
-                        background: '#10B981',
-                        color: 'white',
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        color: '#22C55E',
+                        border: '1px solid rgba(34, 197, 94, 0.3)',
                       }
                     },
                     error: {
                       style: {
-                        background: '#EF4444',
-                        color: 'white',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#EF4444',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                      },
+                    },
+                    loading: {
+                      style: {
+                        background: 'rgba(0, 255, 255, 0.1)',
+                        color: '#00FFFF',
+                        border: '1px solid rgba(0, 255, 255, 0.3)',
                       },
                     }
                   }}

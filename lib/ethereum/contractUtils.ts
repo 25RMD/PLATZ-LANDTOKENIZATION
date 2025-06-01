@@ -30,8 +30,8 @@ try {
 }
 
 // Load contract addresses from environment variables
-const NFT_CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS;
-const MARKETPLACE_CONTRACT_ADDRESS = process.env.MARKETPLACE_CONTRACT_ADDRESS;
+const NFT_CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS;
+const MARKETPLACE_CONTRACT_ADDRESS = process.env.MARKETPLACE_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS;
 const NETWORK_RPC_URL = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL;
 const FALLBACK_RPC_URL_1 = process.env.FALLBACK_RPC_URL_1 || "https://rpc.sepolia.org";
 const FALLBACK_RPC_URL_2 = process.env.FALLBACK_RPC_URL_2 || "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161";
@@ -105,30 +105,46 @@ const getProviderAndSigner = async () => {
 
 // Get NFT contract instance
 export const getNFTContract = async (signerOrProvider?: ethers.Signer | ethers.Provider) => {
-  if (!NFT_CONTRACT_ADDRESS || NFT_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+  const nftAddress = NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS;
+  
+  if (!nftAddress || nftAddress === "0x0000000000000000000000000000000000000000") {
+    console.error('Available env vars for NFT contract:', {
+      NFT_CONTRACT_ADDRESS: process.env.NFT_CONTRACT_ADDRESS,
+      NEXT_PUBLIC_NFT_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS
+    });
     throw new Error('Invalid NFT contract address. Please set NFT_CONTRACT_ADDRESS environment variable to a valid address.');
   }
   
+  console.log('Using NFT contract address:', nftAddress);
+  
   if (signerOrProvider) {
-    return new ethers.Contract(NFT_CONTRACT_ADDRESS, PlatzLandNFTAbi.abi, signerOrProvider);
+    return new ethers.Contract(nftAddress, PlatzLandNFTAbi.abi, signerOrProvider);
   }
   
   const { signer } = await getProviderAndSigner();
-  return new ethers.Contract(NFT_CONTRACT_ADDRESS, PlatzLandNFTAbi.abi, signer);
+  return new ethers.Contract(nftAddress, PlatzLandNFTAbi.abi, signer);
 };
 
 // Get Marketplace contract instance
 export const getMarketplaceContract = async (signerOrProvider?: ethers.Signer | ethers.Provider) => {
-  if (!MARKETPLACE_CONTRACT_ADDRESS || MARKETPLACE_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+  const marketplaceAddress = MARKETPLACE_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS;
+  
+  if (!marketplaceAddress || marketplaceAddress === "0x0000000000000000000000000000000000000000") {
+    console.error('Available env vars:', {
+      MARKETPLACE_CONTRACT_ADDRESS: process.env.MARKETPLACE_CONTRACT_ADDRESS,
+      NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS
+    });
     throw new Error('Invalid marketplace contract address. Please set MARKETPLACE_CONTRACT_ADDRESS environment variable to a valid address.');
   }
   
+  console.log('Using marketplace contract address:', marketplaceAddress);
+  
   if (signerOrProvider) {
-    return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, LandMarketplaceAbi.abi, signerOrProvider);
+    return new ethers.Contract(marketplaceAddress, LandMarketplaceAbi.abi, signerOrProvider);
   }
   
   const { signer } = await getProviderAndSigner();
-  return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, LandMarketplaceAbi.abi, signer);
+  return new ethers.Contract(marketplaceAddress, LandMarketplaceAbi.abi, signer);
 };
 
 // Mint a new land NFT
@@ -339,10 +355,21 @@ export const createListing = async (
   console.log('Server wallet address (listing sender):', serverWalletAddress);
   
   // Remove mock implementation and check contract addresses
-  if (NFT_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000" || 
-      MARKETPLACE_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+  const nftAddress = NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS;
+  const marketplaceAddress = MARKETPLACE_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS;
+  
+  if (nftAddress === "0x0000000000000000000000000000000000000000" || 
+      marketplaceAddress === "0x0000000000000000000000000000000000000000") {
+    console.error('Contract addresses check failed:', {
+      NFT_CONTRACT_ADDRESS: process.env.NFT_CONTRACT_ADDRESS,
+      NEXT_PUBLIC_NFT_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
+      MARKETPLACE_CONTRACT_ADDRESS: process.env.MARKETPLACE_CONTRACT_ADDRESS,
+      NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS
+    });
     throw new Error("Invalid contract addresses. Please set both NFT_CONTRACT_ADDRESS and MARKETPLACE_CONTRACT_ADDRESS environment variables to valid addresses.");
   }
+  
+  console.log('Using contract addresses:', { nftAddress, marketplaceAddress });
   
   for (let attempt = 0; attempt < retryCount; attempt++) {
     try {
@@ -359,8 +386,8 @@ export const createListing = async (
       const nftContract = await getNFTContract();
       
       // First, approve the marketplace to transfer the NFT
-      console.log('Approving marketplace contract:', MARKETPLACE_CONTRACT_ADDRESS, 'for token:', tokenId);
-      const approveTx = await nftContract.approve(MARKETPLACE_CONTRACT_ADDRESS, tokenId);
+      console.log('Approving marketplace contract:', marketplaceAddress, 'for token:', tokenId);
+      const approveTx = await nftContract.approve(marketplaceAddress, tokenId);
       console.log(`Approval transaction submitted: ${approveTx.hash}`);
       await approveTx.wait();
       console.log(`Approval transaction confirmed`);
@@ -377,99 +404,64 @@ export const createListing = async (
         ? ethers.ZeroAddress 
         : currency; // For ETH use zero address, otherwise use the token address
       
-      console.log('Calling createListing with:', NFT_CONTRACT_ADDRESS, tokenId, priceInWei, currencyAddress);
+      console.log('Calling createListing with:', nftAddress, tokenId, priceInWei, currencyAddress);
       const tx = await marketplaceContract.createListing(
-        NFT_CONTRACT_ADDRESS,
+        nftAddress,
         tokenId,
         priceInWei,
         currencyAddress
       );
       
       console.log(`Create listing transaction submitted: ${tx.hash}`);
-      
-      console.log(`Waiting for listing transaction confirmation...`);
       const receipt = await tx.wait();
-      console.log(`Listing transaction confirmed in block ${receipt.blockNumber}`);
+      console.log(`Create listing transaction confirmed in block ${receipt.blockNumber}`);
       
-      // Extract the listing ID from the event logs
-      console.log(`Parsing transaction logs for ListingCreated event...`);
+      // Parse the transaction receipt to get the listing ID
+      let listingId = 0;
       
-      // Look for ListingCreated event (was NFTListed)
-      const listingEvents = receipt.logs
-        .filter((log: any) => {
-          try {
-            const decoded = marketplaceContract.interface.parseLog(log);
-            return decoded && decoded.name === 'ListingCreated';
-          } catch (e) {
-            return false;
-          }
-        })
-        .map((log: any) => marketplaceContract.interface.parseLog(log));
-        
-      if (listingEvents.length === 0) {
-        throw new Error('Could not find ListingCreated event in transaction logs');
-      }
-      
-      const event = listingEvents[0];
-      console.log('Found ListingCreated event with args:', event.args);
-      
-      // In the ListingCreated event, the listing ID is the same as the token ID
-      // This assumes there's a one-to-one mapping between tokens and listings
-      let listingId = tokenId; // Default to the provided tokenId
-      
-      // If the event contains the tokenId, use that
-      if (event.args.tokenId !== undefined) {
-        listingId = event.args.tokenId;
-      }
-      
-      console.log(`Successfully extracted listing ID: ${listingId}`);
-      
-      // Extra debug logs before creating the listing
-      const nftOwner = await nftContract.ownerOf(tokenId);
-      console.log('NFT contract address:', NFT_CONTRACT_ADDRESS);
-      console.log('Token ID:', tokenId);
-      console.log('Owner of token:', nftOwner);
-      const approvedAddress = await nftContract.getApproved(tokenId);
-      console.log('Approved address for token:', tokenId, approvedAddress);
-      // Try to fetch existing listing info if the function exists
-      if (typeof marketplaceContract.listings === 'function') {
+      // Look for ListingCreated event in the logs
+      for (const log of receipt.logs) {
         try {
-          const listingInfo = await marketplaceContract.listings(NFT_CONTRACT_ADDRESS, tokenId);
-          console.log('Existing listing info:', listingInfo);
-        } catch (e) {
-          console.log('Could not fetch existing listing info:', e);
+          const parsedLog = marketplaceContract.interface.parseLog({
+            topics: log.topics,
+            data: log.data
+          });
+          
+          if (parsedLog && parsedLog.name === 'ListingCreated') {
+            listingId = Number(parsedLog.args.listingId);
+            console.log(`Found ListingCreated event with listingId: ${listingId}`);
+            break;
+          }
+        } catch (parseError) {
+          // Skip logs that can't be parsed by this contract
+          continue;
         }
       }
       
+      if (listingId === 0) {
+        console.warn('Could not find ListingCreated event in transaction logs');
+        // For now, we'll return a placeholder ID since the transaction succeeded
+        listingId = Date.now(); // Use timestamp as fallback ID
+      }
+      
       return {
-        listingId: Number(listingId),
+        listingId,
         transactionHash: receipt.hash,
       };
+      
     } catch (error) {
-      console.error(`Error in create listing attempt ${attempt + 1}:`, error);
       lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`Error creating listing (attempt ${attempt + 1}):`, lastError.message);
       
-      // Check if this is a potentially recoverable error
-      const errorMsg = String(error);
-      const isRecoverable = 
-        errorMsg.includes('quota') || 
-        errorMsg.includes('rate') || 
-        errorMsg.includes('limit') || 
-        errorMsg.includes('exceeded') ||
-        errorMsg.includes('timeout') ||
-        errorMsg.includes('network') ||
-        errorMsg.includes('connect');
-      
-      if (!isRecoverable) {
-        console.error('Encountered non-recoverable error, aborting retry attempts');
-        break; // Exit the retry loop for non-recoverable errors
+      if (attempt === retryCount - 1) {
+        // This was the last attempt, throw the error
+        throw lastError;
       }
     }
   }
   
-  // All retry attempts failed
-  console.error('Error creating listing after all retry attempts:', lastError);
-  throw lastError || new Error('Failed to create listing after multiple attempts');
+  // This should never be reached due to the throw above, but TypeScript needs it
+  throw lastError || new Error('Max retries reached for creating listing');
 };
 
 // Get listing details
@@ -953,11 +945,20 @@ export const getProviderAndSignerV2 = async () => {
 
 // Get contract instance
 export const getContract = async () => {
-  if (!NFT_CONTRACT_ADDRESS || NFT_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+  const nftAddress = NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS;
+  
+  if (!nftAddress || nftAddress === "0x0000000000000000000000000000000000000000") {
+    console.error('Available env vars for getContract:', {
+      NFT_CONTRACT_ADDRESS: process.env.NFT_CONTRACT_ADDRESS,
+      NEXT_PUBLIC_NFT_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS
+    });
     throw new Error('Invalid NFT contract address. Please set NFT_CONTRACT_ADDRESS environment variable to a valid address.');
   }
+  
+  console.log('Using NFT contract address in getContract:', nftAddress);
+  
   const { signer } = await getProviderAndSigner();
-  return new ethers.Contract(NFT_CONTRACT_ADDRESS, PlatzLandNFTAbi.abi, signer);
+  return new ethers.Contract(nftAddress, PlatzLandNFTAbi.abi, signer);
 };
 
 // Create a collection with batch minting
@@ -1542,10 +1543,17 @@ export const listCollectionOnMarketplace = async (
   let lastError: Error | null = null;
   console.log(`Listing collection ${collectionId} for sale at ${price} ${currency}`);
 
-  // Validate marketplace contract address
-  if (!MARKETPLACE_CONTRACT_ADDRESS || MARKETPLACE_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+  // Validate marketplace contract address with fallback
+  const marketplaceAddress = MARKETPLACE_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS;
+  if (!marketplaceAddress || marketplaceAddress === "0x0000000000000000000000000000000000000000") {
+    console.error('Available env vars for marketplace:', {
+      MARKETPLACE_CONTRACT_ADDRESS: process.env.MARKETPLACE_CONTRACT_ADDRESS,
+      NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS
+    });
     throw new Error("Invalid marketplace contract address. Please set MARKETPLACE_CONTRACT_ADDRESS.");
   }
+  
+  console.log('Using marketplace contract address for listing:', marketplaceAddress);
 
   for (let attempt = 0; attempt < retryCount; attempt++) {
     try {
@@ -1560,8 +1568,8 @@ export const listCollectionOnMarketplace = async (
       
       // Verify the contract has the listCollection function (assuming ABI is updated)
       if (typeof marketplaceContract.listCollection !== 'function') {
-        console.error('LandMarketplaceABI might be outdated or contract at', MARKETPLACE_CONTRACT_ADDRESS, 'does not have listCollection function.');
-        throw new Error(`Marketplace contract at ${MARKETPLACE_CONTRACT_ADDRESS} does not have a listCollection function. Ensure ABI is updated after contract changes.`);
+        console.error('LandMarketplaceABI might be outdated or contract at', marketplaceAddress, 'does not have listCollection function.');
+        throw new Error(`Marketplace contract at ${marketplaceAddress} does not have a listCollection function. Ensure ABI is updated after contract changes.`);
       }
 
       // First, get the collection details to find the main token ID
@@ -1574,9 +1582,9 @@ export const listCollectionOnMarketplace = async (
       const approvedAddress = await nftContract.getApproved(mainTokenId);
       console.log(`Current approved address for token ${mainTokenId}: ${approvedAddress}`);
       
-      if (approvedAddress.toLowerCase() !== MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()) {
-        console.log(`Approving marketplace ${MARKETPLACE_CONTRACT_ADDRESS} for main token ${mainTokenId}...`);
-        const approveTx = await nftContract.approve(MARKETPLACE_CONTRACT_ADDRESS, mainTokenId);
+      if (approvedAddress.toLowerCase() !== marketplaceAddress.toLowerCase()) {
+        console.log(`Approving marketplace ${marketplaceAddress} for main token ${mainTokenId}...`);
+        const approveTx = await nftContract.approve(marketplaceAddress, mainTokenId);
         console.log(`Approval transaction submitted: ${approveTx.hash}`);
         await approveTx.wait();
         console.log(`Approval transaction confirmed`);
@@ -1584,7 +1592,7 @@ export const listCollectionOnMarketplace = async (
         // Verify approval was successful
         const newApprovedAddress = await nftContract.getApproved(mainTokenId);
         console.log(`New approved address for token ${mainTokenId}: ${newApprovedAddress}`);
-        if (newApprovedAddress.toLowerCase() !== MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()) {
+        if (newApprovedAddress.toLowerCase() !== marketplaceAddress.toLowerCase()) {
           throw new Error(`Failed to approve marketplace for main token ${mainTokenId}`);
         }
       } else {

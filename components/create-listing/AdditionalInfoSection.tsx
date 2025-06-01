@@ -1,6 +1,7 @@
 import React from 'react';
 import FileInputField from '@/components/common/FileInputField';
 import { motion } from 'framer-motion';
+import { FormDataInterface } from '../../types/createListing';
 
 // Define the specific file field names used in this component
 export type AdditionalInfoFileFieldNames = 
@@ -8,21 +9,9 @@ export type AdditionalInfoFileFieldNames =
   | 'propertyValuationFile'
   | 'zoningComplianceFile';
 
-// Define the structure of the expected formData subset
-export interface AdditionalInfoFormData {
-  propertyDescription: string;
-  propertyPhotosFile: File[] | null; // Allow multiple photos
-  propertyValuation: string;
-  propertyValuationFile: File | null;
-  valuationDate: string;
-  zoningClassification: string;
-  zoningComplianceFile: File | null;
-  status: 'DRAFT' | 'ACTIVE' | 'PENDING';
-}
-
 interface AdditionalInfoProps {
-  formData: AdditionalInfoFormData;
-  handleInputChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  formData: FormDataInterface;
+  handleInputChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleDrop: (event: React.DragEvent<HTMLDivElement>, fieldName: AdditionalInfoFileFieldNames) => void;
   filePreviews: Record<string, string | string[]>;
@@ -45,119 +34,187 @@ const AdditionalInfoSection: React.FC<AdditionalInfoProps> = ({
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.7 }} // Adjust delay
-      className="pt-8 px-8 pb-6 border-t border-gray-200 dark:border-zinc-800"
+      transition={{ delay: 1.0 }}
+      className="pt-12 px-12 pb-8 border-t-2 border-black/20 dark:border-white/20 relative"
     >
-      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
-        <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">5</span>
-        Additional Information
-      </h2>
+      {/* Cyber section background effects */}
+      <motion.div
+        className="absolute inset-0 opacity-[0.01] dark:opacity-[0.02] pointer-events-none"
+        animate={{
+          background: [
+            "linear-gradient(225deg, transparent 49%, rgba(0,0,0,0.05) 50%, transparent 51%)",
+            "linear-gradient(45deg, transparent 49%, rgba(0,0,0,0.05) 50%, transparent 51%)",
+            "linear-gradient(225deg, transparent 49%, rgba(0,0,0,0.05) 50%, transparent 51%)",
+          ],
+        }}
+        transition={{ duration: 14, repeat: Infinity }}
+      />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Property Description */}
-        <div className="md:col-span-2 lg:col-span-3">
-          <label htmlFor="propertyDescription" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Property Description</label>
+      <motion.h2 
+        className="text-2xl font-mono uppercase tracking-wider text-black dark:text-white mb-8 flex items-center"
+        whileHover={{ textShadow: "0 0 20px rgba(0, 0, 0, 0.5)" }}
+      >
+        <motion.span 
+          className="w-10 h-10 bg-black dark:bg-white text-white dark:text-black mr-4 flex items-center justify-center text-lg font-bold font-mono border border-black/30 dark:border-white/30"
+          animate={{ rotate: [0, 360] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        >
+          5
+        </motion.span>
+        ADDITIONAL INFORMATION
+      </motion.h2>
+      
+      {/* Property Description */}
+      <motion.div 
+        className="mb-12"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2 }}
+      >
+        <motion.div whileHover={{ scale: 1.01 }} transition={{ duration: 0.2 }}>
+          <label htmlFor="propertyDescription" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Property Description</label>
           <textarea
             id="propertyDescription"
             name="propertyDescription"
             value={formData.propertyDescription}
             onChange={handleInputChange}
-            rows={5}
-            placeholder="Provide a detailed description of the land, features, potential uses, etc."
-            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} min-h-[100px]`}
-            disabled={isSubmitting}
-          />
-        </div>
-        {/* Property Photos */}
-        {/* TODO: Enhance FileInputField to handle multiple files */}
-        <FileInputField
-          id="propertyPhotosFile"
-          label="Property Photos Upload"
-          accept="image/*"
-          multiple
-          file={formData.propertyPhotosFile} 
-          previewUrl={filePreviews.propertyPhotosFile || null}
-          onChange={handleFileChange}
-          onDrop={(e) => handleDrop(e, 'propertyPhotosFile')}
-          disabled={isSubmitting}
-        />
-        {/* Property Valuation */}
-        <div>
-          <label htmlFor="propertyValuation" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Property Valuation Amount (USD)</label>
-          <input
-            type="number" // Use number type for currency
-            step="0.01" // Allow decimals
-            id="propertyValuation"
-            name="propertyValuation"
-            value={formData.propertyValuation}
-            onChange={handleInputChange}
-            placeholder="e.g., 150000.00"
+            rows={4}
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+            placeholder="Detailed description of the property, location, features, etc."
             disabled={isSubmitting}
           />
-        </div>
-        <div>
-          <label htmlFor="valuationDate" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Valuation Date</label>
-          <input
-            type="date"
-            id="valuationDate"
-            name="valuationDate"
-            value={formData.valuationDate}
-            onChange={handleInputChange}
-            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-            disabled={isSubmitting}
+        </motion.div>
+      </motion.div>
+
+      {/* Property Photos */}
+      <motion.div
+        className="border-t-2 border-black/20 dark:border-white/20 pt-8 mb-12"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.4 }}
+      >
+        <motion.h3 
+          className="text-lg font-mono uppercase tracking-wider text-black dark:text-white mb-6"
+          whileHover={{ textShadow: "0 0 15px rgba(0, 0, 0, 0.3)" }}
+        >
+          PROPERTY PHOTOS
+        </motion.h3>
+        <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+          <label htmlFor="propertyPhotosFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
+            Property Photos Upload
+          </label>
+          <FileInputField
+            id="propertyPhotosFile"
+            label=""
+            accept=".jpg,.jpeg,.png,.webp"
+            file={formData.propertyPhotosFile as File | null}
+            previewUrl={filePreviews.propertyPhotosFile || null}
+            onChange={handleFileChange}
+            onDrop={(e) => handleDrop(e, 'propertyPhotosFile')}
+            multiple={true}
           />
+        </motion.div>
+      </motion.div>
+
+      {/* Property Valuation */}
+      <motion.div
+        className="border-t-2 border-black/20 dark:border-white/20 pt-8 mb-12"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.6 }}
+      >
+        <motion.h3 
+          className="text-lg font-mono uppercase tracking-wider text-black dark:text-white mb-6"
+          whileHover={{ textShadow: "0 0 15px rgba(0, 0, 0, 0.3)" }}
+        >
+          PROPERTY VALUATION
+        </motion.h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+            <label htmlFor="propertyValuation" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Valuation Amount</label>
+            <input
+              type="number"
+              id="propertyValuation"
+              name="propertyValuation"
+              value={formData.propertyValuation}
+              onChange={handleInputChange}
+              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+              placeholder="e.g., 500000"
+              disabled={isSubmitting}
+            />
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+            <label htmlFor="valuationDate" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Valuation Date</label>
+            <input
+              type="date"
+              id="valuationDate"
+              name="valuationDate"
+              value={formData.valuationDate}
+              onChange={handleInputChange}
+              className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
+              disabled={isSubmitting}
+            />
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }} className="md:col-span-2">
+            <label htmlFor="propertyValuationFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
+              Valuation Report Upload
+            </label>
+            <FileInputField
+              id="propertyValuationFile"
+              label=""
+              accept=".pdf,.doc,.docx"
+              file={formData.propertyValuationFile}
+              previewUrl={filePreviews.propertyValuationFile || null}
+              onChange={handleFileChange}
+              onDrop={(e) => handleDrop(e, 'propertyValuationFile')}
+            />
+          </motion.div>
         </div>
-        <FileInputField
-          id="propertyValuationFile"
-          label="Valuation Report Upload"
-          accept=".pdf"
-          file={formData.propertyValuationFile}
-          previewUrl={filePreviews.propertyValuationFile || null}
-          onChange={handleFileChange}
-          onDrop={(e) => handleDrop(e, 'propertyValuationFile')}
-        />
-        {/* Zoning */}
-        <div>
-          <label htmlFor="zoningClassification" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Zoning Classification</label>
-          <input
-            type="text"
-            id="zoningClassification"
-            name="zoningClassification"
-            value={formData.zoningClassification}
-            onChange={handleInputChange}
-            placeholder="e.g., Residential, Commercial, Agricultural"
-            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
-            disabled={isSubmitting}
-          />
+      </motion.div>
+
+      {/* Zoning Information */}
+      <motion.div
+        className="border-t-2 border-black/20 dark:border-white/20 pt-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.8 }}
+      >
+        <motion.h3 
+          className="text-lg font-mono uppercase tracking-wider text-black dark:text-white mb-6"
+          whileHover={{ textShadow: "0 0 15px rgba(0, 0, 0, 0.3)" }}
+        >
+          ZONING INFORMATION
+        </motion.h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+            <label htmlFor="zoningClassification" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Zoning Classification</label>
+            <input
+              type="text"
+              id="zoningClassification"
+              name="zoningClassification"
+              value={formData.zoningClassification}
+              onChange={handleInputChange}
+              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+              placeholder="e.g., R-1, Commercial, Industrial"
+              disabled={isSubmitting}
+            />
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+            <label htmlFor="zoningComplianceFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
+              Zoning Compliance Document
+            </label>
+            <FileInputField
+              id="zoningComplianceFile"
+              label=""
+              accept=".pdf,.doc,.docx"
+              file={formData.zoningComplianceFile}
+              previewUrl={filePreviews.zoningComplianceFile || null}
+              onChange={handleFileChange}
+              onDrop={(e) => handleDrop(e, 'zoningComplianceFile')}
+            />
+          </motion.div>
         </div>
-        <FileInputField
-          id="zoningComplianceFile"
-          label="Zoning Compliance/Permit Upload"
-          accept=".pdf"
-          file={formData.zoningComplianceFile}
-          previewUrl={filePreviews.zoningComplianceFile || null}
-          onChange={handleFileChange}
-          onDrop={(e) => handleDrop(e, 'zoningComplianceFile')}
-        />
-        {/* Status Dropdown */}
-        <div>
-          <label htmlFor="status" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Listing Status</label>
-          <select
-            id="status"
-            name="status"
-            value={formData.status}
-            onChange={handleInputChange}
-            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-            disabled={isSubmitting}
-          >
-            <option value="DRAFT">Draft</option>
-            <option value="ACTIVE">Active</option>
-            <option value="PENDING">Pending Review</option>
-            {/* Add other statuses as needed, e.g., SOLD, DELISTED */}
-          </select>
-        </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };

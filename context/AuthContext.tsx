@@ -35,6 +35,7 @@ interface AuthContextType {
   connectAndLoginEvmWallet: () => Promise<boolean>;
   fetchUserProfile: () => Promise<User | null>; 
   updateUserProfile: (profileData: Partial<User>) => Promise<boolean>;
+  fetchCurrentUser: () => Promise<User | null>; // Add this function
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -199,11 +200,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const loginData = await loginResponse.json();
       if (loginResponse.ok) {
+        console.log('[AuthContext EVM Login] Setting user and authentication state...');
+        console.log('[AuthContext EVM Login] User data:', loginData.user);
         setUser(loginData.user);
         setIsAuthenticated(true);
+        console.log('[AuthContext EVM Login] Authentication state updated - isAuthenticated: true');
         toast.success('Logged in with EVM Wallet successfully!');
         console.log('[AuthContext EVM Login] EVM Wallet login successful for user:', loginData.user?.username);
         setIsLoading(false);
+        console.log('[AuthContext EVM Login] Returning true from connectAndLoginEvmWallet');
         return true;
       } else {
         setError(loginData.message || 'EVM Wallet login failed.');
@@ -304,7 +309,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         register,
         connectAndLoginEvmWallet, 
         fetchUserProfile,
-        updateUserProfile
+        updateUserProfile,
+        fetchCurrentUser
       }}
     >
       {children}

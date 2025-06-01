@@ -1,7 +1,7 @@
 {
   "name": "Serene Hilltop plot #1",
   "description": "test",
-  "image": "https://76d6-102-91-72-207.ngrok-free.app/uploads/75a25f23-3e5e-4029-b7ca-87f580fbef65-nft-image-cmarihgrr0000czxdk7tbfh9a.jpeg",
+  "image": "http://localhost:3000/api/static/75a25f23-3e5e-4029-b7ca-87f580fbef65-nft-image-cmarihgrr0000czxdk7tbfh9a.jpeg",
   "attributes": [
     {
       "trait_type": "Land Listing ID",

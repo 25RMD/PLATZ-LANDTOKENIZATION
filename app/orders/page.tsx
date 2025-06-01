@@ -6,7 +6,7 @@ import { useAccount, usePublicClient } from 'wagmi';
 import { useAuth } from '@/context/AuthContext';
 import { PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
 import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
-import { FiGrid, FiSearch, FiFilter, FiChevronDown, FiChevronUp, FiClock, FiEye, FiExternalLink, FiTag, FiX, FiDollarSign, FiCheck, FiActivity } from 'react-icons/fi';
+import { FiGrid, FiSearch, FiFilter, FiChevronDown, FiChevronUp, FiClock, FiEye, FiExternalLink, FiTag, FiX, FiDollarSign, FiCheck, FiActivity, FiUser } from 'react-icons/fi';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import AnimatedButton from '@/components/common/AnimatedButton';
@@ -40,7 +40,8 @@ interface OwnedCollection {
     listingPrice: number;
     createdAt: Date;
   }>;
-  ownershipType?: 'TOKEN_OWNER' | 'COLLECTION_OWNER';
+  ownershipType?: 'TOKEN_OWNER' | 'COLLECTION_OWNER' | 'COLLECTION_CREATOR' | 'BOTH';
+  userTokenCount?: number;
 }
 
 interface UserBid {
@@ -56,8 +57,6 @@ interface UserBid {
     nftImageFileRef: string | null;
   };
 }
-
-
 
 interface HistoryItem {
   id: string;
@@ -109,8 +108,6 @@ interface BidAnalytics {
   successRate: number;
 }
 
-
-
 type TabType = 'collections' | 'bids' | 'all-received-bids' | 'active-bids' | 'history';
 type FilterType = 'all' | 'listed' | 'unlisted';
 type SortType = 'name' | 'date' | 'tokenCount' | 'price';
@@ -122,6 +119,7 @@ interface AllReceivedBid {
   bidStatus: 'ACTIVE' | 'ACCEPTED' | 'WITHDRAWN' | 'OUTBID';
   transactionHash: string;
   createdAt: string;
+  userRole?: 'bidder' | 'listing_owner'; // User's role in this bid
   bidder: {
     id: string;
     username: string | null;
@@ -141,6 +139,7 @@ interface ActiveReceivedBid {
   bidStatus: 'ACTIVE';
   transactionHash: string;
   createdAt: string;
+  userRole?: 'bidder' | 'listing_owner'; // User's role in this bid
   bidder: {
     id: string;
     username: string | null;
@@ -222,8 +221,6 @@ const OrdersPage: React.FC = () => {
     setBidAnalytics(analytics);
   }, []);
 
-
-
   // Calculate all received bid analytics
   const calculateAllReceivedBidAnalytics = useCallback((bids: AllReceivedBid[]) => {
     if (bids.length === 0) {
@@ -293,8 +290,6 @@ const OrdersPage: React.FC = () => {
     }
   }, [isConnected, connectedAddress, calculateBidAnalytics]);
 
-
-
   // Fetch bid history
   const fetchBidHistory = useCallback(async () => {
     if (!isConnected || !connectedAddress) {
@@ -330,24 +325,25 @@ const OrdersPage: React.FC = () => {
     setError(null);
 
     try {
-      console.log('Fetching user owned collections...');
+      console.log('[ORDERS] Fetching user owned collections for:', connectedAddress);
       const response = await fetch(`/api/collections/user-owned?userAddress=${connectedAddress}`);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('[ORDERS] API response:', { success: data.success, collectionsCount: data.collections?.length });
         if (data.success && data.collections) {
           setOwnedCollections(data.collections);
-          console.log(`Found ${data.collections.length} owned collections`);
+          console.log(`[ORDERS] Set ${data.collections.length} owned collections in state`);
         } else {
-          console.error('Failed to fetch owned collections:', data.error);
+          console.error('[ORDERS] Failed to fetch owned collections:', data.error);
           setOwnedCollections([]);
         }
       } else {
-        console.error('Failed to fetch owned collections:', response.statusText);
+        console.error('[ORDERS] Failed to fetch owned collections:', response.statusText);
         setOwnedCollections([]);
       }
     } catch (err: any) {
-      console.error('Error scanning NFTs:', err);
+      console.error('[ORDERS] Error scanning NFTs:', err);
       setError(err.message || 'Failed to scan NFTs');
       setOwnedCollections([]);
     } finally {
@@ -373,6 +369,9 @@ const OrdersPage: React.FC = () => {
       return;
     }
 
+    // Show loading toast
+    const loadingToastId = toast.loading('Processing bid withdrawal...');
+
     try {
       const response = await fetch(`/api/bids/${bid.id}/withdraw`, {
         method: 'POST',
@@ -387,15 +386,140 @@ const OrdersPage: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        toast.success('Bid withdrawn successfully!');
+        // Dismiss loading toast
+        toast.dismiss(loadingToastId);
+        
+        // Show detailed success toast
+        const tokenName = bid.landListing.nftTitle || `Token #${bid.tokenId}`;
+        
+        toast.success(
+          `✅ Bid Withdrawn Successfully!\n` +
+          `• Token: ${tokenName}\n` +
+          `• Amount: ${bid.bidAmount} ETH\n` +
+          `• Your funds have been returned`,
+          {
+            duration: 6000,
+            style: {
+              minWidth: '300px',
+              whiteSpace: 'pre-line'
+            }
+          }
+        );
+
         fetchUserBids(); // Refresh bids
         fetchBidHistory(); // Refresh history
       } else {
-        toast.error(data.error || 'Failed to withdraw bid');
+        // Dismiss loading toast
+        toast.dismiss(loadingToastId);
+        
+        toast.error(
+          `❌ Withdrawal Failed\n${data.error || 'Failed to withdraw bid'}`,
+          {
+            duration: 6000,
+            style: {
+              minWidth: '300px',
+              whiteSpace: 'pre-line'
+            }
+          }
+        );
       }
     } catch (error) {
+      // Dismiss loading toast
+      toast.dismiss(loadingToastId);
+      
       console.error('Error withdrawing bid:', error);
-      toast.error('Error withdrawing bid');
+      toast.error(
+        `❌ Network Error\nFailed to process bid withdrawal. Please try again.`,
+        {
+          duration: 6000,
+          style: {
+            minWidth: '300px',
+            whiteSpace: 'pre-line'
+          }
+        }
+      );
+    }
+  };
+
+  // Handle reject bid
+  const handleRejectBid = async (bid: AllReceivedBid | ActiveReceivedBid) => {
+    if (!connectedAddress) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    // Show loading toast
+    const loadingToastId = toast.loading('Processing bid rejection...');
+
+    try {
+      const response = await fetch(`/api/bids/${bid.id}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userAddress: connectedAddress,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Dismiss loading toast
+        toast.dismiss(loadingToastId);
+        
+        // Show detailed success toast
+        const bidderName = bid.bidder.username || `${bid.bidder.evmAddress?.slice(0, 6)}...${bid.bidder.evmAddress?.slice(-4)}`;
+        const tokenName = bid.landListing.nftTitle || `Token #${bid.tokenId}`;
+        
+        toast.success(
+          `🚫 Bid Rejected Successfully!\n` +
+          `• Token: ${tokenName}\n` +
+          `• Amount: ${bid.bidAmount} ETH\n` +
+          `• Bidder: ${bidderName}\n` +
+          `• Bidder's funds have been returned`,
+          {
+            duration: 6000,
+            style: {
+              minWidth: '350px',
+              whiteSpace: 'pre-line'
+            }
+          }
+        );
+
+        fetchAllReceivedBids(); // Refresh all received bids
+        fetchActiveBids(); // Refresh active bids
+        fetchBidHistory(); // Refresh history
+      } else {
+        // Dismiss loading toast
+        toast.dismiss(loadingToastId);
+        
+        toast.error(
+          `❌ Rejection Failed\n${data.message || 'Failed to reject bid'}`,
+          {
+            duration: 6000,
+            style: {
+              minWidth: '300px',
+              whiteSpace: 'pre-line'
+            }
+          }
+        );
+      }
+    } catch (error) {
+      // Dismiss loading toast
+      toast.dismiss(loadingToastId);
+      
+      console.error('Error rejecting bid:', error);
+      toast.error(
+        `❌ Network Error\nFailed to process bid rejection. Please try again.`,
+        {
+          duration: 6000,
+          style: {
+            minWidth: '300px',
+            whiteSpace: 'pre-line'
+          }
+        }
+      );
     }
   };
 
@@ -405,6 +529,9 @@ const OrdersPage: React.FC = () => {
       toast.error('Please connect your wallet');
       return;
     }
+
+    // Show loading toast
+    const loadingToastId = toast.loading('Processing bid acceptance...');
 
     try {
       const response = await fetch(`/api/bids/${bid.id}/status`, {
@@ -421,17 +548,87 @@ const OrdersPage: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        toast.success('Bid accepted successfully!');
+        // Dismiss loading toast
+        toast.dismiss(loadingToastId);
+        
+        // Show detailed success toast with bid information
+        const bidderName = bid.bidder.username || `${bid.bidder.evmAddress?.slice(0, 6)}...${bid.bidder.evmAddress?.slice(-4)}`;
+        const tokenName = bid.landListing.nftTitle || `Token #${bid.tokenId}`;
+        
+        toast.success(
+          `🎉 Bid Accepted Successfully!\n` +
+          `• Token: ${tokenName}\n` +
+          `• Amount: ${bid.bidAmount} ETH\n` +
+          `• Buyer: ${bidderName}` +
+          (data.transactionHash ? `\n• Transaction: ${data.transactionHash.slice(0, 10)}...` : ''),
+          {
+            duration: 8000, // Show for 8 seconds
+            style: {
+              minWidth: '350px',
+              whiteSpace: 'pre-line'
+            }
+          }
+        );
+
+        // If transaction hash is available, show a separate toast with link to view transaction
+        if (data.transactionHash) {
+          setTimeout(() => {
+            toast.success(
+              <div className="flex flex-col space-y-2">
+                <span>NFT ownership transferred successfully!</span>
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${data.transactionHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline text-sm"
+                >
+                  View transaction on Etherscan →
+                </a>
+              </div>,
+              {
+                duration: 10000,
+                style: { minWidth: '300px' }
+              }
+            );
+          }, 1000);
+        }
+
         fetchAllReceivedBids(); // Refresh all received bids
         fetchActiveBids(); // Refresh active bids
         fetchUserBids(); // Also refresh user bids in case they have any
         fetchBidHistory(); // Refresh history
       } else {
-        toast.error(data.message || 'Failed to accept bid');
+        // Dismiss loading toast
+        toast.dismiss(loadingToastId);
+        
+        // Show detailed error message
+        const errorMessage = data.message || 'Failed to accept bid';
+        toast.error(
+          `❌ Bid Acceptance Failed\n${errorMessage}`,
+          {
+            duration: 6000,
+            style: {
+              minWidth: '300px',
+              whiteSpace: 'pre-line'
+            }
+          }
+        );
       }
     } catch (error) {
+      // Dismiss loading toast
+      toast.dismiss(loadingToastId);
+      
       console.error('Error accepting bid:', error);
-      toast.error('Error accepting bid');
+      toast.error(
+        `❌ Network Error\nFailed to process bid acceptance. Please try again.`,
+        {
+          duration: 6000,
+          style: {
+            minWidth: '300px',
+            whiteSpace: 'pre-line'
+          }
+        }
+      );
     }
   };
 
@@ -624,8 +821,6 @@ const OrdersPage: React.FC = () => {
       return filtered;
     }
 
-
-
     if (activeTab === 'history') {
       let filtered = bidHistory.filter(item => {
         const searchLower = searchTerm.toLowerCase();
@@ -669,15 +864,30 @@ const OrdersPage: React.FC = () => {
   // Initial data fetch
   useEffect(() => {
     if (isConnected && connectedAddress && !authLoading) {
+      console.log('[ORDERS] Fetching data for user:', connectedAddress);
       scanUserNFTs();
       fetchUserBids();
       fetchAllReceivedBids();
       fetchActiveBids();
       fetchBidHistory();
+    } else {
+      console.log('[ORDERS] Not fetching data:', { isConnected, connectedAddress, authLoading });
     }
-  }, [isConnected, connectedAddress, authLoading, scanUserNFTs, fetchUserBids, fetchAllReceivedBids, fetchActiveBids, fetchBidHistory]);
+  }, [isConnected, connectedAddress, authLoading]);
 
   const filteredData = filteredAndSortedData();
+  
+  // Debug logging
+  console.log('[ORDERS] Render state:', {
+    activeTab,
+    isConnected,
+    connectedAddress,
+    authLoading,
+    loading,
+    error,
+    ownedCollectionsLength: ownedCollections.length,
+    filteredDataLength: filteredData.length
+  });
 
   // Render loading state
   if (authLoading) {
@@ -704,281 +914,113 @@ const OrdersPage: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-96px)] container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8">
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          My Orders & Bids
-        </h1>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Manage your NFT collections, tokens, and bidding activity
-        </p>
+      {/* Tab Header - Cyberpunk Styling */}
+      <div className="bg-secondary-light dark:bg-secondary-dark rounded-cyber-lg border border-black/10 dark:border-white/10 p-4 mb-6 cyber-grid backdrop-blur-cyber">
+        <nav className="flex flex-wrap gap-2">
+          {[
+            { key: 'collections', label: 'My Collections', icon: FiGrid },
+            { key: 'bids', label: 'My Bids', icon: FiTag },
+            { key: 'all-received-bids', label: 'All Received Bids', icon: FiActivity },
+            { key: 'active-bids', label: 'Active Received Bids', icon: FiUser },
+            { key: 'history', label: 'History', icon: FiClock }
+          ].map(({ key, label, icon: Icon }) => (
+        <button
+              key={key}
+              onClick={() => setActiveTab(key as TabType)}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-cyber text-sm font-mono transition-all duration-300
+                ${activeTab === key 
+                  ? 'bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/30 shadow-lg scale-105' 
+                  : 'text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5 border border-transparent hover:border-black/10 dark:hover:border-white/10'
+                }
+              `}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+        </button>
+          ))}
+        </nav>
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-gray-200 dark:border-zinc-700 mb-4 sm:mb-6 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('collections')}
-          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
-            activeTab === 'collections'
-              ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          Collections ({ownedCollections.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('bids')}
-          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
-            activeTab === 'bids'
-              ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          My Bids ({userBids.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('all-received-bids')}
-          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
-            activeTab === 'all-received-bids'
-              ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          Received Bids ({allReceivedBids.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('active-bids')}
-          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
-            activeTab === 'active-bids'
-              ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          Active Bids ({activeBids.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
-            activeTab === 'history'
-              ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          History ({bidHistory.length})
-        </button>
-      </div>
-
-      {/* Collections Analytics Section */}
-      {activeTab === 'collections' && ownedCollections.length > 0 && (
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border border-green-200 dark:border-green-800">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">Collections Overview</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{ownedCollections.length}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Collections</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {ownedCollections.reduce((sum, col) => sum + col.itemsOwned, 0)}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Items</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {ownedCollections.reduce((sum, col) => sum + col.listedItems, 0)}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Listed Items</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {ownedCollections.reduce((sum, col) => sum + col.totalValue, 0).toFixed(3)} ETH
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Value</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bid Analytics Section */}
-      {activeTab === 'bids' && bidAnalytics && (
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">Bid Analytics</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{bidAnalytics.totalBids}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Bids</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{bidAnalytics.activeBids}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Active</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">{bidAnalytics.acceptedBids}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Accepted</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{bidAnalytics.successRate.toFixed(1)}%</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Success Rate</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-
-      {/* History Analytics Section */}
-      {activeTab === 'history' && historySummary && (
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">Bid History Summary</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">{historySummary.totalBidsPlaced}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Bids Placed</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-pink-600 dark:text-pink-400">{historySummary.totalBidsReceived}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Bids Received</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{historySummary.activeBids}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Active</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{historySummary.acceptedBids}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Accepted</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{historySummary.withdrawnBids}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Withdrawn</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400">{historySummary.totalTransactions}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Transactions</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* All Received Bid Analytics Section */}
-      {activeTab === 'all-received-bids' && allReceivedBidAnalytics && (
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">Received Bids Analytics</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">{allReceivedBidAnalytics.totalReceived}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Received</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{allReceivedBidAnalytics.acceptedReceived}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Accepted</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{allReceivedBidAnalytics.activeReceived}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Active</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{allReceivedBidAnalytics.uniqueBidders}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unique Bidders</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Active Bid Analytics Section */}
-      {activeTab === 'active-bids' && activeBidAnalytics && (
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-800">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">Active Bids Analytics</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{activeBidAnalytics.totalActive}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Active Bids</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{activeBidAnalytics.highestBid.toFixed(3)} ETH</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Highest Bid</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">{activeBidAnalytics.averageBidValue.toFixed(3)} ETH</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Average Bid</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{activeBidAnalytics.uniqueBidders}</div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unique Bidders</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Search Bar */}
-      <div className="mb-4 sm:mb-6">
-        <div className="relative">
-          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+      {/* Search and Filters - Cyber Enhanced */}
+      <div className="bg-secondary-light dark:bg-secondary-dark rounded-cyber-lg border border-black/10 dark:border-white/10 p-4 mb-6 cyber-grid backdrop-blur-cyber">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search Input */}
+          <div className="flex-1 relative group">
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-light dark:text-text-dark opacity-50 w-4 h-4" />
           <input
             type="text"
-            placeholder={`Search ${activeTab}...`}
+              placeholder="Search by name, collection ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 sm:py-3 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 text-sm sm:text-base"
+              className="w-full pl-10 pr-4 py-2 bg-transparent border border-black/10 dark:border-white/10 rounded-cyber text-text-light dark:text-text-dark placeholder:text-text-light placeholder:dark:text-text-dark placeholder:opacity-50 focus:outline-none focus:border-cyber-accent focus:ring-2 focus:ring-cyber-accent/20 transition-all duration-300 font-mono"
           />
-        </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyber-glow/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-cyber pointer-events-none" />
       </div>
 
-      {/* Filter and Sort Controls */}
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4">
-        <div className="flex items-center space-x-2">
+          {/* Filter Toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center space-x-2 px-3 py-2 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-cyber text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10 hover:border-cyber-accent/30 transition-all duration-300 font-mono group"
           >
-            <FiFilter size={16} />
-            <span className="text-sm">Filters</span>
-            {showFilters ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+            <FiFilter className="w-4 h-4 group-hover:text-cyber-accent transition-colors duration-300" />
+            Filters
+            {showFilters ? <FiChevronUp className="w-4 h-4" /> : <FiChevronDown className="w-4 h-4" />}
           </button>
         </div>
 
+        {/* Expandable Filters */}
         {showFilters && (
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-4 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-4 pt-4 border-t border-black/10 dark:border-white/10"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Filter Type */}
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Filter</label>
+              <div className="group">
+                <label className="block text-sm font-medium text-text-light dark:text-text-dark mb-2 font-mono">Status Filter</label>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as FilterType)}
-                className="px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All</option>
-                <option value="listed">Listed</option>
-                <option value="unlisted">Unlisted</option>
+                  className="w-full px-3 py-2 bg-transparent border border-black/10 dark:border-white/10 rounded-cyber text-text-light dark:text-text-dark focus:outline-none focus:border-cyber-accent focus:ring-2 focus:ring-cyber-accent/20 transition-all duration-300 font-mono"
+                >
+                  <option value="all">All Items</option>
+                  <option value="listed">Listed Only</option>
+                  <option value="unlisted">Unlisted Only</option>
               </select>
             </div>
 
             {/* Sort Type */}
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Sort By</label>
+              <div className="group">
+                <label className="block text-sm font-medium text-text-light dark:text-text-dark mb-2 font-mono">Sort By</label>
               <select
                 value={sortType}
                 onChange={(e) => setSortType(e.target.value as SortType)}
-                className="px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-transparent border border-black/10 dark:border-white/10 rounded-cyber text-text-light dark:text-text-dark focus:outline-none focus:border-cyber-accent focus:ring-2 focus:ring-cyber-accent/20 transition-all duration-300 font-mono"
               >
                 <option value="name">Name</option>
-                <option value="date">Date</option>
-                {activeTab === 'collections' && <option value="tokenCount">Token Count</option>}
+                  <option value="date">Date Created</option>
+                  <option value="tokenCount">Token Count</option>
                 <option value="price">Price</option>
               </select>
             </div>
 
             {/* Sort Order */}
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Order</label>
+              <div className="group">
+                <label className="block text-sm font-medium text-text-light dark:text-text-dark mb-2 font-mono">Order</label>
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                className="px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-transparent border border-black/10 dark:border-white/10 rounded-cyber text-text-light dark:text-text-dark focus:outline-none focus:border-cyber-accent focus:ring-2 focus:ring-cyber-accent/20 transition-all duration-300 font-mono"
               >
                 <option value="asc">Ascending</option>
                 <option value="desc">Descending</option>
               </select>
             </div>
           </div>
+          </motion.div>
         )}
       </div>
 
@@ -1058,6 +1100,7 @@ const OrdersPage: React.FC = () => {
                 bid={item as AllReceivedBid}
                 formatTimeAgo={formatTimeAgo}
                 onAcceptBid={handleAcceptBid}
+                onRejectBid={handleRejectBid}
               />
             ) : activeTab === 'active-bids' ? (
               <ActiveBidCard
@@ -1065,6 +1108,7 @@ const OrdersPage: React.FC = () => {
                 bid={item as ActiveReceivedBid}
                 formatTimeAgo={formatTimeAgo}
                 onAcceptBid={handleAcceptBid}
+                onRejectBid={handleRejectBid}
               />
             ) : activeTab === 'history' ? (
               <HistoryCard
@@ -1088,64 +1132,106 @@ interface BidCardProps {
 }
 
 const BidCard: React.FC<BidCardProps> = ({ bid, formatTimeAgo, onWithdrawBid }) => {
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+  const handleWithdraw = async () => {
+    setIsWithdrawing(true);
+    try {
+      await onWithdrawBid(bid);
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+      whileHover={{ scale: 1.02, y: -5 }}
+      className="bg-secondary-light dark:bg-secondary-dark border border-black/10 dark:border-white/10 rounded-cyber-lg p-4 shadow-xl hover:shadow-2xl transition-all duration-500 group cyber-grid backdrop-blur-cyber"
     >
-      <div className="p-3 sm:p-4">
-        <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-gray-100 mb-1 truncate" title={bid.landListing.nftTitle || undefined}>
-          {bid.landListing.nftTitle}
-        </h3>
-        
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-          Bid: {bid.bidAmount} ETH
-        </p>
+      {/* Cyber scan line effect on hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-cyber-lg overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyber-glow/10 to-transparent w-full h-full animate-cyber-scan" />
+      </div>
 
-        <div className="flex items-center justify-between mb-3 sm:mb-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center space-x-2">
-            <FiClock size={12} />
-            <span>{formatTimeAgo(new Date(bid.createdAt))}</span>
-          </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            bid.bidStatus === 'ACTIVE' 
-              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-              : bid.bidStatus === 'ACCEPTED'
-              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-              : bid.bidStatus === 'WITHDRAWN'
-              ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
-              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-          }`}>
-            {bid.bidStatus}
-          </span>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex space-x-2">
-            <a
-              href={`https://sepolia.etherscan.io/tx/${bid.transactionHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center"
-            >
-              <FiExternalLink className="mr-1" size={12} />
-              <span className="hidden sm:inline">View Transaction</span>
-              <span className="sm:hidden">View Tx</span>
-            </a>
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1">
+            <h3 className="font-semibold text-text-light dark:text-text-dark mb-1 font-mono text-lg">
+              {bid.landListing.nftTitle || `Collection ${bid.landListing.collectionId}`}
+            </h3>
+            <p className="text-sm text-text-light dark:text-text-dark opacity-60 font-mono">
+              Bid ID: {bid.id.slice(0, 8)}...
+            </p>
           </div>
           
-          {bid.bidStatus === 'ACTIVE' && (
-            <div className="flex space-x-2">
-              <AnimatedButton
-                onClick={() => onWithdrawBid(bid)}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-xs sm:text-sm disabled:opacity-50"
-              >
-                <FiX className="mr-1" size={12} />
-                <span className="hidden sm:inline">Withdraw Bid</span>
-                <span className="sm:hidden">Withdraw</span>
-              </AnimatedButton>
+          {/* Bid Amount with cyber styling */}
+          <div className="text-right">
+            <div className="text-lg font-bold text-cyber-accent font-mono">
+              {bid.bidAmount} ETH
+          </div>
+            <div className={`text-xs px-2 py-1 rounded-cyber font-mono ${
+              bid.bidStatus === 'ACTIVE' ? 'bg-success-minimal/20 text-success-minimal' :
+              bid.bidStatus === 'ACCEPTED' ? 'bg-cyber-accent/20 text-cyber-accent' :
+              bid.bidStatus === 'WITHDRAWN' ? 'bg-warning-minimal/20 text-warning-minimal' :
+              'bg-error-minimal/20 text-error-minimal'
+          }`}>
+            {bid.bidStatus}
             </div>
+          </div>
+        </div>
+
+        {/* NFT Image with hover effects */}
+        <div className="mb-3 relative overflow-hidden rounded-cyber group">
+          <NFTImage
+            imageRef={bid.landListing.nftImageFileRef}
+            alt={bid.landListing.nftTitle || 'NFT'}
+            className="w-full h-32 object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </div>
+
+        {/* Metadata */}
+        <div className="space-y-2 mb-4">
+          <div className="flex justify-between text-sm font-mono">
+            <span className="text-text-light dark:text-text-dark opacity-60">Transaction</span>
+            <a
+              href={`https://etherscan.io/tx/${bid.transactionHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyber-accent hover:text-cyber-glow flex items-center gap-1 transition-colors duration-300"
+            >
+              {bid.transactionHash.slice(0, 8)}...
+              <FiExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="flex justify-between text-sm font-mono">
+            <span className="text-text-light dark:text-text-dark opacity-60">Placed</span>
+            <span className="text-text-light dark:text-text-dark">
+              {formatTimeAgo(new Date(bid.createdAt))}
+            </span>
+          </div>
+          </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <Link
+            href={`/collections/${bid.landListing.collectionId}`}
+            className="flex-1 px-3 py-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-cyber text-center text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10 hover:border-cyber-accent/30 transition-all duration-300 font-mono text-sm group"
+          >
+            <FiEye className="inline w-4 h-4 mr-1 group-hover:text-cyber-accent transition-colors duration-300" />
+            View
+          </Link>
+          
+          {bid.bidStatus === 'ACTIVE' && (
+            <button
+              onClick={handleWithdraw}
+              disabled={isWithdrawing}
+              className="flex-1 px-3 py-2 bg-error-minimal/10 border border-error-minimal/30 rounded-cyber text-error-minimal hover:bg-error-minimal/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-mono text-sm"
+            >
+              {isWithdrawing ? 'Withdrawing...' : 'Withdraw'}
+            </button>
           )}
         </div>
       </div>
@@ -1158,71 +1244,132 @@ interface AllReceivedBidCardProps {
   bid: AllReceivedBid;
   formatTimeAgo: (date: Date) => string;
   onAcceptBid: (bid: AllReceivedBid) => Promise<void>;
+  onRejectBid?: (bid: AllReceivedBid) => Promise<void>;
 }
 
-const AllReceivedBidCard: React.FC<AllReceivedBidCardProps> = ({ bid, formatTimeAgo, onAcceptBid }) => {
+const AllReceivedBidCard: React.FC<AllReceivedBidCardProps> = ({ bid, formatTimeAgo, onAcceptBid, onRejectBid }) => {
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  const handleAccept = async () => {
+    setIsAccepting(true);
+    try {
+      await onAcceptBid(bid);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!onRejectBid) return;
+    setIsRejecting(true);
+    try {
+      await onRejectBid(bid);
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+      whileHover={{ scale: 1.02, y: -5 }}
+      className="bg-secondary-light dark:bg-secondary-dark border border-black/10 dark:border-white/10 rounded-cyber-lg p-4 shadow-xl hover:shadow-2xl transition-all duration-500 group cyber-grid backdrop-blur-cyber"
     >
-      <div className="p-3 sm:p-4">
-        <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-gray-100 mb-1 truncate" title={bid.landListing.nftTitle || undefined}>
-          {bid.landListing.nftTitle}
-        </h3>
-        
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-          Bid: {bid.bidAmount} ETH
-        </p>
+      {/* Cyber scan line effect on hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-cyber-lg overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyber-glow/10 to-transparent w-full h-full animate-cyber-scan" />
+      </div>
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 truncate">
-          From: {bid.bidder.username || `${bid.bidder.evmAddress?.slice(0, 6)}...${bid.bidder.evmAddress?.slice(-4)}`}
-        </p>
-
-        <div className="flex items-center justify-between mb-3 sm:mb-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center space-x-2">
-            <FiClock size={12} />
-            <span>{formatTimeAgo(new Date(bid.createdAt))}</span>
-          </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            bid.bidStatus === 'ACTIVE' 
-              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-              : bid.bidStatus === 'ACCEPTED'
-              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-              : bid.bidStatus === 'WITHDRAWN'
-              ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
-              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-          }`}>
-            {bid.bidStatus}
-          </span>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex space-x-2">
-            <a
-              href={`https://sepolia.etherscan.io/tx/${bid.transactionHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center"
-            >
-              <FiExternalLink className="mr-1" size={12} />
-              <span className="hidden sm:inline">View Transaction</span>
-              <span className="sm:hidden">View Tx</span>
-            </a>
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1">
+            <h3 className="font-semibold text-text-light dark:text-text-dark mb-1 font-mono text-lg">
+              {bid.landListing.nftTitle || `Collection ${bid.landListing.collectionId}`}
+            </h3>
+            <p className="text-sm text-text-light dark:text-text-dark opacity-60 font-mono">
+              From: {bid.bidder.username || `${bid.bidder.evmAddress?.slice(0, 8)}...`}
+            </p>
           </div>
           
-          {bid.bidStatus === 'ACTIVE' && (
-            <div className="flex space-x-2">
-              <AnimatedButton
-                onClick={() => onAcceptBid(bid)}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg text-xs sm:text-sm disabled:opacity-50"
-              >
-                <FiTag className="mr-1" size={12} />
-                <span className="hidden sm:inline">Accept Bid</span>
-                <span className="sm:hidden">Accept</span>
-              </AnimatedButton>
+          {/* Bid Amount with cyber styling */}
+          <div className="text-right">
+            <div className="text-lg font-bold text-cyber-accent font-mono">
+              {bid.bidAmount} ETH
+          </div>
+            <div className={`text-xs px-2 py-1 rounded-cyber font-mono ${
+              bid.bidStatus === 'ACTIVE' ? 'bg-success-minimal/20 text-success-minimal' :
+              bid.bidStatus === 'ACCEPTED' ? 'bg-cyber-accent/20 text-cyber-accent' :
+              bid.bidStatus === 'WITHDRAWN' ? 'bg-warning-minimal/20 text-warning-minimal' :
+              'bg-error-minimal/20 text-error-minimal'
+          }`}>
+            {bid.bidStatus}
             </div>
+          </div>
+        </div>
+
+        {/* NFT Image with hover effects */}
+        <div className="mb-3 relative overflow-hidden rounded-cyber group">
+          <NFTImage
+            imageRef={bid.landListing.nftImageFileRef}
+            alt={bid.landListing.nftTitle || 'NFT'}
+            className="w-full h-32 object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </div>
+
+        {/* Metadata */}
+        <div className="space-y-2 mb-4">
+          <div className="flex justify-between text-sm font-mono">
+            <span className="text-text-light dark:text-text-dark opacity-60">Transaction</span>
+            <a
+              href={`https://etherscan.io/tx/${bid.transactionHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyber-accent hover:text-cyber-glow flex items-center gap-1 transition-colors duration-300"
+            >
+              {bid.transactionHash.slice(0, 8)}...
+              <FiExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="flex justify-between text-sm font-mono">
+            <span className="text-text-light dark:text-text-dark opacity-60">Received</span>
+            <span className="text-text-light dark:text-text-dark">
+              {formatTimeAgo(new Date(bid.createdAt))}
+            </span>
+          </div>
+          </div>
+          
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <Link
+            href={`/collections/${bid.landListing.collectionId}`}
+            className="flex-1 px-3 py-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-cyber text-center text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10 hover:border-cyber-accent/30 transition-all duration-300 font-mono text-sm group"
+          >
+            <FiEye className="inline w-4 h-4 mr-1 group-hover:text-cyber-accent transition-colors duration-300" />
+            View
+          </Link>
+          
+          {bid.bidStatus === 'ACTIVE' && (
+            <>
+              <button
+                onClick={handleAccept}
+                disabled={isAccepting}
+                className="flex-1 px-3 py-2 bg-success-minimal/10 border border-success-minimal/30 rounded-cyber text-success-minimal hover:bg-success-minimal/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-mono text-sm"
+              >
+                {isAccepting ? 'Accepting...' : 'Accept'}
+              </button>
+              {onRejectBid && (
+                <button
+                  onClick={handleReject}
+                  disabled={isRejecting}
+                  className="flex-1 px-3 py-2 bg-error-minimal/10 border border-error-minimal/30 rounded-cyber text-error-minimal hover:bg-error-minimal/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-mono text-sm"
+                >
+                  {isRejecting ? 'Rejecting...' : 'Reject'}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -1235,69 +1382,130 @@ interface ActiveBidCardProps {
   bid: ActiveReceivedBid;
   formatTimeAgo: (date: Date) => string;
   onAcceptBid: (bid: ActiveReceivedBid) => Promise<void>;
+  onRejectBid?: (bid: ActiveReceivedBid) => Promise<void>;
 }
 
-const ActiveBidCard: React.FC<ActiveBidCardProps> = ({ bid, formatTimeAgo, onAcceptBid }) => {
+const ActiveBidCard: React.FC<ActiveBidCardProps> = ({ bid, formatTimeAgo, onAcceptBid, onRejectBid }) => {
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  const handleAccept = async () => {
+    setIsAccepting(true);
+    try {
+      await onAcceptBid(bid);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!onRejectBid) return;
+    setIsRejecting(true);
+    try {
+      await onRejectBid(bid);
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+      whileHover={{ scale: 1.02, y: -5 }}
+      className="bg-secondary-light dark:bg-secondary-dark border border-black/10 dark:border-white/10 rounded-cyber-lg p-4 shadow-xl hover:shadow-2xl transition-all duration-500 group cyber-grid backdrop-blur-cyber"
     >
-      <div className="p-3 sm:p-4">
-        <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-gray-100 mb-1 truncate" title={bid.landListing.nftTitle || undefined}>
-          {bid.landListing.nftTitle}
-        </h3>
-        
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-          Bid: {bid.bidAmount} ETH
-        </p>
+      {/* Cyber scan line effect on hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-cyber-lg overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyber-glow/10 to-transparent w-full h-full animate-cyber-scan" />
+      </div>
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 truncate">
-          From: {bid.bidder.username || `${bid.bidder.evmAddress?.slice(0, 6)}...${bid.bidder.evmAddress?.slice(-4)}`}
-        </p>
-
-        <div className="flex items-center justify-between mb-3 sm:mb-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center space-x-2">
-            <FiClock size={12} />
-            <span>{formatTimeAgo(new Date(bid.createdAt))}</span>
-          </div>
-          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-            ACTIVE
-          </span>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex space-x-2">
-            <a
-              href={`https://sepolia.etherscan.io/tx/${bid.transactionHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center"
-            >
-              <FiExternalLink className="mr-1" size={12} />
-              <span className="hidden sm:inline">View Transaction</span>
-              <span className="sm:hidden">View Tx</span>
-            </a>
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1">
+            <h3 className="font-semibold text-text-light dark:text-text-dark mb-1 font-mono text-lg">
+              {bid.landListing.nftTitle || `Collection ${bid.landListing.collectionId}`}
+            </h3>
+            <p className="text-sm text-text-light dark:text-text-dark opacity-60 font-mono">
+              From: {bid.bidder.username || `${bid.bidder.evmAddress?.slice(0, 8)}...`}
+            </p>
           </div>
           
-          <div className="flex space-x-2">
-            <AnimatedButton
-              onClick={() => onAcceptBid(bid)}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg text-xs sm:text-sm disabled:opacity-50"
-            >
-              <FiTag className="mr-1" size={12} />
-              <span className="hidden sm:inline">Accept Bid</span>
-              <span className="sm:hidden">Accept</span>
-            </AnimatedButton>
+          {/* Bid Amount with cyber styling */}
+          <div className="text-right">
+            <div className="text-lg font-bold text-cyber-accent font-mono">
+              {bid.bidAmount} ETH
           </div>
+            <div className="text-xs px-2 py-1 rounded-cyber font-mono bg-success-minimal/20 text-success-minimal animate-pulse">
+            ACTIVE
+            </div>
+          </div>
+        </div>
+
+        {/* NFT Image with hover effects */}
+        <div className="mb-3 relative overflow-hidden rounded-cyber group">
+          <NFTImage
+            imageRef={bid.landListing.nftImageFileRef}
+            alt={bid.landListing.nftTitle || 'NFT'}
+            className="w-full h-32 object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </div>
+
+        {/* Metadata */}
+        <div className="space-y-2 mb-4">
+          <div className="flex justify-between text-sm font-mono">
+            <span className="text-text-light dark:text-text-dark opacity-60">Transaction</span>
+            <a
+              href={`https://etherscan.io/tx/${bid.transactionHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyber-accent hover:text-cyber-glow flex items-center gap-1 transition-colors duration-300"
+            >
+              {bid.transactionHash.slice(0, 8)}...
+              <FiExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="flex justify-between text-sm font-mono">
+            <span className="text-text-light dark:text-text-dark opacity-60">Received</span>
+            <span className="text-text-light dark:text-text-dark">
+              {formatTimeAgo(new Date(bid.createdAt))}
+            </span>
+          </div>
+          </div>
+          
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <Link
+            href={`/collections/${bid.landListing.collectionId}`}
+            className="flex-1 px-3 py-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-cyber text-center text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10 hover:border-cyber-accent/30 transition-all duration-300 font-mono text-sm group"
+          >
+            <FiEye className="inline w-4 h-4 mr-1 group-hover:text-cyber-accent transition-colors duration-300" />
+            View
+          </Link>
+          
+          <button
+            onClick={handleAccept}
+            disabled={isAccepting}
+            className="flex-1 px-3 py-2 bg-success-minimal/10 border border-success-minimal/30 rounded-cyber text-success-minimal hover:bg-success-minimal/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-mono text-sm"
+          >
+            {isAccepting ? 'Accepting...' : 'Accept'}
+          </button>
+          
+              {onRejectBid && (
+            <button
+              onClick={handleReject}
+              disabled={isRejecting}
+              className="flex-1 px-3 py-2 bg-error-minimal/10 border border-error-minimal/30 rounded-cyber text-error-minimal hover:bg-error-minimal/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-mono text-sm"
+            >
+              {isRejecting ? 'Rejecting...' : 'Reject'}
+            </button>
+          )}
         </div>
       </div>
     </motion.div>
   );
 };
-
-
 
 // History Card Component
 interface HistoryCardProps {
@@ -1308,90 +1516,94 @@ interface HistoryCardProps {
 const HistoryCard: React.FC<HistoryCardProps> = ({ historyItem, formatTimeAgo }) => {
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'BID_PLACED':
-        return <FiTag className="text-blue-500" size={16} />;
-      case 'BID_RECEIVED':
-        return <FiDollarSign className="text-green-500" size={16} />;
-      case 'BID_ACCEPTED':
-        return <FiCheck className="text-purple-500" size={16} />;
-      default:
-        return <FiActivity className="text-gray-500" size={16} />;
+      case 'BID_PLACED': return <FiTag className="w-4 h-4 text-cyber-accent" />;
+      case 'BID_RECEIVED': return <FiActivity className="w-4 h-4 text-cyber-glow" />;
+      case 'BID_ACCEPTED': return <FiCheck className="w-4 h-4 text-success-minimal" />;
+      default: return <FiClock className="w-4 h-4 text-text-light dark:text-text-dark opacity-60" />;
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'accepted':
-      case 'completed':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'withdrawn':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
-      case 'outbid':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    switch (status) {
+      case 'ACTIVE': return 'text-success-minimal bg-success-minimal/20';
+      case 'ACCEPTED': return 'text-cyber-accent bg-cyber-accent/20';
+      case 'WITHDRAWN': return 'text-warning-minimal bg-warning-minimal/20';
+      case 'OUTBID': return 'text-error-minimal bg-error-minimal/20';
+      default: return 'text-text-light dark:text-text-dark bg-black/10 dark:bg-white/10';
     }
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      whileHover={{ scale: 1.02, x: 5 }}
+      className="bg-secondary-light dark:bg-secondary-dark border border-black/10 dark:border-white/10 rounded-cyber-lg p-4 shadow-xl hover:shadow-2xl transition-all duration-500 group cyber-grid backdrop-blur-cyber"
     >
-      <div className="p-3 sm:p-4">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center space-x-2">
+      {/* Cyber scan line effect on hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-cyber-lg overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyber-glow/10 to-transparent w-full h-full animate-cyber-scan" />
+      </div>
+
+      <div className="relative z-10">
+        {/* NFT Image with hover effects */}
+        <div className="mb-3 relative overflow-hidden rounded-cyber group">
+          <NFTImage
+            imageRef={historyItem.landListing.nftImageFileRef}
+            alt={historyItem.landListing.nftTitle || 'NFT'}
+            className="w-full h-32 object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          
+          {/* Type Icon Overlay */}
+          <div className="absolute top-2 left-2 p-2 bg-black/50 backdrop-blur-sm rounded-cyber border border-white/20">
             {getTypeIcon(historyItem.type)}
-            <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">
-              {historyItem.type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
-            </h3>
           </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(historyItem.status)}`}>
+          
+          {/* Status Badge */}
+          <div className="absolute top-2 right-2">
+            <div className={`text-xs px-2 py-1 rounded-cyber font-mono ${getStatusColor(historyItem.status)}`}>
             {historyItem.status}
-          </span>
+            </div>
+          </div>
         </div>
         
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+        {/* Content */}
+        <div className="space-y-3">
+          <div>
+            <h3 className="font-semibold text-text-light dark:text-text-dark font-mono text-lg">
+              {historyItem.landListing.nftTitle || `Collection ${historyItem.landListing.collectionId}`}
+            </h3>
+            <p className="text-sm text-text-light dark:text-text-dark opacity-60 font-mono">
           {historyItem.description}
         </p>
-
-        <div className="flex items-center justify-between mb-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center space-x-2">
-            <span className="font-medium">{historyItem.amount} ETH</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <FiClock size={12} />
-            <span>{formatTimeAgo(new Date(historyItem.createdAt))}</span>
-          </div>
         </div>
 
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 truncate">
-          Collection: {historyItem.landListing.nftTitle || `#${historyItem.landListing.collectionId}`}
+          {/* Amount */}
+          <div className="text-center p-2 bg-cyber-accent/10 border border-cyber-accent/30 rounded-cyber">
+            <div className="text-lg font-bold text-cyber-accent font-mono">
+              {historyItem.amount} ETH
         </div>
-
-        {historyItem.bidder && !historyItem.isUserAction && (
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 truncate">
-            Bidder: {historyItem.bidder.username || `${historyItem.bidder.evmAddress?.slice(0, 6)}...${historyItem.bidder.evmAddress?.slice(-4)}`}
           </div>
-        )}
 
+          {/* Footer */}
+          <div className="flex items-center justify-between text-sm font-mono pt-2 border-t border-black/10 dark:border-white/10">
+            <span className="text-text-light dark:text-text-dark opacity-60">
+              {formatTimeAgo(new Date(historyItem.createdAt))}
+            </span>
         {historyItem.transactionHash && (
-          <div className="flex space-x-2">
             <a
-              href={`https://sepolia.etherscan.io/tx/${historyItem.transactionHash}`}
+                href={`https://etherscan.io/tx/${historyItem.transactionHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center"
+                className="text-cyber-accent hover:text-cyber-glow flex items-center gap-1 transition-colors duration-300"
             >
-              <FiExternalLink className="mr-1" size={12} />
-              <span className="hidden sm:inline">View Transaction</span>
-              <span className="sm:hidden">View Tx</span>
+                <FiExternalLink className="w-3 h-3" />
+                View Tx
             </a>
-          </div>
         )}
+          </div>
+        </div>
       </div>
     </motion.div>
   );
@@ -1408,113 +1620,81 @@ const CollectionCard: React.FC<CollectionCardProps> = ({ collection, formatTimeA
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+      whileHover={{ scale: 1.02, y: -5 }}
+      className="bg-secondary-light dark:bg-secondary-dark border border-black/10 dark:border-white/10 rounded-cyber-lg overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 group cyber-grid backdrop-blur-cyber"
     >
-      {/* Collection Image */}
-      <div className="aspect-square relative bg-gray-100 dark:bg-zinc-800">
-        {collection.image ? (
+      {/* Image Section with cyber scan effect */}
+      <div className="relative h-48 overflow-hidden">
           <NFTImage
             imageRef={collection.image}
             alt={collection.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <FiGrid className="w-16 h-16 text-gray-400" />
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        
+        {/* Cyber scan line effect on hover */}
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyber-glow/20 to-transparent w-full h-full animate-cyber-scan" />
           </div>
-        )}
+
+        {/* Collection ID Badge */}
+        <div className="absolute top-2 left-2 px-2 py-1 bg-black/50 backdrop-blur-sm rounded-cyber text-white text-xs font-mono">
+          {collection.collectionId}
       </div>
 
-      <div className="p-3 sm:p-4">
-        <div className="flex items-start justify-between mb-2">
-          <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate" title={collection.name}>
-            {collection.name}
-          </h3>
-          <div className="flex items-center space-x-2 ml-2">
-            {/* Ownership Type Indicator */}
-            {collection.ownershipType && (
-              <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${
-                collection.ownershipType === 'COLLECTION_OWNER' 
-                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
-                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-              }`}>
-                {collection.ownershipType === 'COLLECTION_OWNER' ? 'Collection Owner' : 'Token Owner'}
-              </span>
-            )}
-            <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-1 rounded-full whitespace-nowrap">
-              #{collection.collectionId}
-            </span>
+        {/* Ownership Type Badge */}
+        <div className="absolute top-2 right-2 px-2 py-1 bg-black/50 backdrop-blur-sm border border-white/30 rounded-cyber text-white text-xs font-mono">
+          {collection.ownershipType === 'COLLECTION_CREATOR' ? 'Creator' : 
+           collection.ownershipType === 'BOTH' ? 'Creator & Holder' : 'Token Holder'}
           </div>
         </div>
         
-        {collection.description && (
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
+      {/* Content Section */}
+      <div className="p-4">
+        <div className="mb-3">
+          <h3 className="text-lg font-semibold text-text-light dark:text-text-dark mb-1 font-mono">
+            {collection.name}
+          </h3>
+          <p className="text-sm text-text-light dark:text-text-dark opacity-70 line-clamp-2 font-mono">
             {collection.description}
           </p>
-        )}
+        </div>
 
-        {/* Items Summary */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="text-center">
-            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{collection.itemsOwned}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Items Owned</div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-3 mb-4 text-center">
+          <div className="p-2 bg-black/5 dark:bg-white/5 rounded-cyber border border-black/10 dark:border-white/10">
+            <div className="text-lg font-bold text-cyber-accent font-mono">{collection.totalSupply}</div>
+            <div className="text-xs text-text-light dark:text-text-dark opacity-60 font-mono">Total</div>
           </div>
-          <div className="text-center">
-            <div className="text-lg font-bold text-green-600 dark:text-green-400">{collection.listedItems}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Listed</div>
+          <div className="p-2 bg-black/5 dark:bg-white/5 rounded-cyber border border-black/10 dark:border-white/10">
+            <div className="text-lg font-bold text-cyber-accent font-mono">{collection.userTokenCount || collection.itemsOwned}</div>
+            <div className="text-xs text-text-light dark:text-text-dark opacity-60 font-mono">Owned</div>
+          </div>
+          <div className="p-2 bg-black/5 dark:bg-white/5 rounded-cyber border border-black/10 dark:border-white/10">
+            <div className="text-lg font-bold text-cyber-accent font-mono">{collection.listedItems}</div>
+            <div className="text-xs text-text-light dark:text-text-dark opacity-60 font-mono">Listed</div>
           </div>
         </div>
 
-        {/* Price Information */}
+        {/* Floor Price */}
         {collection.floorPrice && (
-          <div className="mb-3 p-2 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Floor Price:</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{collection.floorPrice} ETH</span>
+          <div className="mb-4 p-2 bg-cyber-accent/10 border border-cyber-accent/30 rounded-cyber">
+            <div className="text-center">
+              <div className="text-lg font-bold text-cyber-accent font-mono">{collection.floorPrice} ETH</div>
+              <div className="text-xs text-cyber-accent font-mono">Floor Price</div>
             </div>
-            {collection.totalValue > 0 && (
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Total Value:</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{collection.totalValue.toFixed(3)} ETH</span>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Time */}
-        <div className="flex items-center justify-between mb-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center space-x-2">
-            <FiClock size={12} />
-            <span>Created {formatTimeAgo(new Date(collection.createdAt))}</span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="space-y-2">
-          <Link
-            href={`/collections/${collection.collectionId}`}
-            className="block w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center"
-          >
-            <FiEye className="mr-1" size={12} />
-            <span>View Collection</span>
+        {/* Action Button */}
+        <Link href={`/collections/${collection.collectionId}`}>
+          <AnimatedButton className="w-full bg-black text-white dark:bg-white dark:text-black border border-black dark:border-white hover:bg-white hover:text-black hover:border-black dark:hover:bg-black dark:hover:text-white dark:hover:border-white font-mono">
+            View Collection
+          </AnimatedButton>
           </Link>
-          
-          {collection.contractAddress && (
-            <a
-              href={`https://sepolia.etherscan.io/address/${collection.contractAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center"
-            >
-              <FiExternalLink className="mr-1" size={12} />
-              <span className="hidden sm:inline">View on Etherscan</span>
-              <span className="sm:hidden">Etherscan</span>
-            </a>
-          )}
-        </div>
       </div>
     </motion.div>
   );
 };
 
-export default OrdersPage; 
+export default OrdersPage;

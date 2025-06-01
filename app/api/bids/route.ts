@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { trackBidEvent } from '@/lib/priceTracking';
+import { validateBidAmount, validateBidAmountFast } from '@/lib/bidSync';
 
 const prisma = new PrismaClient();
 
@@ -26,6 +27,28 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = createBidSchema.parse(body);
+
+    // Validate bid amount against database state (fast validation)
+    const tokenId = parseInt(validatedData.tokenId);
+    console.log(`🔍 [BID_API] Starting bid validation for token ${tokenId}...`);
+    
+    const bidValidation = await validateBidAmountFast(tokenId, validatedData.bidAmount);
+    console.log(`[BID_API] Validation result:`, bidValidation);
+    
+    if (!bidValidation.valid) {
+      console.log(`[BID_API] Bid rejected: ${bidValidation.message}`);
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: bidValidation.message,
+          currentBid: bidValidation.currentBid,
+          minimumBid: bidValidation.minimumBid
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[BID_API] Bid validation passed, proceeding with creation...`);
 
     // Find user by EVM address
     const user = await prisma.user.findFirst({
@@ -57,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark any previous bids from this user as OUTBID
-    await prisma.nftBid.updateMany({
+    const previousBidsUpdate = await prisma.nftBid.updateMany({
       where: {
         landListingId: landListing.id,
         bidderUserId: userId,
@@ -69,7 +92,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Mark any lower bids as OUTBID
-    await prisma.nftBid.updateMany({
+    const lowerBidsUpdate = await prisma.nftBid.updateMany({
       where: {
         landListingId: landListing.id,
         bidAmount: {

@@ -1,7 +1,7 @@
 {
   "name": "test",
   "description": "test",
-  "image": "https://295d-197-210-53-77.ngrok-free.app/uploads/e21e64ca-540f-4945-b1e6-e83791bf11bd-nft-image-cmaojkq4j0000czf4x3t04ysl.jpeg",
+  "image": "http://localhost:3000/api/static/e21e64ca-540f-4945-b1e6-e83791bf11bd-nft-image-cmaojkq4j0000czf4x3t04ysl.jpeg",
   "attributes": [
     {
       "trait_type": "Land Listing ID",

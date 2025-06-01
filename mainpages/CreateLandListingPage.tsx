@@ -116,6 +116,10 @@ const CreateListingContent = () => {
   // State for file previews (using a map for scalability)
   const [filePreviews, setFilePreviews] = useState<Record<string, string | string[]>>({});
 
+  // Cyber-styled input field styles
+  const inputFieldStyles = "w-full bg-white dark:bg-black text-black dark:text-white px-4 py-3 rounded-none border border-black/30 dark:border-white/30 focus:outline-none focus:border-black dark:focus:border-white transition-all duration-300 font-mono placeholder-black/50 dark:placeholder-white/50 shadow-sm hover:shadow-md";
+  const inputFieldDisabledStyles = "w-full bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40 px-4 py-3 rounded-none border border-black/20 dark:border-white/20 cursor-not-allowed font-mono";
+
   useEffect(() => {
     // This is the cleanup function that runs when the component unmounts
     return () => {
@@ -339,208 +343,391 @@ const CreateListingContent = () => {
     }
   };
 
-  // If user is authenticated but not verified, show a message
+  // Render verification warning if not verified
   if (!isVerified) {
     return (
-      <div className="max-w-2xl mx-auto mt-10 p-8 border border-yellow-400 dark:border-yellow-600 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-center">
-        <FiAlertCircle className="mx-auto h-12 w-12 text-yellow-500 dark:text-yellow-400 mb-4" />
-        <h2 className="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Verification Required</h2>
-        <p className="text-yellow-700 dark:text-yellow-300 mb-4">
-          You must be a verified user to create new land listings. {/* Updated text */}
-          Please complete your profile and submit the required KYC information.
-        </p>
-        <Link href="/profile">
-          <AnimatedButton className="bg-yellow-500 hover:bg-yellow-600 text-white dark:text-black dark:bg-yellow-400 dark:hover:bg-yellow-300">
-            Go to Profile
-          </AnimatedButton>
-        </Link>
-      </div>
+      <motion.div 
+        className="container mx-auto py-12 px-4 sm:px-6 lg:px-8 min-h-[60vh] flex items-center justify-center"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Cyber background effects for verification warning */}
+        <motion.div
+          className="absolute inset-0 opacity-5 dark:opacity-10"
+          animate={{
+            background: [
+              "radial-gradient(circle at 40% 60%, rgba(0, 0, 0, 0.2) 0%, transparent 50%)",
+              "radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 0.15) 0%, transparent 50%)",
+              "radial-gradient(circle at 40% 60%, rgba(0, 0, 0, 0.2) 0%, transparent 50%)",
+            ],
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        />
+        
+        <div className="text-center bg-white dark:bg-black border-2 border-black/20 dark:border-white/20 p-12 max-w-md mx-auto relative">
+          <motion.div
+            animate={{ 
+              y: [0, -10, 0],
+              rotate: [0, 2, -2, 0]
+            }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="mb-8"
+          >
+            <FiAlertCircle className="text-black dark:text-white text-8xl mx-auto" />
+          </motion.div>
+          
+          <motion.h2 
+            className="text-3xl font-mono uppercase tracking-wider text-black dark:text-white mb-6"
+            style={{
+              textShadow: "0 0 20px rgba(0, 0, 0, 0.5)",
+            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            VERIFICATION REQUIRED
+          </motion.h2>
+          
+          <motion.p 
+            className="text-black/70 dark:text-white/70 mb-8 font-mono text-lg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            Please complete your profile and submit the required KYC information.
+          </motion.p>
+          
+          <Link href="/profile">
+            <motion.div
+              whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(0, 0, 0, 0.3)" }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <AnimatedButton className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-8 py-4 text-lg font-mono uppercase tracking-wider border border-black/30 dark:border-white/30">
+                ACCESS PROFILE
+              </AnimatedButton>
+            </motion.div>
+          </Link>
+        </div>
+      </motion.div>
     );
   }
 
   // Render the actual form if verified
   return (
-    <div className="max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-      <div className="mb-10 text-center">
-        <h1 className="text-3xl font-bold text-text-light dark:text-text-dark mb-3">Create New Land Listing</h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Complete the form below to create a new land listing. All fields marked with an asterisk (*) are required.</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-10 bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden">
-
-        {/* === Core Legal Documents Section === */}
-        <LegalDocumentsSection
-           formData={formData as LegalDocumentsFormData} // Type assertion
-           handleInputChange={handleInputChange}
-           handleFileChange={handleFileChange}
-           handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: LegalDocumentsFileFieldNames) => void} // Type assertion
-           filePreviews={filePreviews}
-           inputFieldStyles="w-full bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-300 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-           inputFieldDisabledStyles="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed"
-           isSubmitting={isSubmitting}
-        />
-
-        {/* === Registry & Parcel Identifiers Section === */}
-        <RegistryParcelSection
-           formData={formData as RegistryParcelFormData} // Type assertion
-           handleInputChange={handleInputChange}
-           handleFileChange={handleFileChange}
-           handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: RegistryParcelFileFieldNames) => void} // Type assertion
-           filePreviews={filePreviews}
-           inputFieldStyles="w-full bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-300 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-           inputFieldDisabledStyles="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed"
-           isSubmitting={isSubmitting}
-        />
-
-        {/* === Geospatial & Boundary Data Section === */}
-        <GeospatialSection
-           formData={formData as GeospatialFormData} // Type assertion
-           handleInputChange={handleInputChange}
-           handleFileChange={handleFileChange}
-           handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: GeospatialFileFieldNames) => void} // Type assertion
-           filePreviews={filePreviews}
-           inputFieldStyles="w-full bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-300 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-           inputFieldDisabledStyles="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed"
-           isSubmitting={isSubmitting}
-           // onOpenMapPicker={() => { /* TODO: Implement map modal */ }}
-        />
-
-        {/* === Owner Identity & KYC Section === */}
-        <OwnerKycSection
-           formData={formData as OwnerKycFormData} // Type assertion
-           handleInputChange={handleInputChange}
-           handleFileChange={handleFileChange}
-           handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: OwnerKycFileFieldNames) => void} // Type assertion
-           filePreviews={filePreviews}
-           inputFieldStyles="w-full bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-300 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-           inputFieldDisabledStyles="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed"
-           isSubmitting={isSubmitting}
-           isVerified={isVerified}
-        />
-
-        {/* === Additional Information Section === */}
-        <AdditionalInfoSection
-           formData={formData} // REMOVE CAST: Pass formData directly
-           handleInputChange={handleInputChange}
-           handleFileChange={handleFileChange}
-           handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: AdditionalInfoFileFieldNames) => void} // Keep cast if AdditionalInfoFileFieldNames is specific and needed
-           filePreviews={filePreviews}
-           inputFieldStyles="w-full bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-300 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-           inputFieldDisabledStyles="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed"
-           isSubmitting={isSubmitting}
-        />
-
-        {/* === Chain-of-Title & Encumbrance History Section === */}
-        <ChainOfTitleSection
-           formData={formData} // REMOVE CAST: Pass formData directly
-           handleInputChange={handleInputChange}
-           handleFileChange={handleFileChange}
-           handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: ChainOfTitleFileFieldNames) => void} // Keep cast if ChainOfTitleFileFieldNames is specific and needed
-           filePreviews={filePreviews}
-           inputFieldStyles="w-full bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-300 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-           inputFieldDisabledStyles="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed"
-           isSubmitting={isSubmitting}
-        />
-
-        {/* === NFT Details Section === */}
-        <NftDetailsSection
-           formData={formData} // REMOVE CAST: NftDetailsSection expects FormDataInterface compatible
-           handleInputChange={handleInputChange}
-           handleFileChange={handleFileChange}
-           handleDrop={handleDrop} // REMOVE CAST: NftDetailsSection handleDrop expects (event, keyof FormDataInterface)
-           filePreviews={filePreviews}
-           inputFieldStyles="w-full bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 border border-gray-300 dark:border-zinc-700 placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-           inputFieldDisabledStyles="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed"
-           isSubmitting={isSubmitting}
-        />
-
-        {/* On-Chain Metadata Section */}
-        <div className="pt-8 px-8 pb-6 border-t border-gray-200 dark:border-zinc-800">
-          <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
-            <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">8</span>
-            On-Chain Metadata (Generated Post-Minting)
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">These fields will be populated after the land listing is successfully created and minted on the blockchain.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="docHash" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Document Hashes</label>
-              <input 
-                type="text" 
-                id="docHash" 
-                name="docHash" 
-                value={formData.docHash} 
-                readOnly 
-                disabled 
-                className="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed" 
-              />
-            </div>
-            <div>
-              <label htmlFor="ipfsUri" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">IPFS / Decentralized URI</label>
-              <input 
-                type="url" 
-                id="ipfsUri" 
-                name="ipfsUri" 
-                value={formData.ipfsUri} 
-                readOnly 
-                disabled 
-                placeholder="e.g., ipfs://..." 
-                className="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed" 
-              />
-            </div>
-            <div>
-              <label htmlFor="mintTimestamp" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Minting Timestamp</label>
-              <input 
-                type="datetime-local" 
-                id="mintTimestamp" 
-                name="mintTimestamp" 
-                value={formData.mintTimestamp} 
-                readOnly 
-                disabled 
-                className="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed" 
-              />
-            </div>
-            <div>
-              <label htmlFor="tokenId" className="block text-gray-600 dark:text-gray-400 mb-1.5 text-sm font-medium">Token ID</label>
-              <input 
-                type="text" 
-                id="tokenId" 
-                name="tokenId" 
-                value={formData.tokenId} 
-                readOnly 
-                disabled 
-                className="w-full bg-gray-100 dark:bg-zinc-700/50 text-gray-500 dark:text-gray-400 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 cursor-not-allowed" 
-              />
-            </div>
-          </div>
-        </div>
-        
-        {/* NFT Minting Section */}
-        <div id="nft-minting-section">
-          <NftMintingSection
-            landListingId={savedListingId}
-            formData={formData}
-            isSubmitting={isSubmitting}
-            isEditMode={isEditMode}
-            inputFieldStyles={inputFieldStyles}
-            inputFieldDisabledStyles={inputFieldDisabledStyles}
-          />
-        </div>
-
-        {/* Submit Button */}
-        <div className="px-8 py-6 bg-gray-50 dark:bg-zinc-800/50 border-t border-gray-200 dark:border-zinc-700 flex justify-between items-center">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            <span className="text-red-500">*</span> Required fields
-          </div>
-          <AnimatedButton 
-            type="submit" 
-            disabled={isSubmitting} 
-            className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600 px-8 py-3 rounded-md font-medium shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+    <motion.div 
+      className="container mx-auto py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-black min-h-screen relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.8 }}
+    >
+      {/* Cyber background pattern */}
+      <motion.div
+        className="fixed inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none z-0"
+        animate={{
+          backgroundPosition: ["0px 0px", "50px 50px"],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '25px 25px'
+        }}
+      />
+      
+      <div className="relative z-10 max-w-6xl mx-auto">
+        {/* Header Section with cyber styling */}
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <motion.h1 
+            className="text-4xl md:text-5xl lg:text-6xl font-bold font-mono uppercase tracking-wider text-black dark:text-white mb-6"
+            style={{
+              textShadow: "0 0 30px rgba(0, 0, 0, 0.6)",
+            }}
+            animate={{
+              textShadow: [
+                "0 0 30px rgba(0, 0, 0, 0.6)",
+                "0 0 40px rgba(0, 0, 0, 0.8)",
+                "0 0 30px rgba(0, 0, 0, 0.6)",
+              ],
+            }}
+            transition={{ duration: 3, repeat: Infinity }}
           >
-            {isSubmitting ? 'Creating Listing...' : 'Create Land Listing'}
-          </AnimatedButton>
-        </div>
-      </form>
-    </div>
+            CREATE LAND LISTING
+          </motion.h1>
+          
+          <motion.div 
+            className="flex items-center justify-center space-x-4 text-black/70 dark:text-white/70 font-mono text-lg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <motion.span
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              BLOCKCHAIN TOKENIZATION
+            </motion.span>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+              className="w-2 h-2 bg-black dark:bg-white rounded-full"
+            />
+            <motion.span
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+            >
+              SECURE & VERIFIED
+            </motion.span>
+          </motion.div>
+          
+          <motion.p 
+            className="text-black/60 dark:text-white/60 max-w-3xl mx-auto font-mono text-base mt-6 leading-relaxed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            Complete the form below to tokenize your land property. All fields marked with an asterisk (*) are required for blockchain verification.
+          </motion.p>
+        </motion.div>
+
+        <motion.form 
+          onSubmit={handleSubmit} 
+          className="space-y-12 bg-white dark:bg-black border-2 border-black/20 dark:border-white/20 relative overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+        >
+          {/* Cyber form background effects */}
+          <motion.div
+            className="absolute inset-0 opacity-[0.01] dark:opacity-[0.03] pointer-events-none"
+            animate={{
+              background: [
+                "linear-gradient(45deg, transparent 49%, rgba(0,0,0,0.1) 50%, transparent 51%)",
+                "linear-gradient(135deg, transparent 49%, rgba(0,0,0,0.1) 50%, transparent 51%)",
+                "linear-gradient(45deg, transparent 49%, rgba(0,0,0,0.1) 50%, transparent 51%)",
+              ],
+            }}
+            transition={{ duration: 8, repeat: Infinity }}
+          />
+
+          {/* === Core Legal Documents Section === */}
+          <LegalDocumentsSection
+             formData={formData as LegalDocumentsFormData}
+             handleInputChange={handleInputChange}
+             handleFileChange={handleFileChange}
+             handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: LegalDocumentsFileFieldNames) => void}
+             filePreviews={filePreviews}
+             inputFieldStyles={inputFieldStyles}
+             inputFieldDisabledStyles={inputFieldDisabledStyles}
+             isSubmitting={isSubmitting}
+          />
+
+          {/* === Registry & Parcel Identifiers Section === */}
+          <RegistryParcelSection
+             formData={formData as RegistryParcelFormData}
+             handleInputChange={handleInputChange}
+             handleFileChange={handleFileChange}
+             handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: RegistryParcelFileFieldNames) => void}
+             filePreviews={filePreviews}
+             inputFieldStyles={inputFieldStyles}
+             inputFieldDisabledStyles={inputFieldDisabledStyles}
+             isSubmitting={isSubmitting}
+          />
+
+          {/* === Geospatial & Boundary Data Section === */}
+          <GeospatialSection
+             formData={formData as GeospatialFormData}
+             handleInputChange={handleInputChange}
+             handleFileChange={handleFileChange}
+             handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: GeospatialFileFieldNames) => void}
+             filePreviews={filePreviews}
+             inputFieldStyles={inputFieldStyles}
+             inputFieldDisabledStyles={inputFieldDisabledStyles}
+             isSubmitting={isSubmitting}
+          />
+
+          {/* === Owner Identity & KYC Section === */}
+          <OwnerKycSection
+             formData={formData as OwnerKycFormData}
+             handleInputChange={handleInputChange}
+             handleFileChange={handleFileChange}
+             handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: OwnerKycFileFieldNames) => void}
+             filePreviews={filePreviews}
+             inputFieldStyles={inputFieldStyles}
+             inputFieldDisabledStyles={inputFieldDisabledStyles}
+             isSubmitting={isSubmitting}
+             isVerified={isVerified}
+          />
+
+          {/* === Additional Information Section === */}
+          <AdditionalInfoSection
+             formData={formData}
+             handleInputChange={handleInputChange}
+             handleFileChange={handleFileChange}
+             handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: AdditionalInfoFileFieldNames) => void}
+             filePreviews={filePreviews}
+             inputFieldStyles={inputFieldStyles}
+             inputFieldDisabledStyles={inputFieldDisabledStyles}
+             isSubmitting={isSubmitting}
+          />
+
+          {/* === Chain-of-Title & Encumbrance History Section === */}
+          <ChainOfTitleSection
+             formData={formData}
+             handleInputChange={handleInputChange}
+             handleFileChange={handleFileChange}
+             handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: ChainOfTitleFileFieldNames) => void}
+             filePreviews={filePreviews}
+             inputFieldStyles={inputFieldStyles}
+             inputFieldDisabledStyles={inputFieldDisabledStyles}
+             isSubmitting={isSubmitting}
+          />
+
+          {/* === NFT Details Section === */}
+          <NftDetailsSection
+             formData={formData}
+             handleInputChange={handleInputChange}
+             handleFileChange={handleFileChange}
+             handleDrop={handleDrop}
+             filePreviews={filePreviews}
+             inputFieldStyles={inputFieldStyles}
+             inputFieldDisabledStyles={inputFieldDisabledStyles}
+             isSubmitting={isSubmitting}
+          />
+
+          {/* On-Chain Metadata Section */}
+          <motion.div 
+            className="pt-12 px-12 pb-8 border-t-2 border-black/20 dark:border-white/20"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.6 }}
+          >
+            <motion.h2 
+              className="text-2xl font-mono uppercase tracking-wider text-black dark:text-white mb-8 flex items-center"
+              whileHover={{ textShadow: "0 0 20px rgba(0, 0, 0, 0.5)" }}
+            >
+              <motion.span 
+                className="w-10 h-10 bg-black dark:bg-white text-white dark:text-black mr-4 flex items-center justify-center text-lg font-bold font-mono border border-black/30 dark:border-white/30"
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              >
+                8
+              </motion.span>
+              ON-CHAIN METADATA
+            </motion.h2>
+            <motion.p 
+              className="text-black/60 dark:text-white/60 mb-8 font-mono text-base"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.8 }}
+            >
+              These fields will be automatically populated after the land listing is successfully created and minted on the blockchain.
+            </motion.p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+                <label htmlFor="docHash" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Document Hashes</label>
+                <input 
+                  type="text" 
+                  id="docHash" 
+                  name="docHash" 
+                  value={formData.docHash} 
+                  readOnly 
+                  disabled 
+                  className={inputFieldDisabledStyles}
+                />
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+                <label htmlFor="ipfsUri" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">IPFS / Decentralized URI</label>
+                <input 
+                  type="url" 
+                  id="ipfsUri" 
+                  name="ipfsUri" 
+                  value={formData.ipfsUri} 
+                  readOnly 
+                  disabled 
+                  placeholder="e.g., ipfs://..." 
+                  className={inputFieldDisabledStyles}
+                />
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+                <label htmlFor="mintTimestamp" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Minting Timestamp</label>
+                <input 
+                  type="datetime-local" 
+                  id="mintTimestamp" 
+                  name="mintTimestamp" 
+                  value={formData.mintTimestamp} 
+                  readOnly 
+                  disabled 
+                  className={inputFieldDisabledStyles}
+                />
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+                <label htmlFor="tokenId" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Token ID</label>
+                <input 
+                  type="text" 
+                  id="tokenId" 
+                  name="tokenId" 
+                  value={formData.tokenId} 
+                  readOnly 
+                  disabled 
+                  className={inputFieldDisabledStyles}
+                />
+              </motion.div>
+            </div>
+          </motion.div>
+          
+          {/* NFT Minting Section */}
+          <div id="nft-minting-section">
+            <NftMintingSection
+              landListingId={savedListingId}
+              formData={formData}
+              isSubmitting={isSubmitting}
+              isEditMode={isEditMode}
+              inputFieldStyles={inputFieldStyles}
+              inputFieldDisabledStyles={inputFieldDisabledStyles}
+            />
+          </div>
+
+          {/* Submit Button */}
+          <motion.div 
+            className="px-12 py-8 bg-black/5 dark:bg-white/5 border-t-2 border-black/20 dark:border-white/20 flex justify-between items-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2 }}
+          >
+            <motion.div 
+              className="text-sm text-black/60 dark:text-white/60 font-mono uppercase tracking-wider"
+              animate={{ opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <span className="text-red-500">*</span> Required fields
+            </motion.div>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <AnimatedButton 
+                type="submit" 
+                disabled={isSubmitting} 
+                className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-12 py-4 font-mono uppercase tracking-wider text-lg border border-black/30 dark:border-white/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'CREATING LISTING...' : 'CREATE LAND LISTING'}
+              </AnimatedButton>
+            </motion.div>
+          </motion.div>
+        </motion.form>
+      </div>
+    </motion.div>
   );
 };
 

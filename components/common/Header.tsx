@@ -157,7 +157,7 @@ const Header = () => {
           ) : (
             <AnimatedButton 
               onClick={() => connect({ connector: connectors[0] })} 
-              className="flex items-center space-x-2 text-sm whitespace-nowrap"
+              className="flex items-center space-x-2 text-sm whitespace-nowrap border border-black/20 dark:border-white/20 rounded-md px-3 xl:px-4 py-2 font-medium hover:bg-black/5 dark:hover:bg-white/5 transition"
             >
               <FaWallet />
               <span className="hidden xl:inline">Connect Wallet</span>

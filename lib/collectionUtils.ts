@@ -83,19 +83,26 @@ export async function fetchAndProcessCollectionDetails(
                 let validCollectionMetaURI = collectionMetaURI;
                 if (collectionMetaURI.startsWith('/uploads/')) { 
                     validCollectionMetaURI = `${currentBaseUrl}${collectionMetaURI}`;
-                } else if (collectionMetaURI.includes('ngrok-free.app') && !collectionMetaURI.startsWith(currentBaseUrl)) {
+                } else if (collectionMetaURI.includes('ngrok-free.app') || collectionMetaURI.includes('ngrok.io')) {
+                    // Handle ngrok URLs - check if we need to update the domain
                     try {
-                        const oldUrl = new URL(collectionMetaURI);
-                        const newUrl = new URL(currentBaseUrl);
-                        oldUrl.protocol = newUrl.protocol;
-                        oldUrl.host = newUrl.host;
-                        validCollectionMetaURI = oldUrl.toString();
+                        const metaUrl = new URL(collectionMetaURI);
+                        const baseUrl = new URL(currentBaseUrl);
+                        
+                        // If the domains are different, update the metadata URL to use current domain
+                        if (metaUrl.host !== baseUrl.host) {
+                            metaUrl.protocol = baseUrl.protocol;
+                            metaUrl.host = baseUrl.host;
+                            validCollectionMetaURI = metaUrl.toString();
+                            console.log(`[UTIL C_ID:${collectionId}] Updated ngrok URL from ${collectionMetaURI} to ${validCollectionMetaURI}`);
+                        }
                     } catch (e: any) {
-                        console.error(`[UTIL C_ID:${collectionId}] Workaround: Error trying to rewrite ngrok URL ${collectionMetaURI}:`, e.message);
-                        // Keep original collectionMetaURI if rewrite fails, or could set name/desc to error here
+                        console.error(`[UTIL C_ID:${collectionId}] Error trying to rewrite ngrok URL ${collectionMetaURI}:`, e.message);
+                        // Keep original collectionMetaURI if rewrite fails
                     }
                 }
                 
+                console.log(`[UTIL C_ID:${collectionId}] Fetching metadata from: ${validCollectionMetaURI}`);
                 const metaResponse = await fetch(validCollectionMetaURI);
 
                 if (metaResponse.ok) {
@@ -106,38 +113,37 @@ export async function fetchAndProcessCollectionDetails(
                         responseTextForLogging = await clonedResponse.text();
                         meta = JSON.parse(responseTextForLogging);
 
-
                         name = meta.name || 'N/A';
                         description = meta.description || 'N/A';
                         let imageUrl = meta.image || placeholderImageUrl;
                         const originalImageUrlFromMetadata = meta.image;
 
-
                         if (!imageUrl || typeof imageUrl !== 'string') {
                           console.warn(`[UTIL C_ID:${collectionId}] Invalid or missing image URL in metadata, using placeholder: ${placeholderImageUrl}`);
                           imageUrl = placeholderImageUrl;
                         } else {
-                          const isCurrentBaseLocalhost = currentBaseUrl.includes('://localhost') || currentBaseUrl.includes('://127.0.0.1');
+                          const isCurrentBaseNgrok = currentBaseUrl.includes('ngrok-free.app') || currentBaseUrl.includes('ngrok.io');
                           const isImageAbsoluteNgrok = imageUrl.startsWith('https://') && (imageUrl.includes('.ngrok-free.app') || imageUrl.includes('.ngrok.io'));
 
-                          if (isImageAbsoluteNgrok && isCurrentBaseLocalhost) {
-
+                          if (isImageAbsoluteNgrok) {
+                            // Handle ngrok image URLs
                             try {
-                              const ngrokUrlObject = new URL(imageUrl);
-                              const imagePath = ngrokUrlObject.pathname;
-                              if (imagePath.startsWith('/uploads/')) {
-                                imageUrl = `${currentBaseUrl}${imagePath}`;
-
-                              } else {
-                                console.warn(`[UTIL C_ID:${collectionId}] Ngrok URL path (${imagePath}) does not start with /uploads/. Using original ngrok URL as fallback for now: ${imageUrl}`);
+                              const imageUrlObject = new URL(imageUrl);
+                              const baseUrlObject = new URL(currentBaseUrl);
+                              
+                              // If domains are different, update the image URL
+                              if (imageUrlObject.host !== baseUrlObject.host) {
+                                imageUrlObject.protocol = baseUrlObject.protocol;
+                                imageUrlObject.host = baseUrlObject.host;
+                                imageUrl = imageUrlObject.toString();
+                                console.log(`[UTIL C_ID:${collectionId}] Updated image ngrok URL to: ${imageUrl}`);
                               }
                             } catch (e: any) {
-                              console.error(`[UTIL C_ID:${collectionId}] Error parsing ngrok URL for transformation: ${imageUrl}. Error: ${e.message}. Using placeholder.`);
+                              console.error(`[UTIL C_ID:${collectionId}] Error parsing ngrok image URL: ${imageUrl}. Error: ${e.message}. Using placeholder.`);
                               imageUrl = placeholderImageUrl;
                             }
                           } else if (imageUrl.startsWith('/uploads/')) {
                             imageUrl = `${currentBaseUrl}${imageUrl}`;
-
                           } else if (imageUrl.startsWith('ipfs://')) {
                             console.warn(`[UTIL C_ID:${collectionId}] Image URL in metadata (${imageUrl}) is an IPFS link, which is unsupported. Using placeholder.`);
                             imageUrl = placeholderImageUrl;

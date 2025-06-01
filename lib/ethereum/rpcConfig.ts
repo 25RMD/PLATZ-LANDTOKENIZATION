@@ -29,6 +29,10 @@ const RPC_ENDPOINTS = [
   { url: process.env.SEPOLIA_RPC_URL, weight: 80 },
   { url: process.env.FALLBACK_RPC_URL_1, weight: 70 },
   { url: process.env.FALLBACK_RPC_URL_2, weight: 60 },
+  // User's Alchemy endpoint as high priority fallback
+  { url: 'https://eth-sepolia.g.alchemy.com/v2/N6C3wxAXBUBjLnve3f5b71yLBxeLhIpm', weight: 85 },
+  // Working RPC from deploy.env
+  { url: 'https://rpc.ankr.com/eth_sepolia/70110cc66e9b830d75f56bf44c3e8c599d71fe51ad70bf9d8a66c68ad97e0e57', weight: 75 },
   // Fallback public endpoints with lower weights
   { url: 'https://ethereum-sepolia.publicnode.com', weight: 50 },
   { url: 'https://rpc.sepolia.org', weight: 40 },

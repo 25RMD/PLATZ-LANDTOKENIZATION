@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { motion } from 'framer-motion';
-import { FiArrowLeft, FiExternalLink, FiInfo, FiMap, FiShoppingCart, FiTrendingUp, FiTrendingDown, FiTool } from 'react-icons/fi';
+import { FiArrowLeft, FiExternalLink, FiInfo, FiMap, FiShoppingCart, FiTrendingUp, FiTrendingDown, FiTool, FiDollarSign } from 'react-icons/fi';
 import Link from 'next/link';
 import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 import NFTTokenGrid from '@/components/nft/NFTTokenGrid';
@@ -801,20 +801,66 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
   return (
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8">
       {/* Back Button */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+      >
       <Link
         href="/explore"
-        className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-6">
-        <FiArrowLeft className="mr-2" /> Back to Explore
+          className="inline-flex items-center text-white hover:text-cyber-accent mb-6 font-mono uppercase tracking-wider transition-all duration-300 group">
+          <motion.div
+            whileHover={{ x: -5 }}
+            transition={{ duration: 0.2 }}
+          >
+            <FiArrowLeft className="mr-2" />
+          </motion.div>
+          <motion.span
+            style={{
+              textShadow: "0 0 10px rgba(255, 255, 255, 0.5)",
+            }}
+            whileHover={{
+              textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
+            }}
+          >
+            BACK TO EXPLORE
+          </motion.span>
       </Link>
+      </motion.div>
 
         {/* Low Balance Warning */}
         {isEvmWalletConnected && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
           <LowBalanceWarning threshold={0.01} />
+          </motion.div>
         )}
+
       {/* Collection Header */}
-      <div className="bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 overflow-hidden mb-8">
-        <div className="flex flex-col md:flex-row">
-          <div className="md:w-1/3 h-64 md:h-auto bg-gray-200 dark:bg-zinc-800 flex-shrink-0">
+      <motion.div 
+        className="border border-text-light/20 dark:border-text-dark/20 rounded-cyber-lg bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden mb-8 shadow-lg"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Cyber scan line effect */}
+        <motion.div
+          className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-white to-transparent opacity-30"
+          animate={{
+            x: ["-100%", "100%"],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+        
+        <div className="flex flex-col md:flex-row relative">
+          <div className="md:w-1/3 h-64 md:h-auto bg-black/5 dark:bg-white/5 flex-shrink-0 rounded-tl-cyber-lg md:rounded-bl-cyber-lg md:rounded-tr-none rounded-tr-cyber-lg">
             <NFTImage
               src={collection.nftImageFileRef || ''}
               alt={collection.nftTitle || 'Collection Image'}
@@ -829,181 +875,303 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           <div className="p-6 flex-1">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                <motion.h1 
+                  className="text-2xl font-bold text-text-light dark:text-text-dark mb-2 font-mono uppercase tracking-wider"
+                  style={{
+                    textShadow: "0 0 20px rgba(255, 255, 255, 0.5)",
+                  }}
+                  animate={{
+                    textShadow: [
+                      "0 0 20px rgba(255, 255, 255, 0.5)",
+                      "0 0 25px rgba(255, 255, 255, 0.7)",
+                      "0 0 20px rgba(255, 255, 255, 0.5)",
+                    ],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
                   {collection.nftTitle || 'Untitled Collection'}
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                </motion.h1>
+                <motion.p 
+                  className="text-text-light/70 dark:text-text-dark/70 mb-4 font-mono"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
                   {collection.nftDescription || 'No description provided'}
-                </p>
+                </motion.p>
               </div>
               <div className="text-right">
                 {collection.isListedForSale && (
-              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  <motion.div 
+                    className="text-2xl font-bold text-text-light dark:text-text-dark font-mono"
+                    style={{
+                      textShadow: "0 0 15px rgba(255, 255, 255, 0.6)",
+                    }}
+                    animate={{
+                      textShadow: [
+                        "0 0 15px rgba(255, 255, 255, 0.6)",
+                        "0 0 20px rgba(255, 255, 255, 0.8)",
+                        "0 0 15px rgba(255, 255, 255, 0.6)",
+                      ],
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
                     {formatPriceWithConversion(collection.listingPriceEth)}
-                  </div>
+                  </motion.div>
                 )}
                 {priceStats && !statsLoading && (
-                  <div className="flex items-center mt-1">
+                  <motion.div 
+                    className="flex items-center mt-1"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
                     {priceStats.priceChange24h >= 0 ? (
-                      <FiTrendingUp className="text-green-500 mr-1" size={16} />
+                      <FiTrendingUp className="text-cyber-accent mr-1" size={16} />
                     ) : (
-                      <FiTrendingDown className="text-red-500 mr-1" size={16} />
+                      <FiTrendingDown className="text-red-400 mr-1" size={16} />
                     )}
-                    <span className={`text-sm ${priceStats.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    <span className={`text-sm font-mono ${priceStats.priceChange24h >= 0 ? 'text-cyber-accent' : 'text-red-400'}`}>
                       {priceStats.priceChange24h >= 0 ? '+' : ''}{priceStats.priceChange24h.toFixed(2)}%
                     </span>
-                    <span className="text-gray-500 dark:text-gray-400 text-sm ml-2">24h</span>
-                  </div>
+                    <span className="text-text-light/60 dark:text-text-dark/60 text-sm ml-2 font-mono">24h</span>
+                  </motion.div>
                 )}
               </div>
             </div>
 
             {/* Price Statistics Section */}
             {priceStats && !statsLoading && (
-              <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Market Statistics</h3>
+              <motion.div 
+                className="bg-black/5 dark:bg-white/5 rounded-cyber p-4 mb-6 border border-white/10"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <motion.h3 
+                  className="text-lg font-medium text-text-light dark:text-text-dark mb-3 font-mono uppercase tracking-wider"
+                  style={{
+                    textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
+                  }}
+                >
+                  MARKET STATISTICS
+                </motion.h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">Floor Price</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  <motion.div whileHover={{ scale: 1.05 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Floor Price</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {formatPriceWithConversion(priceStats.floorPrice)}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">24h Volume</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.05 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">24h Volume</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {formatPriceWithConversion(priceStats.volume24h)}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">24h Sales</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.05 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">24h Sales</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {priceStats.sales24h}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">Top Offer</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.05 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Top Offer</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {priceStats.topOffer > 0 ? formatPriceWithConversion(priceStats.topOffer) : 'No offers'}
                     </p>
+                  </motion.div>
                   </div>
-                </div>
-              </div>
+              </motion.div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-500">Location</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+            <motion.div 
+              className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              <motion.div whileHover={{ scale: 1.02 }}>
+                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Location</p>
+                <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                   {collection.country && collection.state ? `${collection.country}, ${collection.state}` : 'Not specified'}
                 </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-500">Area</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }}>
+                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Area</p>
+                <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                   {collection.propertyAreaSqm ? `${collection.propertyAreaSqm} sqm` : 'Not specified'}
                 </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-500">Collection Size</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }}>
+                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Collection Size</p>
+                <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                   {collection.nftCollectionSize} NFTs
                 </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-500">Owner</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100 truncate">
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }}>
+                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Owner</p>
+                <p className="text-base font-medium text-text-light dark:text-text-dark truncate font-mono">
                   {collection.user?.username || (collection.evmOwnerAddress?.substring(0, 6) + '...' + collection.evmOwnerAddress?.substring(38))}
                 </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-500">Contract</p>
-                <a
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }}>
+                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Contract</p>
+                <motion.a
                   href={`https://sepolia.etherscan.io/token/${collection.contractAddress}`} 
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-base font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                  className="text-base font-medium text-white hover:text-cyber-accent transition-colors flex items-center font-mono"
+                  whileHover={{ scale: 1.05 }}
+                  style={{
+                    textShadow: "0 0 10px rgba(255, 255, 255, 0.5)",
+                  }}
                 >
-                  View <FiExternalLink className="ml-1" size={14} />
-                </a>
-              </div>
-            </div>
+                  VIEW CONTRACT <FiExternalLink className="ml-1" size={14} />
+                </motion.a>
+              </motion.div>
+            </motion.div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-              {collection.isListedForSale && (
-                <button
-                    onClick={handlePurchaseCollection}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center"
-                >
-                <FiShoppingCart className="mr-2" /> Purchase Collection
-                </button>
-              )}
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-3"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              {/* Show bidding button for all collections since they're all open for bids */}
+              <motion.button
+                onClick={() => setShowBidModal(true)}
+                className="px-6 py-3 bg-cyber-accent hover:bg-cyber-accent/80 text-black rounded-cyber flex items-center justify-center font-mono uppercase tracking-wider transition-all duration-300"
+                whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(0, 255, 0, 0.5)" }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <FiDollarSign className="mr-2" /> PLACE BID
+              </motion.button>
+              
                 {/* Show batch purchase button if there are listed tokens for sale */}
                 {collection.evmCollectionTokens.some(token => token.isListed) && (
-                  <button
+                <motion.button
                     onClick={() => setShowBatchPurchaseModal(true)}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center"
+                  className="px-6 py-3 bg-white hover:bg-white/80 text-black rounded-cyber flex items-center justify-center font-mono uppercase tracking-wider transition-all duration-300"
+                  whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(255, 255, 255, 0.5)" }}
+                  whileTap={{ scale: 0.95 }}
                   >
-                    <FiShoppingCart className="mr-2" /> Buy Multiple
-                  </button>
+                  <FiShoppingCart className="mr-2" /> BUY MULTIPLE
+                </motion.button>
                 )}
+            </motion.div>
               </div>
           </div>
-        </div>
-      </div>
+      </motion.div>
+
       {/* Tabs */}
-      <div className="mb-6 border-b border-gray-200 dark:border-zinc-800">
+      <motion.div 
+        className="mb-6 border-b border-white/20"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
         <nav className="flex space-x-8">
-          <button
+          <motion.button
             onClick={() => setActiveTab('tokens')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm font-mono uppercase tracking-wider transition-all duration-300 ${
               activeTab === 'tokens'
-                ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'border-white text-white'
+                : 'border-transparent text-text-light/60 dark:text-text-dark/60 hover:text-white'
             }`}
+            whileHover={{ scale: 1.05 }}
+            style={activeTab === 'tokens' ? {
+              textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
+            } : {}}
           >
-            NFT Tokens ({collection.nftCollectionSize})
-          </button>
-          <button
+            NFT TOKENS ({collection.nftCollectionSize})
+          </motion.button>
+          <motion.button
             onClick={() => setActiveTab('details')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm font-mono uppercase tracking-wider transition-all duration-300 ${
               activeTab === 'details'
-                ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'border-white text-white'
+                : 'border-transparent text-text-light/60 dark:text-text-dark/60 hover:text-white'
             }`}
+            whileHover={{ scale: 1.05 }}
+            style={activeTab === 'details' ? {
+              textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
+            } : {}}
           >
-            Property Details
-          </button>
-          <button
+            PROPERTY DETAILS
+          </motion.button>
+          <motion.button
             onClick={() => setActiveTab('metadata')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm font-mono uppercase tracking-wider transition-all duration-300 ${
               activeTab === 'metadata'
-                ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'border-white text-white'
+                : 'border-transparent text-text-light/60 dark:text-text-dark/60 hover:text-white'
             }`}
+            whileHover={{ scale: 1.05 }}
+            style={activeTab === 'metadata' ? {
+              textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
+            } : {}}
           >
-            Metadata
-          </button>
-          <button
+            METADATA
+          </motion.button>
+          <motion.button
             onClick={() => setActiveTab('activity')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm font-mono uppercase tracking-wider transition-all duration-300 ${
               activeTab === 'activity'
-                ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'border-white text-white'
+                : 'border-transparent text-text-light/60 dark:text-text-dark/60 hover:text-white'
             }`}
+            whileHover={{ scale: 1.05 }}
+            style={activeTab === 'activity' ? {
+              textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
+            } : {}}
           >
-            Activity
-          </button>
+            ACTIVITY
+          </motion.button>
         </nav>
-      </div>
+      </motion.div>
+
       {/* Tab Content */}
-      <div className="bg-white dark:bg-zinc-900/50 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 p-6">
+      <motion.div 
+        className="border border-text-light/20 dark:border-text-dark/20 rounded-cyber-lg bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-cyber p-6 relative overflow-hidden"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6 }}
+      >
+        {/* Cyber background pattern for tab content */}
+        <motion.div
+          className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none"
+          animate={{
+            backgroundPosition: ["0px 0px", "30px 30px"],
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+            `,
+            backgroundSize: '30px 30px'
+          }}
+        />
+        
         {activeTab === 'tokens' && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Collection Tokens</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <div className="relative z-10">
+            <motion.h2 
+              className="text-xl font-semibold text-text-light dark:text-text-dark mb-4 font-mono uppercase tracking-wider"
+              style={{
+                textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
+              }}
+            >
+              COLLECTION TOKENS
+            </motion.h2>
+            <motion.p 
+              className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
               This collection contains {collection.nftCollectionSize} NFT tokens representing ownership shares in the property.
-            </p>
+            </motion.p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {(() => {
                 // Sort tokens: non-owned first, then owned at the bottom
@@ -1019,7 +1187,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                   return parseInt(a.tokenId) - parseInt(b.tokenId);
                 });
 
-                return sortedTokens.map((token) => {
+                return sortedTokens.map((token, index) => {
                   // Get token metadata from cache
                   const tokenMetadata = tokenMetadataCache[token.tokenId];
                   const originalIndex = collection.evmCollectionTokens.findIndex(t => t.tokenId === token.tokenId);
@@ -1049,34 +1217,53 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                   }
                   
                   return (
-                    <div 
+                    <motion.div 
                       key={token.tokenId} 
-                      className={`bg-gray-50 dark:bg-zinc-800/50 border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${
+                      className={`border rounded-cyber-lg overflow-hidden hover:shadow-lg transition-all duration-300 bg-primary-light/50 dark:bg-primary-dark/50 backdrop-blur-sm ${
                         isOwnedByUser 
-                          ? 'border-yellow-300 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' 
-                          : 'border-gray-200 dark:border-zinc-700'
+                          ? 'border-cyber-accent bg-cyber-accent/10' 
+                          : 'border-white/20 hover:border-white/40'
                       }`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05, duration: 0.4 }}
+                      whileHover={{ y: -5, scale: 1.02 }}
                     >
-                      <div className="aspect-square bg-gray-100 dark:bg-zinc-800 relative">
+                      <div className="aspect-square bg-black/5 dark:bg-white/5 relative">
                         {isMainToken && (
-                          <div className="absolute top-0 left-0 bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded-br z-10">
-                            Main Token
-                          </div>
+                          <motion.div 
+                            className="absolute top-0 left-0 bg-white text-black text-xs font-medium px-2 py-1 rounded-br z-10 font-mono uppercase tracking-wider"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            MAIN TOKEN
+                          </motion.div>
                         )}
                         {isOwnedByUser && (
-                          <div className="absolute top-0 right-0 bg-yellow-600 text-white text-xs font-medium px-2 py-1 rounded-bl z-10">
+                          <motion.div 
+                            className="absolute top-0 right-0 bg-cyber-accent text-black text-xs font-medium px-2 py-1 rounded-bl z-10 font-mono uppercase tracking-wider"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.3 }}
+                          >
                             OWNED
-                          </div>
+                          </motion.div>
                         )}
                         {!isOwnedByUser && token.isListed && (
-                          <div className="absolute top-0 right-0 bg-green-600 text-white text-xs font-medium px-2 py-1 rounded-bl z-10">
-                            For Sale
-                          </div>
+                          <motion.div 
+                            className="absolute top-0 right-0 bg-white text-black text-xs font-medium px-2 py-1 rounded-bl z-10 font-mono uppercase tracking-wider"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            FOR SALE
+                          </motion.div>
                         )}
                         <NFTImage
                           src={imageUrl}
                           alt={tokenMetadata?.name || `Token #${token.tokenId}`}
-                          className={`w-full h-full ${isOwnedByUser ? 'opacity-80' : ''}`}
+                          className={`w-full h-full transition-all duration-500 ${isOwnedByUser ? 'opacity-80' : 'hover:scale-110'}`}
                           tokenId={token.tokenId}
                           collectionId={collection.id}
                           isMainToken={isMainToken}
@@ -1088,23 +1275,33 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                       </div>
                       <div className="p-3">
                         <div className="flex justify-between items-start">
-                          <p className={`text-sm font-medium ${
+                          <motion.p 
+                            className={`text-sm font-medium font-mono ${
                             isOwnedByUser 
-                              ? 'text-yellow-800 dark:text-yellow-200' 
-                              : 'text-gray-900 dark:text-gray-100'
-                          }`}>
+                                ? 'text-cyber-accent' 
+                                : 'text-text-light dark:text-text-dark'
+                            }`}
+                            style={isOwnedByUser ? {
+                              textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+                            } : {}}
+                          >
                             {tokenMetadata?.name || `Token #${token.tokenId}`}
-                          </p>
+                          </motion.p>
                           {token.listingPrice > 0 && !isOwnedByUser && (
-                            <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                            <motion.p 
+                              className="text-sm font-bold text-text-light dark:text-text-dark font-mono"
+                              style={{
+                                textShadow: "0 0 10px rgba(255, 255, 255, 0.5)",
+                              }}
+                            >
                               {formatPriceWithConversion(token.listingPrice)}
-                            </p>
+                            </motion.p>
                           )}
                         </div>
-                        <p className={`text-xs truncate mt-1 ${
+                        <p className={`text-xs truncate mt-1 font-mono ${
                           isOwnedByUser 
-                            ? 'text-yellow-700 dark:text-yellow-300' 
-                            : 'text-gray-500 dark:text-gray-400'
+                            ? 'text-cyber-accent/70' 
+                            : 'text-text-light/60 dark:text-text-dark/60'
                         }`}>
                           {isOwnedByUser 
                             ? 'You own this token' 
@@ -1115,43 +1312,51 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                           {/* Show different actions based on ownership */}
                                                   {isOwnedByUser ? (
                           <div className="text-center py-2">
-                            <p className="text-xs text-yellow-700 dark:text-yellow-300 font-medium">
-                              ✓ You own this
-                            </p>
+                              <motion.p 
+                                className="text-xs text-cyber-accent font-medium font-mono uppercase tracking-wider"
+                                animate={{ opacity: [0.7, 1, 0.7] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                              >
+                                ✓ YOU OWN THIS
+                              </motion.p>
                           </div>
                         ) : (
                             <>
                               {token.isListed && (
-                                <button
+                                <motion.button
                                   onClick={() => handlePurchaseToken(token.tokenId)}
-                                  className="w-full px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded flex items-center justify-center"
+                                  className="w-full px-3 py-1 bg-cyber-accent hover:bg-cyber-accent/80 text-black text-sm rounded-cyber flex items-center justify-center font-mono uppercase tracking-wider transition-all duration-300"
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
                                 >
-                                  <FiShoppingCart className="mr-1" size={12} /> Buy Now
-                                </button>
+                                  <FiShoppingCart className="mr-1" size={12} /> BUY NOW
+                                </motion.button>
                               )}
                               {/* Allow bidding when wallet is connected and user doesn't own the token */}
                               {isEvmWalletConnected && (
-                                <button
+                                <motion.button
                                   onClick={() => handleBidOnToken(token.tokenId, tokenMetadata?.name || `Token #${token.tokenId}`)}
-                                  className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded flex items-center justify-center"
+                                  className="w-full px-3 py-1 bg-white hover:bg-white/80 text-black text-sm rounded-cyber flex items-center justify-center font-mono uppercase tracking-wider transition-all duration-300"
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
                                 >
-                                  <FiTool className="mr-1" size={12} /> Place Bid
-                                </button>
+                                  <FiTool className="mr-1" size={12} /> PLACE BID
+                                </motion.button>
                               )}
                               {/* Show connect wallet message when wallet is not connected */}
                               {!isEvmWalletConnected && (
                                 <button
                                   disabled
-                                  className="w-full px-3 py-1 bg-gray-400 text-white text-sm rounded flex items-center justify-center cursor-not-allowed"
+                                  className="w-full px-3 py-1 bg-white/20 text-white/60 text-sm rounded-cyber flex items-center justify-center cursor-not-allowed font-mono uppercase tracking-wider"
                                 >
-                                  <FiTool className="mr-1" size={12} /> Connect Wallet to Bid
+                                  <FiTool className="mr-1" size={12} /> CONNECT WALLET TO BID
                                 </button>
                               )}
                             </>
                           )}
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 });
               })()}
@@ -1160,96 +1365,162 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         )}
 
         {activeTab === 'details' && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Property Details</h2>
+          <div className="relative z-10">
+            <motion.h2 
+              className="text-xl font-semibold text-text-light dark:text-text-dark mb-4 font-mono uppercase tracking-wider"
+              style={{
+                textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
+              }}
+            >
+              PROPERTY DETAILS
+            </motion.h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Location Information</h3>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <motion.h3 
+                  className="text-lg font-medium text-text-light dark:text-text-dark mb-3 font-mono uppercase tracking-wider"
+                  style={{
+                    textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
+                  }}
+                >
+                  LOCATION INFORMATION
+                </motion.h3>
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">Country</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  <motion.div whileHover={{ scale: 1.02 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Country</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {collection.country || 'Not specified'}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">State/Province</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.02 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">State/Province</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {collection.state || 'Not specified'}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">Local Government Area</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.02 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Local Government Area</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {collection.localGovernmentArea || 'Not specified'}
                     </p>
-                  </div>
+                  </motion.div>
                   {collection.latitude && collection.longitude && (
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-500">Coordinates</p>
-                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    <motion.div whileHover={{ scale: 1.02 }}>
+                      <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Coordinates</p>
+                      <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                         {collection.latitude}, {collection.longitude}
                       </p>
-                    </div>
+                    </motion.div>
         )}
                 </div>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Property Specifications</h3>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <motion.h3 
+                  className="text-lg font-medium text-text-light dark:text-text-dark mb-3 font-mono uppercase tracking-wider"
+                  style={{
+                    textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
+                  }}
+                >
+                  PROPERTY SPECIFICATIONS
+                </motion.h3>
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">Area</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  <motion.div whileHover={{ scale: 1.02 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Area</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {collection.propertyAreaSqm ? `${collection.propertyAreaSqm} sqm` : 'Not specified'}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">Collection Size</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.02 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Collection Size</p>
+                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {collection.nftCollectionSize} NFTs
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">Blockchain Information</p>
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.02 }}>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Blockchain Information</p>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm text-gray-900 dark:text-gray-100">
+                      <p className="text-sm text-text-light dark:text-text-dark font-mono">
                         <span className="font-medium">Collection ID:</span> {collection.collectionId}
                       </p>
-                      <p className="text-sm text-gray-900 dark:text-gray-100">
+                      <p className="text-sm text-text-light dark:text-text-dark font-mono">
                         <span className="font-medium">Main Token ID:</span> {collection.mainTokenId}
                       </p>
-                      <a
+                      <motion.a
                         href={`https://sepolia.etherscan.io/token/${collection.contractAddress}?a=${collection.mainTokenId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                        className="text-sm text-white hover:text-cyber-accent transition-colors flex items-center font-mono"
+                        whileHover={{ scale: 1.05 }}
+                        style={{
+                          textShadow: "0 0 10px rgba(255, 255, 255, 0.5)",
+                        }}
                       >
-                        View on Etherscan <FiExternalLink className="ml-1" size={12} />
-                      </a>
+                        VIEW ON ETHERSCAN <FiExternalLink className="ml-1" size={12} />
+                      </motion.a>
                     </div>
+                  </motion.div>
                   </div>
-                </div>
-              </div>
+              </motion.div>
             </div>
             
             {/* Map Placeholder */}
-            <div className="mt-8 bg-gray-100 dark:bg-zinc-800 rounded-lg h-96 flex items-center justify-center">
+            <motion.div 
+              className="mt-8 bg-gray-100 dark:bg-zinc-800 rounded-lg h-96 flex items-center justify-center border border-white/20"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
               <div className="text-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                >
                 <FiMap className="mx-auto text-gray-400 dark:text-gray-600 mb-2" size={48} />
-                <p className="text-gray-600 dark:text-gray-400">Interactive map coming soon</p>
+                </motion.div>
+                <motion.p 
+                  className="text-gray-600 dark:text-gray-400 font-mono uppercase tracking-wider"
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  INTERACTIVE MAP COMING SOON
+                </motion.p>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
 
         {activeTab === 'metadata' && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Collection Metadata</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <div className="relative z-10">
+            <motion.h2 
+              className="text-xl font-semibold text-text-light dark:text-text-dark mb-4 font-mono uppercase tracking-wider"
+              style={{
+                textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
+              }}
+            >
+              COLLECTION METADATA
+            </motion.h2>
+            <motion.p 
+              className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
               View the blockchain metadata for this NFT collection.
-            </p>
-            <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 overflow-x-auto">
-              <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+            </motion.p>
+            <motion.div 
+              className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 overflow-x-auto border border-white/10"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-mono">
                 {JSON.stringify({
                   id: collection.id,
                   nftTitle: collection.nftTitle,
@@ -1271,39 +1542,79 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                   }
                 }, null, 2)}
               </pre>
-            </div>
+            </motion.div>
             
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mt-8 mb-4">Token URIs</h3>
-            <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 overflow-x-auto">
+            <motion.h3 
+              className="text-lg font-medium text-text-light dark:text-text-dark mt-8 mb-4 font-mono uppercase tracking-wider"
+              style={{
+                textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              TOKEN URIS
+            </motion.h3>
+            <motion.div 
+              className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 overflow-x-auto border border-white/10"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
               <div className="grid grid-cols-1 gap-4">
-                {collection.evmCollectionTokens.map((token) => (
-                  <div key={token.tokenId} className="border-b border-gray-200 dark:border-zinc-700 pb-4 last:border-0 last:pb-0">
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">Token #{token.tokenId}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 break-all">
+                {collection.evmCollectionTokens.map((token, index) => (
+                  <motion.div 
+                    key={token.tokenId} 
+                    className="border-b border-gray-200 dark:border-zinc-700 pb-4 last:border-0 last:pb-0"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6 + index * 0.1 }}
+                  >
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1 font-mono">Token #{token.tokenId}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 break-all font-mono">
                       {token.tokenURI || 'No URI available'}
                     </p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
 
         {activeTab === 'activity' && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Collection Activity</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <div className="relative z-10">
+            <motion.h2 
+              className="text-xl font-semibold text-text-light dark:text-text-dark mb-4 font-mono uppercase tracking-wider"
+              style={{
+                textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
+              }}
+            >
+              COLLECTION ACTIVITY
+            </motion.h2>
+            <motion.p 
+              className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
               Recent transactions and activities for this NFT collection.
-            </p>
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
             <ActivityFeed 
               collectionId={collection.collectionId}
               limit={20}
               showHeader={false}
               className="border-none shadow-none p-0"
             />
+            </motion.div>
           </div>
         )}
-      </div>
+      </motion.div>
+
       {/* Purchase Modal */}
       {showPurchaseModal && selectedTokenId && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">

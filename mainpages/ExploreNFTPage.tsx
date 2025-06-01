@@ -230,67 +230,326 @@ const ExploreNFTPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
-        <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
-      </div>
+      <motion.div 
+        className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)] bg-gray-50 dark:bg-primary-dark"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Cyber loading background */}
+        <motion.div
+          className="absolute inset-0 opacity-5 dark:opacity-10"
+          animate={{
+            background: [
+              "radial-gradient(circle at 20% 80%, rgba(0, 0, 0, 0.3) 0%, transparent 50%)",
+              "radial-gradient(circle at 80% 20%, rgba(0, 0, 0, 0.2) 0%, transparent 50%)",
+              "radial-gradient(circle at 20% 80%, rgba(0, 0, 0, 0.3) 0%, transparent 50%)",
+            ],
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        />
+        
+        <motion.div
+          animate={{ 
+            scale: [1, 1.1, 1],
+            rotate: [0, 5, -5, 0]
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="mb-6"
+        >
+          <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
+        </motion.div>
+        
+        <motion.h2 
+          className="text-xl font-mono uppercase tracking-wider text-black dark:text-white mb-2"
+          animate={{ 
+            textShadow: [
+              "0 0 10px rgba(0, 0, 0, 0.5)",
+              "0 0 20px rgba(0, 0, 0, 0.8)",
+              "0 0 10px rgba(0, 0, 0, 0.5)",
+            ]
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          LOADING COLLECTIONS
+        </motion.h2>
+        
+        <motion.p 
+          className="text-sm font-mono text-black/70 dark:text-white/70"
+          animate={{ opacity: [0.7, 1, 0.7] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        >
+          Scanning blockchain for land tokenization data...
+        </motion.p>
+      </motion.div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8 text-center min-h-[calc(100vh-200px)] flex flex-col justify-center items-center">
-        <FiAlertCircle className="text-red-500 text-5xl mx-auto mb-4" />
-        <p className="text-red-500 text-xl mb-4">Error: {error}</p>
-        <AnimatedButton onClick={loadCollections} className="bg-blue-500 hover:bg-blue-600 text-white">
-          <FiLoader className="mr-2" /> Retry
+      <motion.div 
+        className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8 text-center min-h-[calc(100vh-200px)] flex flex-col justify-center items-center bg-gray-50 dark:bg-primary-dark"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Cyber error background */}
+        <motion.div
+          className="absolute inset-0 opacity-5 dark:opacity-10"
+          animate={{
+            background: [
+              "radial-gradient(circle at 50% 50%, rgba(255, 0, 0, 0.3) 0%, transparent 50%)",
+              "radial-gradient(circle at 30% 70%, rgba(255, 0, 0, 0.2) 0%, transparent 50%)",
+              "radial-gradient(circle at 70% 30%, rgba(255, 0, 0, 0.25) 0%, transparent 50%)",
+              "radial-gradient(circle at 50% 50%, rgba(255, 0, 0, 0.3) 0%, transparent 50%)",
+            ],
+          }}
+          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        />
+        
+        <motion.div
+          animate={{ 
+            scale: [1, 1.2, 1],
+            rotate: [0, 10, -10, 0]
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="mb-6"
+        >
+          <FiAlertCircle className="text-red-400 text-6xl mx-auto" />
+        </motion.div>
+        
+        <motion.h2 
+          className="text-2xl font-mono uppercase tracking-wider text-red-400 mb-4"
+          style={{
+            textShadow: "0 0 15px rgba(255, 100, 100, 0.6)",
+          }}
+        >
+          SYSTEM ERROR
+        </motion.h2>
+        
+        <motion.p 
+          className="text-red-300 text-lg mb-6 font-mono max-w-2xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          {error}
+        </motion.p>
+        
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <AnimatedButton 
+            onClick={loadCollections} 
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 font-mono uppercase tracking-wider border border-red-400 rounded-cyber"
+          >
+            <FiLoader className="mr-2" /> RETRY CONNECTION
         </AnimatedButton>
-      </div>
+        </motion.div>
+      </motion.div>
     );
   }
 
   if (onChainCollections.length === 0) {
     return (
-      <div className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8 text-center min-h-[calc(100vh-200px)] flex flex-col justify-center items-center">
-        <FiPackage className="text-gray-400 dark:text-gray-500 text-6xl mx-auto mb-6" />
-        <p className="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-3">No Collections Found</p>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">It looks like there are no NFT collections available at the moment.</p>
+      <motion.div 
+        className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8 text-center min-h-[calc(100vh-200px)] flex flex-col justify-center items-center bg-gray-50 dark:bg-primary-dark"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Cyber empty state background */}
+        <motion.div
+          className="absolute inset-0 opacity-5 dark:opacity-10"
+          animate={{
+            background: [
+              "radial-gradient(circle at 40% 60%, rgba(0, 0, 0, 0.2) 0%, transparent 50%)",
+              "radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 0.15) 0%, transparent 50%)",
+              "radial-gradient(circle at 40% 60%, rgba(0, 0, 0, 0.2) 0%, transparent 50%)",
+            ],
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        />
+        
+        <motion.div
+          animate={{ 
+            y: [0, -10, 0],
+            rotate: [0, 2, -2, 0]
+          }}
+          transition={{ duration: 4, repeat: Infinity }}
+          className="mb-8"
+        >
+          <FiPackage className="text-black/60 dark:text-white/60 text-8xl mx-auto" />
+        </motion.div>
+        
+        <motion.h2 
+          className="text-3xl font-mono uppercase tracking-wider text-black dark:text-white mb-4"
+          style={{
+            textShadow: "0 0 20px rgba(0, 0, 0, 0.5)",
+          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          NO COLLECTIONS DETECTED
+        </motion.h2>
+        
+        <motion.p 
+          className="text-black/70 dark:text-white/70 mb-8 font-mono text-lg max-w-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          The blockchain scan returned zero land tokenization collections. Initialize the first collection to begin.
+        </motion.p>
+        
         <Link href="/create-land-listing" passHref>
-          <AnimatedButton className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 text-lg">
-            Create New Listing
+          <motion.div
+            whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(0, 0, 0, 0.3)" }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <AnimatedButton className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-8 py-4 text-lg font-mono uppercase tracking-wider border border-black/30 dark:border-white/30 rounded-cyber">
+              + CREATE NEW COLLECTION
           </AnimatedButton>
+          </motion.div>
         </Link>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white mb-4 md:mb-0">
-          Explore Land Collections
-        </h1>
-        {/* Optional: Add search/filter controls here later */}
-      </div>
+    <motion.div 
+      className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8 bg-gray-50 dark:bg-primary-dark min-h-screen"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.8 }}
+    >
+      {/* Cyber background pattern */}
+      <motion.div
+        className="fixed inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none z-0"
+        animate={{
+          backgroundPosition: ["0px 0px", "50px 50px"],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '25px 25px'
+        }}
+      />
+      
+      <div className="relative z-10">
+        {/* Header Section with enhanced cyber styling */}
+        <motion.div 
+          className="flex flex-col md:flex-row justify-between items-center mb-12"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <motion.div className="text-center md:text-left mb-6 md:mb-0">
+            <motion.h1 
+              className="text-4xl md:text-5xl lg:text-6xl font-bold font-mono uppercase tracking-wider text-black dark:text-white mb-3"
+              style={{
+                textShadow: "0 0 30px rgba(0, 0, 0, 0.6)",
+              }}
+              animate={{
+                textShadow: [
+                  "0 0 30px rgba(0, 0, 0, 0.6)",
+                  "0 0 40px rgba(0, 0, 0, 0.8)",
+                  "0 0 30px rgba(0, 0, 0, 0.6)",
+                ],
+              }}
+              transition={{ duration: 3, repeat: Infinity }}
+            >
+              EXPLORE COLLECTIONS
+            </motion.h1>
+            
+            <motion.div 
+              className="flex items-center justify-center md:justify-start space-x-4 text-black/70 dark:text-white/70 font-mono"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              <motion.span
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {onChainCollections.length} COLLECTIONS FOUND
+              </motion.span>
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                className="w-2 h-2 bg-black dark:bg-white rounded-full"
+              />
+              <motion.span
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+              >
+                BLOCKCHAIN VERIFIED
+              </motion.span>
+            </motion.div>
+          </motion.div>
+          
+          {/* Stats display */}
+          <motion.div 
+            className="flex space-x-6"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <motion.div 
+              className="text-center p-4 border border-black/20 dark:border-white/20 rounded-cyber bg-white/10 dark:bg-black/10 backdrop-blur-sm"
+              whileHover={{ scale: 1.05, borderColor: "rgba(0, 0, 0, 0.4)" }}
+            >
+              <div className="text-2xl font-bold font-mono text-black dark:text-white">{onChainCollections.length}</div>
+              <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider">COLLECTIONS</div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
 
-      {/* Low Balance Warning */}
+        {/* Low Balance Warning with cyber styling */}
       {accountAddress && (
-        <LowBalanceWarning threshold={0.01} />
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
-        {onChainCollections.map((collection: CollectionDetail) => (
           <motion.div
-            key={collection.collectionId.toString()}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }} // Slightly faster animation
-            className="w-full" 
+            transition={{ delay: 0.8 }}
+            className="mb-8"
+          >
+            <LowBalanceWarning threshold={0.01} />
+          </motion.div>
+        )}
+
+        {/* Collections Grid with enhanced animations */}
+        <motion.div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+        >
+          {onChainCollections.map((collection: CollectionDetail, index: number) => (
+            <motion.div
+              key={collection.collectionId.toString()}
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ 
+                duration: 0.6, 
+                delay: index * 0.1,
+                ease: "easeOut"
+              }}
+              className="w-full" 
           >
             <CollectionCard collection={collection} />
           </motion.div>
         ))}
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

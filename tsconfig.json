@@ -27,12 +27,14 @@
     "paths": {
       "@/app/*": ["app/*"],
       "@/lib/*": ["lib/*"],
+      "@/components": ["components/index"],
       "@/components/*": ["components/*"],
       "@/context/*": ["context/*"],
       "@/mainpages/*": ["mainpages/*"],
       "@/contracts/*": ["contracts/*"],
       "@/config/*": ["config/*"],
-      "@/hooks/*": ["hooks/*"]
+      "@/hooks/*": ["hooks/*"],
+      "@/types/*": ["types/*"]
     }
   },
   "include": [

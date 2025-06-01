@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     });
 
     // Set JWT as an HttpOnly cookie for security
-    response.cookies.set('token', token, {
+    response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV !== 'development',
       sameSite: 'lax',

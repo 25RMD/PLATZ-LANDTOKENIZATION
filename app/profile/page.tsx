@@ -103,183 +103,79 @@ const ProfileContent = () => {
   };
 
   const handleLinkWallet = async () => {
-    console.log("handleLinkWallet: Function called");
     setLinkWalletLoading(true);
-    console.log("[Profile Page] Initiating EVM wallet link...");
     clearContextError();
 
+      try {
     if (!isEvmWalletConnected || !connectedEvmAddress) {
-      console.error("handleLinkWallet: EVM Wallet not connected or address not available.");
-      toast.error("Please connect your EVM wallet first using the button in the header.");
-      setLinkWalletLoading(false);
+              toast.error("Please connect your wallet first.");
       return;
     }
 
-    let nonce = '';
-    try {
-      console.log("[Profile Page] Requesting challenge nonce for EVM... Address:", connectedEvmAddress);
       const challengeResponse = await fetch('/api/profile/evm/challenge', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: connectedEvmAddress })
+              body: JSON.stringify({ evmAddress: connectedEvmAddress }),
       }); 
-      console.log("handleLinkWallet: Challenge response status:", challengeResponse.status);
 
       if (!challengeResponse.ok) {
-        const errorData = await challengeResponse.json().catch(() => ({ message: 'Failed to parse error response' }));
-        console.error("handleLinkWallet: Challenge request failed", errorData);
-        throw new Error(errorData.message || `Failed to get verification challenge (status: ${challengeResponse.status})`);
-      }
-      const data = await challengeResponse.json();
-      console.log("handleLinkWallet: Challenge data received:", data);
-      nonce = data.nonce;
-      if (!nonce) {
-        console.error("handleLinkWallet: Nonce missing in challenge response");
-        throw new Error('Nonce not received from server.');
-      }
-      console.log("[Profile Page] Received nonce for EVM:", nonce);
-    } catch (error: any) {  
-      console.error("[Profile Page] Error fetching EVM challenge:", error);
-      toast.error(`Error getting challenge: ${error.message}`);
-      setLinkWalletLoading(false);
-      return;
-    }
-
-    let signature: `0x${string}` | undefined = undefined;
-    try {
-      console.log("[Profile Page] Requesting EVM signature...");
-      const messageToSign = `Please sign this message to link your EVM wallet to your profile.\nNonce: ${nonce}`;
-      console.log(`[Profile Page] Frontend EVM Message to Sign: "${messageToSign}"`);
-      
-      console.log("[Profile Page] useAccount state before signing: address:", connectedEvmAddress, "isConnected?", isEvmWalletConnected);
-      console.log("[Profile Page] signMessageAsync function type:", typeof signMessageAsync);
-      console.log("[Profile Page] useSignMessage hook state BEFORE signing: isLoading?", isSigningMessage, "isError?", isSignMessageError, "error object:", signMessageHookError, "status:", signMessageStatus);
-      
-      // Add a try/catch specifically for the signMessageAsync call
-      try {
-        console.log("[Profile Page] ABOUT TO CALL signMessageAsync with message:", messageToSign);
-        signature = await signMessageAsync({ message: messageToSign });
-        console.log("[Profile Page] AFTER signMessageAsync: Signature received:", signature);
-      } catch (signError) {
-        console.error("[Profile Page] CAUGHT ERROR directly from signMessageAsync:", signError);
-        
-        // Fallback: Try direct Ethereum provider if Wagmi hook fails
-        if (typeof window !== 'undefined' && window.ethereum) {
-          try {
-            console.log("[Profile Page] Attempting FALLBACK with direct ethereum provider");
-            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            console.log("[Profile Page] FALLBACK - Connected accounts:", accounts);
-            
-            if (accounts && accounts.length > 0) {
-              const from = accounts[0];
-              console.log("[Profile Page] FALLBACK - Using account:", from);
-              
-              // Convert message to hex format
-              const msgHex = '0x' + Buffer.from(messageToSign).toString('hex');
-              console.log("[Profile Page] FALLBACK - Message in hex:", msgHex);
-              
-              // Call personal_sign method
-              const result = await window.ethereum.request({
-                method: 'personal_sign',
-                params: [msgHex, from, 'PLATZ Authentication'],
-              });
-              
-              console.log("[Profile Page] FALLBACK - Signature result:", result);
-              signature = result as `0x${string}`;
-              return; // Continue with the outer function
-            }
-          } catch (fallbackError) {
-            console.error("[Profile Page] FALLBACK signing also failed:", fallbackError);
+              const challengeData = await challengeResponse.json();
+              throw new Error(challengeData.message || 'Failed to get challenge.');
           }
-        } else {
-          console.error("[Profile Page] No window.ethereum available for fallback");
-        }
-        
-        throw signError; // Re-throw to be caught by outer catch
-      }
-      
-      console.log("[Profile Page] useSignMessage hook state AFTER successful signing: isLoading?", isSigningMessage, "isError?", isSignMessageError, "error object:", signMessageHookError, "status:", signMessageStatus, "data:", data);
 
-    } catch (error: any) {
-      console.error("[Profile Page] Error DURING EVM message signing process. Full error object:", error); 
-      console.error("[Profile Page] useSignMessage hook state IN CATCH BLOCK: isLoading?", isSigningMessage, "isError?", isSignMessageError, "error object from hook:", signMessageHookError, "status:", signMessageStatus);
-      
-      let specificErrorMessage = "Signing failed.";
-      if (signMessageHookError?.message) {
-        specificErrorMessage += ` Details: ${signMessageHookError.message}`;
-      } else if (error?.message) {
-        specificErrorMessage += ` Details: ${error.message}`;
-      } else {
-        specificErrorMessage += " An unknown error occurred during signing.";
-      }
-      toast.error(specificErrorMessage);
-      setLinkWalletLoading(false);
-      return;
-    }
+          const { challenge } = await challengeResponse.json();
 
-    if (!signature) {
-      console.error("[Profile Page] Signature not obtained after signing attempt, stopping wallet link.");
-      toast.error("Failed to obtain signature. Please try again.");
-      setLinkWalletLoading(false);
-      return;
-    }
+          const signature = await signMessageAsync({ message: challenge });
 
-    try {
-      console.log("[Profile Page] Sending EVM signature for verification...");
       const linkResponse = await fetch('/api/profile/evm/link-wallet', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: connectedEvmAddress, signature: signature }),
-      });
-      console.log("handleLinkWallet: Link wallet response status:", linkResponse.status);
+              body: JSON.stringify({
+                  evmAddress: connectedEvmAddress,
+                  signature,
+                  challenge,
+              }),
+          });
 
       if (!linkResponse.ok) {
-        const errorData = await linkResponse.json().catch(() => ({ message: 'Failed to parse error response' }));
-        console.error("handleLinkWallet: Link wallet request failed", errorData);
-        throw new Error(errorData.message || 'Failed to link EVM wallet.');
-      }
+              const linkData = await linkResponse.json();
+              throw new Error(linkData.message || 'Failed to link wallet.');
+          }
 
-      const linkData = await linkResponse.json();
-      console.log("handleLinkWallet: Wallet linked successfully:", linkData);
-      toast.success('EVM Wallet linked successfully!');
-      if (linkData.user && linkData.user.evmAddress) {
-        setProfileData(prev => ({...prev, evmAddress: linkData.user.evmAddress }));
+          toast.success('EVM wallet linked successfully!');
+          await fetchUserProfile(); 
+      } catch (error: any) {
+          console.error('Error linking wallet:', error);
+          if (error.message?.includes('rejected') || error.message?.includes('denied')) {
+              toast.error('Wallet connection cancelled by user.');
       } else {
-        const updatedProfile = await fetchUserProfile(); 
-        if (updatedProfile) {
-          setProfileData(prev => ({...prev, evmAddress: updatedProfile.evmAddress }));
-        }
+              toast.error(`Failed to link wallet: ${error.message}`);
       }
-    } catch (error: any) {
-      console.error("[Profile Page] Error linking EVM wallet:", error);
-      toast.error(`Linking failed: ${error.message}`);
     } finally {
-      console.log("handleLinkWallet: Function finished.");
       setLinkWalletLoading(false);
     }
   };
 
   const handleUnlinkWallet = async () => {
     setUnlinkWalletLoading(true);
-    console.log("[Profile Page] Initiating EVM wallet unlink...");
     clearContextError();
-    const loadingToastId = toast.loading("Unlinking EVM wallet...");
 
-    try {
-      const success = await updateUserProfile({ evmAddress: null }); 
+      try {
+          const response = await fetch('/api/profile/evm/link-wallet', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+          });
 
-      if (success) {
-        toast.success('EVM Wallet unlinked successfully!', { id: loadingToastId });
-        const updatedProfile = await fetchUserProfile();
-        if (updatedProfile) {
-          setProfileData(prev => ({ ...prev, evmAddress: updatedProfile.evmAddress }));
-        }
-      } else {
-        throw new Error(contextError || 'Failed to unlink EVM wallet. Check console for details.');
-      }
+          if (!response.ok) {
+              const data = await response.json();
+              throw new Error(data.message || 'Failed to unlink wallet.');
+          }
+
+          toast.success('EVM wallet unlinked successfully!');
+          await fetchUserProfile(); 
     } catch (error: any) {
-      console.error("[Profile Page] Error unlinking EVM wallet:", error);
-      toast.error(`Unlinking failed: ${error.message}`, { id: loadingToastId });
+          console.error('Error unlinking wallet:', error);
+          toast.error(`Failed to unlink wallet: ${error.message}`);
     } finally {
       setUnlinkWalletLoading(false);
     }
@@ -384,13 +280,13 @@ const ProfileContent = () => {
   const renderField = (label: string, name: keyof ProfileFormData, type: string = 'text', disabled: boolean = false, options?: {value: string, label: string}[]) => {
     const hasError = !!formErrors[name];
     const isDisabled = disabled || !isEditing || actionLoading;
-    const commonClasses = `w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-150`;
-    const errorClasses = hasError ? 'border-red-500 dark:border-red-400 focus:ring-red-500 dark:focus:ring-red-400' : 'border-gray-300 dark:border-zinc-700 focus:border-transparent dark:focus:border-transparent';
-    const disabledClasses = isDisabled ? 'opacity-70 bg-gray-100 dark:bg-zinc-700 cursor-not-allowed' : '';
+    const commonClasses = `w-full px-3 py-2 border rounded-cyber shadow-sm focus:outline-none focus:ring-2 focus:ring-cyber-glow/50 dark:focus:ring-cyber-glow/30 bg-secondary-light dark:bg-secondary-dark text-text-light dark:text-text-dark placeholder-text-light/40 dark:placeholder-text-dark/40 transition-all duration-150 focus-cyber`;
+    const errorClasses = hasError ? 'border-error-minimal dark:border-error-minimal focus:ring-error-minimal/50 dark:focus:ring-error-minimal/30' : 'border-black/20 dark:border-white/20 focus:border-transparent dark:focus:border-transparent';
+    const disabledClasses = isDisabled ? 'opacity-70 bg-black/5 dark:bg-white/5 cursor-not-allowed' : '';
 
     return (
       <div className="mb-4">
-        <label htmlFor={name} className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+        <label htmlFor={name} className="block text-sm font-medium text-text-light/80 dark:text-text-dark/80 mb-1.5 font-mono">
           {label}
         </label>
         {type === 'select' && options ? (
@@ -418,16 +314,16 @@ const ProfileContent = () => {
               className={`${commonClasses} ${errorClasses} ${disabledClasses}`}
             />
         )}
-        {hasError && <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{formErrors[name]?.[0]}</p>}
+        {hasError && <p className="mt-1.5 text-xs text-error-minimal dark:text-error-minimal">{formErrors[name]?.[0]}</p>}
       </div>
     );
   };
 
   const inputClasses = (hasError: boolean) =>
-      `w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-secondary-light dark:bg-zinc-800 text-text-light dark:text-text-dark placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-150 ${
+      `w-full px-3 py-2 border rounded-cyber shadow-sm focus:outline-none focus:ring-2 focus:ring-cyber-glow/50 dark:focus:ring-cyber-glow/30 bg-secondary-light dark:bg-secondary-dark text-text-light dark:text-text-dark placeholder-text-light/40 dark:placeholder-text-dark/40 transition-all duration-150 focus-cyber ${
         hasError
-          ? 'border-red-500 dark:border-red-400 focus:ring-red-500 dark:focus:ring-red-400'
-          : 'border-gray-300 dark:border-zinc-700 focus:border-transparent dark:focus:border-transparent'
+          ? 'border-error-minimal dark:border-error-minimal focus:ring-error-minimal/50 dark:focus:ring-error-minimal/30'
+          : 'border-black/20 dark:border-white/20 focus:border-transparent dark:focus:border-transparent'
       }`;
 
   if (pageLoading) {
@@ -443,20 +339,20 @@ const ProfileContent = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="max-w-3xl mx-auto mt-12 mb-12 p-8 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-xl bg-primary-light dark:bg-card-dark"
+      className="max-w-3xl mx-auto mt-12 mb-12 p-8 border border-black/10 dark:border-white/10 rounded-cyber-lg shadow-2xl bg-primary-light dark:bg-primary-dark cyber-grid"
     >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
           <div>
-              <h1 className="text-3xl font-semibold text-text-light dark:text-text-dark mb-4 sm:mb-0">
+              <h1 className="text-3xl font-bold text-text-light dark:text-text-dark mb-4 sm:mb-0 font-mono">
                 User Profile
               </h1>
                {/* Verification Status Badge */}
-               <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${isVerified
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
+               <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-cyber text-xs font-medium font-mono border ${isVerified
+                    ? 'bg-success-minimal/10 text-success-minimal border-success-minimal/20'
+                    : 'bg-warning-minimal/10 text-warning-minimal border-warning-minimal/20'
                 }`}>
                   {isVerified ? <FiCheckCircle className="w-3 h-3"/> : <FiAlertCircle className="w-3 h-3"/>}
-                  {isVerified ? 'Verified' : 'Not Verified'}
+                  {isVerified ? 'VERIFIED' : 'NOT VERIFIED'}
                </div>
           </div>
            <AnimatedButton
@@ -464,126 +360,124 @@ const ProfileContent = () => {
                  setIsEditing(!isEditing);
                  if (isEditing) setFormErrors({}); 
              }}
-             className={`px-5 py-2 text-sm rounded-lg border transition-colors duration-150 ${isEditing
-                ? 'bg-gray-200 dark:bg-zinc-700 border-gray-400 dark:border-zinc-600 text-text-light dark:text-text-dark hover:bg-gray-300 dark:hover:bg-zinc-600'
-                : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+             className={`px-5 py-2 text-sm rounded-cyber border transition-all duration-300 font-mono ${isEditing
+                ? 'bg-black/5 dark:bg-white/5 border-black/20 dark:border-white/20 text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10'
+                : 'bg-text-light dark:bg-text-dark border-text-light dark:border-text-dark text-primary-light dark:text-primary-dark hover:bg-text-light/90 dark:hover:bg-text-dark/90'
               }`}
             >
-             {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+             {isEditing ? 'CANCEL EDIT' : 'EDIT PROFILE'}
            </AnimatedButton>
       </div>
 
       {/* Guidance for unverified users */} 
       {!isVerified && !isEditing && (
-         <div className="mb-6 p-4 border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-sm text-blue-700 dark:text-blue-200">
-             <p className="font-medium mb-1">Verification Required for Listings</p>
-             <p>To create property listings, please complete your profile and submit KYC documents (references). Verification is typically processed within 1-2 business days.</p>
-             {/* Optionally link to a dedicated KYC/Document Upload page */} 
-             {/* <Link href="/kyc-upload" className="font-medium underline mt-1 inline-block">Upload Documents Now</Link> */}
+         <div className="mb-6 p-4 border border-warning-minimal/30 bg-warning-minimal/5 rounded-cyber text-sm font-mono">
+             <p className="font-bold mb-1 text-text-light dark:text-text-dark">VERIFICATION REQUIRED FOR LISTINGS</p>
+             <p className="text-text-light/80 dark:text-text-dark/80">To create property listings, please complete your profile and submit KYC documents (references). Verification is typically processed within 1-2 business days.</p>
          </div>
       )}
 
       <div className="space-y-1">
         {/* Section 1: Basic Info (Non-Editable) */}
-        <h2 className="text-xl font-medium text-text-light dark:text-text-dark pt-2 pb-3 border-b border-gray-300 dark:border-zinc-700 mb-4">
-             Account Information
+        <h2 className="text-xl font-bold text-text-light dark:text-text-dark pt-2 pb-3 border-b border-black/20 dark:border-white/20 mb-4 font-mono">
+             ACCOUNT INFORMATION
          </h2>
         {renderField('Username', 'username', 'text', true)}
         {renderField('EVM Wallet', 'evmAddress', 'text', true)}
 
         {/* EVM Wallet Section */}
-        <div className="mb-6 p-4 border border-gray-700 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2 text-primary-accent">EVM Wallet</h3>
+        <div className="mb-6 p-4 border border-black/10 dark:border-white/10 rounded-cyber bg-black/2 dark:bg-white/2">
+          <h3 className="text-lg font-bold mb-2 text-text-light dark:text-text-dark font-mono">EVM WALLET</h3>
           {profileData.evmAddress ? (
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-              <p className="text-gray-300 break-all">
-                Linked Address: <span className="font-mono text-secondary-accent">{profileData.evmAddress}</span>
+              <p className="text-text-light/80 dark:text-text-dark/80 break-all font-mono text-sm">
+                Linked Address: <span className="font-mono text-text-light dark:text-text-dark">{profileData.evmAddress}</span>
               </p>
               <AnimatedButton 
                 onClick={handleUnlinkWallet}
                 disabled={unlinkWalletLoading || actionLoading}
-                className="mt-2 sm:mt-0 sm:ml-4 bg-red-600 hover:bg-red-700 text-white"
+                className="mt-2 sm:mt-0 sm:ml-4 bg-error-minimal/10 hover:bg-error-minimal/20 text-error-minimal border border-error-minimal/30 rounded-cyber font-mono text-sm px-4 py-2"
               >
-                Unlink EVM Wallet
+                UNLINK WALLET
               </AnimatedButton>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-              <p className="text-gray-400">No EVM wallet linked.</p>
+              <p className="text-text-light/60 dark:text-text-dark/60 font-mono">No EVM wallet linked.</p>
               <AnimatedButton 
                 onClick={handleLinkWallet}
                 disabled={!isEvmWalletConnected || linkWalletLoading || actionLoading}
-                className="mt-2 sm:mt-0 sm:ml-4"
+                className="mt-2 sm:mt-0 sm:ml-4 bg-text-light dark:bg-text-dark text-primary-light dark:text-primary-dark border border-text-light dark:border-text-dark rounded-cyber font-mono text-sm px-4 py-2 hover:opacity-90"
               >
-                Link EVM Wallet
+                LINK WALLET
               </AnimatedButton>
             </div>
           )}
           {!isEvmWalletConnected && !profileData.evmAddress && (
-              <p className="text-sm text-yellow-500 mt-2">Please connect your wallet (in the header) to link it.</p>
+              <p className="text-sm text-warning-minimal mt-2 font-mono">Please connect your wallet (in the header) to link it.</p>
           )}
         </div>
 
         {/* Currency Preference Section */}
-        <div className="mb-6 p-4 border border-gray-300 dark:border-zinc-700 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Currency Preference</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <div className="mb-6 p-4 border border-black/10 dark:border-white/10 rounded-cyber bg-black/2 dark:bg-white/2">
+          <h3 className="text-lg font-bold mb-3 text-text-light dark:text-text-dark font-mono">CURRENCY PREFERENCE</h3>
+          <p className="text-sm text-text-light/80 dark:text-text-dark/80 mb-4 font-mono">
             Choose your preferred currency for price display. ETH prices will be shown with conversions to your selected currency.
           </p>
           
           <div className="space-y-3">
             {Object.values(CURRENCY_OPTIONS).map((option) => (
-              <label key={option.currency} className="flex items-center space-x-3 cursor-pointer">
+              <label key={option.currency} className="flex items-center space-x-3 cursor-pointer group">
                 <input
                   type="radio"
                   name="currencyPreference"
                   value={option.currency}
                   checked={preferredCurrency === option.currency}
                   onChange={(e) => setPreferredCurrency(e.target.value as SupportedCurrency)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  className="w-4 h-4 text-text-light dark:text-text-dark bg-transparent border-text-light/40 dark:border-text-dark/40 focus:ring-cyber-glow/50 dark:focus:ring-cyber-glow/30 focus:ring-2"
                 />
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg font-medium">{option.symbol}</span>
-                  <span className="text-gray-900 dark:text-gray-100">{option.name} ({option.currency})</span>
+                <div className="flex items-center space-x-2 font-mono">
+                  <span className="text-lg font-bold">{option.symbol}</span>
+                  <span className="text-text-light dark:text-text-dark">{option.name} ({option.currency})</span>
                 </div>
               </label>
             ))}
           </div>
 
           {exchangeRates && !currencyLoading && (
-            <div className="mt-4 p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Current Exchange Rates:</p>
-              <div className="space-y-1 text-sm">
+            <div className="mt-4 p-3 bg-black/5 dark:bg-white/5 rounded-cyber border border-black/10 dark:border-white/10">
+              <p className="text-sm text-text-light/80 dark:text-text-dark/80 mb-2 font-mono">Current Exchange Rates:</p>
+              <div className="space-y-1 text-sm font-mono">
                 <div>1 ETH = ${exchangeRates.USD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
                 <div>1 ETH = ₦{exchangeRates.NGN.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} NGN</div>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-xs text-text-light/60 dark:text-text-dark/60 mt-2 font-mono">
                 Rates updated every 5 minutes via CoinGecko
               </p>
             </div>
           )}
 
           {currencyLoading && (
-            <div className="mt-4 p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Loading exchange rates...</p>
+            <div className="mt-4 p-3 bg-black/5 dark:bg-white/5 rounded-cyber border border-black/10 dark:border-white/10">
+              <p className="text-sm text-text-light/80 dark:text-text-dark/80 font-mono">Loading exchange rates...</p>
             </div>
           )}
         </div>
 
         {/* Section/Form to Set Credentials (shown if no username/password) */}
         {!profileData.username && profileData.evmAddress && (
-             <div className="mt-6 pt-6 border-t border-gray-300 dark:border-zinc-700">
-                <h2 className="text-xl font-medium text-text-light dark:text-text-dark mb-4">
-                    Set Username & Password
+             <div className="mt-6 pt-6 border-t border-black/20 dark:border-white/20">
+                <h2 className="text-xl font-bold text-text-light dark:text-text-dark mb-4 font-mono">
+                    SET USERNAME & PASSWORD
                 </h2>
-                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">You logged in with your wallet. Set a username and password for an alternative login method.</p>
+                 <p className="text-sm text-text-light/80 dark:text-text-dark/80 mb-4 font-mono">You logged in with your wallet. Set a username and password for an alternative login method.</p>
                  
                  {/* --- Add Set Credentials Form --- */}
                  <form onSubmit={handleSetCredentials} className="space-y-4 max-w-sm">
                      {/* New Username Field */}
                      <div>
-                         <label htmlFor="newUsername" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                             Choose Username <span className="text-red-500">*</span>
+                         <label htmlFor="newUsername" className="block text-sm font-medium text-text-light/80 dark:text-text-dark/80 mb-1.5 font-mono">
+                             Choose Username <span className="text-error-minimal">*</span>
                          </label>
                          <input
                              id="newUsername"
@@ -598,12 +492,12 @@ const ProfileContent = () => {
                              }}
                              placeholder="Create a username"
                          />
-                         {setCredsFormErrors.username && <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{setCredsFormErrors.username[0]}</p>}
+                         {setCredsFormErrors.username && <p className="mt-1.5 text-xs text-error-minimal">{setCredsFormErrors.username[0]}</p>}
                      </div>
                      {/* New Password Field */}
                      <div>
-                         <label htmlFor="newPassword" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                             Create Password <span className="text-red-500">*</span>
+                         <label htmlFor="newPassword" className="block text-sm font-medium text-text-light/80 dark:text-text-dark/80 mb-1.5 font-mono">
+                             Create Password <span className="text-error-minimal">*</span>
                          </label>
                          <input
                              id="newPassword"
@@ -618,12 +512,12 @@ const ProfileContent = () => {
                              }}
                              placeholder="Min. 8 characters"
                          />
-                         {setCredsFormErrors.password && <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{setCredsFormErrors.password[0]}</p>}
+                         {setCredsFormErrors.password && <p className="mt-1.5 text-xs text-error-minimal">{setCredsFormErrors.password[0]}</p>}
                      </div>
                      {/* Confirm New Password Field */}
                      <div>
-                         <label htmlFor="confirmNewPassword" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                             Confirm Password <span className="text-red-500">*</span>
+                         <label htmlFor="confirmNewPassword" className="block text-sm font-medium text-text-light/80 dark:text-text-dark/80 mb-1.5 font-mono">
+                             Confirm Password <span className="text-error-minimal">*</span>
                          </label>
                          <input
                              id="confirmNewPassword"
@@ -638,12 +532,16 @@ const ProfileContent = () => {
                              }}
                              placeholder="Re-enter password"
                          />
-                         {setCredsFormErrors.confirmPassword && <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{setCredsFormErrors.confirmPassword[0]}</p>}
+                         {setCredsFormErrors.confirmPassword && <p className="mt-1.5 text-xs text-error-minimal">{setCredsFormErrors.confirmPassword[0]}</p>}
                      </div>
                      {/* Submit Button */}
                      <div>
-                         <AnimatedButton type="submit" disabled={setCredsLoading || actionLoading}>
-                             {setCredsLoading ? 'Setting Credentials...' : 'Set Credentials'}
+                         <AnimatedButton 
+                           type="submit" 
+                           disabled={setCredsLoading || actionLoading}
+                           className="bg-text-light dark:bg-text-dark text-primary-light dark:text-primary-dark border border-text-light dark:border-text-dark rounded-cyber font-mono text-sm px-4 py-2 hover:opacity-90"
+                         >
+                             {setCredsLoading ? 'SETTING CREDENTIALS...' : 'SET CREDENTIALS'}
                          </AnimatedButton>
                      </div>
                  </form>
@@ -654,8 +552,8 @@ const ProfileContent = () => {
         {/* Wrap editable sections in a form */}
         <form onSubmit={handleSubmit}>
           {/* Section 2: Personal Details (Editable) */}
-           <h2 className="text-xl font-medium text-text-light dark:text-text-dark pt-5 pb-3 border-b border-gray-300 dark:border-zinc-700 mb-4">
-               Personal Details
+           <h2 className="text-xl font-bold text-text-light dark:text-text-dark pt-5 pb-3 border-b border-black/20 dark:border-white/20 mb-4 font-mono">
+               PERSONAL DETAILS
            </h2>
           {renderField('Full Legal Name', 'fullName', 'text')}
           {renderField('Date of Birth', 'dateOfBirth', 'date')} 
@@ -663,8 +561,8 @@ const ProfileContent = () => {
           {renderField('Phone Number', 'phone', 'tel')} 
 
            {/* Section 3: Address (Editable) */}
-           <h2 className="text-xl font-medium text-text-light dark:text-text-dark pt-5 pb-3 border-b border-gray-300 dark:border-zinc-700 mb-4">
-               Residential / Business Address
+           <h2 className="text-xl font-bold text-text-light dark:text-text-dark pt-5 pb-3 border-b border-black/20 dark:border-white/20 mb-4 font-mono">
+               RESIDENTIAL / BUSINESS ADDRESS
            </h2>
           {renderField('Address Line 1', 'addressLine1')}
           {renderField('Address Line 2', 'addressLine2')}
@@ -676,10 +574,10 @@ const ProfileContent = () => {
           {renderField('Country', 'country')}
 
           {/* Section 4: Documents (Editable References) */}
-           <h2 className="text-xl font-medium text-text-light dark:text-text-dark pt-5 pb-3 border-b border-gray-300 dark:border-zinc-700 mb-4">
-               KYC Documents (References)
+           <h2 className="text-xl font-bold text-text-light dark:text-text-dark pt-5 pb-3 border-b border-black/20 dark:border-white/20 mb-4 font-mono">
+               KYC DOCUMENTS (REFERENCES)
            </h2>
-           <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Provide references (e.g., file IDs, secure links) to your uploaded documents. Actual document upload requires a separate process.</p>
+           <p className="text-xs text-text-light/60 dark:text-text-dark/60 mb-4 font-mono">Provide references (e.g., file IDs, secure links) to your uploaded documents. Actual document upload requires a separate process.</p>
            {/* Example Select for ID Type */}
            {renderField('Government ID Type', 'govIdType', 'select', false, [
                {value: 'passport', label: 'Passport'},
@@ -691,13 +589,13 @@ const ProfileContent = () => {
            {renderField('Source of Funds Document Reference', 'sofDocRef', 'text')}
 
           {isEditing && (
-            <div className="pt-6 text-right border-t border-gray-300 dark:border-zinc-700 mt-8">
+            <div className="pt-6 text-right border-t border-black/20 dark:border-white/20 mt-8">
                <AnimatedButton
                  type="submit" 
                  disabled={actionLoading || !isEditing}
-                 className="inline-flex justify-center py-2.5 px-6 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60"
+                 className="inline-flex justify-center py-2.5 px-6 border border-success-minimal rounded-cyber shadow-sm text-sm font-bold text-success-minimal bg-success-minimal/10 hover:bg-success-minimal/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-success-minimal/50 disabled:opacity-60 font-mono transition-all duration-300"
                >
-                 {actionLoading ? 'Saving...' : 'Save Changes'}
+                 {actionLoading ? 'SAVING...' : 'SAVE CHANGES'}
                </AnimatedButton>
             </div>
           )}

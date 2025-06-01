@@ -1,31 +1,30 @@
 import React from 'react';
 import FileInputField from '@/components/common/FileInputField';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { FiAlertCircle } from 'react-icons/fi';
 
-// Define the specific file field name used in this component
+// Define the specific file field names used in this component
 export type OwnerKycFileFieldNames = 'idDocumentFile';
 
-// Define the form data structure specific to this section
+// Define the structure of the expected formData subset
 export interface OwnerKycFormData {
   ownerName: string;
   ownerContact: string;
-  ownerIdType: string; // Consider enum later: 'passport' | 'drivers_license' | 'national_id' | 'other'
-  govIdNumber: string; // Renamed from ownerIdNumber
-  idDocumentFile: File | null; // Renamed from ownerIdFile
+  ownerIdType: string;
+  govIdNumber: string;
+  idDocumentFile: File | null;
+  kycStatus: string;
 }
 
 interface OwnerKycProps {
   formData: OwnerKycFormData;
-  handleInputChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  handleInputChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleDrop: (event: React.DragEvent<HTMLDivElement>, fieldName: OwnerKycFileFieldNames) => void;
   filePreviews: Record<string, string | string[]>;
   inputFieldStyles: string;
   inputFieldDisabledStyles: string;
   isSubmitting: boolean;
-  isVerified: boolean; // Pass verification status from parent
+  isVerified: boolean;
 }
 
 const OwnerKycSection: React.FC<OwnerKycProps> = ({ 
@@ -37,118 +36,155 @@ const OwnerKycSection: React.FC<OwnerKycProps> = ({
   inputFieldStyles,
   inputFieldDisabledStyles,
   isSubmitting,
-  isVerified // Get verification status
+  isVerified
 }) => {
-  // Derive display styles based on verification status
-  const kycStatusText = isVerified ? "Verified" : "Not Verified";
-  const kycStatusColor = isVerified ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
-
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5 }} // Adjust delay
-      className="pt-8 px-8 pb-6 border-t border-gray-200 dark:border-zinc-800"
+      transition={{ delay: 0.8 }}
+      className="pt-12 px-12 pb-8 border-t-2 border-black/20 dark:border-white/20 relative"
     >
-      <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6 flex items-center">
-        <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full mr-3 flex items-center justify-center text-sm font-bold">4</span>
-        Owner Identity & KYC
-      </h2>
+      {/* Cyber section background effects */}
+      <motion.div
+        className="absolute inset-0 opacity-[0.01] dark:opacity-[0.02] pointer-events-none"
+        animate={{
+          background: [
+            "linear-gradient(0deg, transparent 49%, rgba(0,0,0,0.05) 50%, transparent 51%)",
+            "linear-gradient(180deg, transparent 49%, rgba(0,0,0,0.05) 50%, transparent 51%)",
+            "linear-gradient(0deg, transparent 49%, rgba(0,0,0,0.05) 50%, transparent 51%)",
+          ],
+        }}
+        transition={{ duration: 12, repeat: Infinity }}
+      />
       
-       {/* Display KYC status based on passed prop */}
-      <div className="flex items-center space-x-2 mb-4">
-          <span className="text-text-light dark:text-text-dark opacity-80 text-sm font-medium">Account KYC Status:</span>
-          <span className={`font-semibold ${kycStatusColor}`}>{kycStatusText}</span>
-          {!isVerified && (
-             <Link href="/profile" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">(Complete KYC)</Link>
-          )}
-       </div>
-       
-       {/* Warning if KYC is not complete */} 
-       {!isVerified && (
-          <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-300 rounded-lg flex items-center space-x-2 text-sm">
-             <FiAlertCircle className="h-4 w-4 flex-shrink-0" />
-             <span>Owner details provided here should match your KYC information for successful verification.</span>
-          </div>
-       )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Owner Full Name */}
-        <div>
-          <label htmlFor="ownerName" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Owner Full Name</label>
+      <motion.h2 
+        className="text-2xl font-mono uppercase tracking-wider text-black dark:text-white mb-8 flex items-center"
+        whileHover={{ textShadow: "0 0 20px rgba(0, 0, 0, 0.5)" }}
+      >
+        <motion.span 
+          className="w-10 h-10 bg-black dark:bg-white text-white dark:text-black mr-4 flex items-center justify-center text-lg font-bold font-mono border border-black/30 dark:border-white/30"
+          animate={{ rotate: [0, 360] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        >
+          4
+        </motion.span>
+        OWNER IDENTITY & KYC
+      </motion.h2>
+      
+      {/* Verification Status Banner */}
+      {isVerified && (
+        <motion.div 
+          className="mb-8 p-6 border border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/20"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 1.0 }}
+        >
+          <motion.p 
+            className="text-green-800 dark:text-green-200 font-mono text-sm"
+            animate={{ opacity: [0.8, 1, 0.8] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            ✓ ACCOUNT VERIFIED - KYC STATUS: APPROVED
+          </motion.p>
+        </motion.div>
+      )}
+      
+      {/* Owner Information */}
+      <motion.div 
+        className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.0 }}
+      >
+        <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+          <label htmlFor="ownerName" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Owner Full Name *</label>
           <input
             type="text"
             id="ownerName"
             name="ownerName"
             value={formData.ownerName}
             onChange={handleInputChange}
-            placeholder="As per official documents"
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+            placeholder="e.g., John Michael Smith"
             disabled={isSubmitting}
           />
-        </div>
-        {/* Owner Contact Info (Phone/Email) */}
-        <div>
-          <label htmlFor="ownerContact" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">Owner Contact (Phone/Email)</label>
+        </motion.div>
+        <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+          <label htmlFor="ownerContact" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Contact Information *</label>
           <input
-            type="text"
+            type="email"
             id="ownerContact"
             name="ownerContact"
             value={formData.ownerContact}
             onChange={handleInputChange}
-            placeholder="e.g., +1-555-123-4567 or owner@example.com"
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+            placeholder="e.g., owner@example.com"
             disabled={isSubmitting}
           />
-        </div>
-        {/* ID Type */}
-        <div>
-          <label htmlFor="ownerIdType" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">ID Type</label>
-          <select 
-             id="ownerIdType" 
-             name="ownerIdType" 
-             value={formData.ownerIdType} 
-             onChange={handleInputChange} 
-             className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-             disabled={isSubmitting}
+        </motion.div>
+      </motion.div>
+
+      {/* Government ID Section */}
+      <motion.div
+        className="border-t-2 border-black/20 dark:border-white/20 pt-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2 }}
+      >
+        <motion.h3 
+          className="text-lg font-mono uppercase tracking-wider text-black dark:text-white mb-6"
+          whileHover={{ textShadow: "0 0 15px rgba(0, 0, 0, 0.3)" }}
+        >
+          GOVERNMENT IDENTIFICATION
+        </motion.h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+            <label htmlFor="ownerIdType" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">ID Type *</label>
+            <select
+              id="ownerIdType"
+              name="ownerIdType"
+              value={formData.ownerIdType}
+              onChange={handleInputChange}
+              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+              disabled={isSubmitting}
             >
-              <option value="" disabled>Select ID Type</option>
+              <option value="">Select ID Type</option>
               <option value="passport">Passport</option>
-              <option value="drivers_license">Driver's License</option>
-              <option value="national_id">National ID Card</option>
-              <option value="other">Other</option>
-           </select>
+              <option value="nationalId">National ID</option>
+              <option value="driversLicense">Driver's License</option>
+              <option value="stateId">State ID</option>
+            </select>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+            <label htmlFor="govIdNumber" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Government ID Number *</label>
+            <input
+              type="text"
+              id="govIdNumber"
+              name="govIdNumber"
+              value={formData.govIdNumber}
+              onChange={handleInputChange}
+              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+              placeholder="e.g., A12345678"
+              disabled={isSubmitting}
+            />
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }} className="md:col-span-2">
+            <label htmlFor="idDocumentFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
+              Government ID Document Upload *
+            </label>
+            <FileInputField
+              id="idDocumentFile"
+              label=""
+              accept=".pdf,.jpg,.jpeg,.png"
+              file={formData.idDocumentFile}
+              previewUrl={filePreviews.idDocumentFile || null}
+              onChange={handleFileChange}
+              onDrop={(e) => handleDrop(e, 'idDocumentFile')}
+            />
+          </motion.div>
         </div>
-        {/* ID Number */}
-        <div>
-          <label htmlFor="govIdNumber" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">ID Number</label>
-          <input
-            type="text"
-            id="govIdNumber"
-            name="govIdNumber"
-            value={formData.govIdNumber}
-            onChange={handleInputChange}
-            placeholder="Enter the number matching the ID Type"
-            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
-            disabled={isSubmitting}
-          />
-        </div>
-        {/* ID Document Upload */}
-        <div> 
-          <label htmlFor="idDocumentFile" className="block text-text-light dark:text-text-dark opacity-80 mb-1 text-sm font-medium">
-            ID Document Scan/Upload
-          </label>
-          <FileInputField
-            id="idDocumentFile"
-            label=""
-            accept=".pdf,.jpg,.png"
-            file={formData.idDocumentFile}
-            previewUrl={filePreviews.idDocumentFile || null}
-            onChange={handleFileChange}
-            onDrop={(e) => handleDrop(e, 'idDocumentFile')} 
-          />
-        </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };
