@@ -222,8 +222,9 @@ export async function POST(req: NextRequest) {
       }),
       
       listingTitle: nftTitle,
+      nftTitle: nftTitle,
       nftImageIrysUri: nftImageUrlArweave,
-      coverImageUrl: savedFiles.nftImageFileRef,
+      nftImageFileRef: savedFiles.nftImageFileRef,
       listingPrice: (formData as any).get('listingPrice') ? parseFloat(((formData as any).get('listingPrice') as string)!) : null,
       priceCurrency: ((formData as any).get('priceCurrency') as string | null) || 'ETH',
       

@@ -136,6 +136,19 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
   // Image preloading hook
   const { preload, preloadSingle } = useImagePreloading();
 
+  // Helper function to format collection names by removing "Collection: " prefix
+  const formatCollectionName = (name?: string): string => {
+    if (!name) return 'Untitled Listing';
+    
+    // Remove "Collection: " or "collection: " prefix (case insensitive)
+    const lowerName = name.toLowerCase();
+    if (lowerName.startsWith('collection: ')) {
+      return name.substring('collection: '.length).trim();
+    }
+    
+    return name;
+  };
+
   // Fetch collection data on mount
   useEffect(() => {
     fetchCollectionData();
@@ -304,7 +317,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       });
 
       if (!collectionData) {
-        throw new Error("Collection not found");
+        throw new Error("Listing not found");
       }
       
       // Destructure collection data
@@ -368,7 +381,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
             console.error("[NFTCollectionDetailPage] Revert Reason:", error.reason); // Common field for revert reasons
           }
         setLoading(false); // Corrected typo
-        setError(`Failed to get marketplace details for collection ${collectionId}. The collection might not be listed, or an on-chain error occurred.`);
+        setError(`Failed to get marketplace details for listing ${collectionId}. The listing might not be listed, or an on-chain error occurred.`);
         // Re-throw the original error to see it in the browser console for full diagnosis
         throw error; 
       }
@@ -376,7 +389,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       // Fetch collection metadata
       const metadata = await fetchMetadata(collectionURI);
       if (!metadata) {
-        throw new Error("Failed to fetch collection metadata");
+        throw new Error("Failed to fetch listing metadata");
       }
       
       // Create token array for the collection
@@ -508,7 +521,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       // Transform to our application's collection format
       const transformedCollection: NFTCollection = {
         id: parsedCollectionId.toString(),
-        nftTitle: metadata.name || `Collection #${parsedCollectionId}`,
+        nftTitle: metadata.name || `Listing #${parsedCollectionId}`,
         nftDescription: metadata.description || 'No description provided',
         listingPrice: isActive && typeof basePrice !== 'undefined' ? Number(formatEther(basePrice)) : 0,
         priceCurrency: 'ETH',
@@ -596,7 +609,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       
     } catch (err: any) {
       console.error('Error fetching collection:', err);
-      setError(err.message || 'An error occurred while fetching the collection');
+      setError(err.message || 'An error occurred while fetching the listing');
     } finally {
       setLoading(false);
     }
@@ -787,8 +800,8 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
     return (
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Collection Not Found</h2>
-          <p className="text-yellow-700 dark:text-yellow-300">The NFT collection you're looking for doesn't exist or has been removed.</p>
+          <h2 className="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Listing Not Found</h2>
+          <p className="text-yellow-700 dark:text-yellow-300">The NFT listing you're looking for doesn't exist or has been removed.</p>
           <Link
             href="/explore"
             className="mt-4 inline-block px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg"
@@ -868,13 +881,13 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           <div className="md:w-1/3 h-64 md:h-auto bg-black/5 dark:bg-white/5 flex-shrink-0 rounded-tl-cyber-lg md:rounded-bl-cyber-lg md:rounded-tr-none rounded-tr-cyber-lg">
             <NFTImage
               src={collection.nftImageFileRef || ''}
-              alt={collection.nftTitle || 'Collection Image'}
+              alt={formatCollectionName(collection.nftTitle) || 'Listing Image'}
               className="w-full h-full"
               collectionId={collection.id}
               isMainToken={true}
               priority={true}
               dimensions={{ aspectRatio: '4/3' }}
-              fallback="https://placehold.co/400x300/gray/white?text=Collection+Image"
+              fallback="https://placehold.co/400x300/gray/white?text=Listing+Image"
             />
           </div>
           <div className="p-6 flex-1">
@@ -894,7 +907,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                   }}
                   transition={{ duration: 3, repeat: Infinity }}
                 >
-                  {collection.nftTitle || 'Untitled Collection'}
+                  {formatCollectionName(collection.nftTitle)}
                 </motion.h1>
                 <motion.p 
                   className="text-text-light/70 dark:text-text-dark/70 mb-4 font-mono"
@@ -1009,7 +1022,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 </p>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }}>
-                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Collection Size</p>
+                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Listing Size</p>
                 <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                   {collection.nftCollectionSize} NFTs
                 </p>
@@ -1167,7 +1180,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
               }}
             >
-              COLLECTION TOKENS
+              LISTING TOKENS
             </motion.h2>
             <motion.p 
               className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
@@ -1175,7 +1188,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              This collection contains {collection.nftCollectionSize} NFT tokens representing ownership shares in the property.
+              This listing contains {collection.nftCollectionSize} NFT tokens representing ownership shares in the property.
             </motion.p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {(() => {
@@ -1443,7 +1456,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                     </p>
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.02 }}>
-                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Collection Size</p>
+                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Listing Size</p>
                     <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                       {collection.nftCollectionSize} NFTs
                     </p>
@@ -1509,7 +1522,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
               }}
             >
-              COLLECTION METADATA
+              LISTING METADATA
             </motion.h2>
             <motion.p 
               className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
@@ -1517,7 +1530,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              View the blockchain metadata for this NFT collection.
+              View the blockchain metadata for this NFT listing.
             </motion.p>
             <motion.div 
               className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 overflow-x-auto border border-white/10"
@@ -1594,7 +1607,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
               }}
             >
-              COLLECTION ACTIVITY
+              LISTING ACTIVITY
             </motion.h2>
             <motion.p 
               className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
@@ -1602,7 +1615,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              Recent transactions and activities for this NFT collection.
+              Recent transactions and activities for this NFT listing.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1628,15 +1641,15 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Confirm Purchase</h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 {purchaseType === 'collection' 
-                  ? `You are about to purchase the entire Collection #${collection.id}.`
-                  : `You are about to purchase Token #${selectedTokenId} from Collection #${collection.id}.`
+                  ? `You are about to purchase the entire Listing #${collection.id}.`
+                  : `You are about to purchase Token #${selectedTokenId} from Listing #${collection.id}.`
                 }
               </p>
               <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 mb-6">
                 <div className="flex justify-between mb-2">
                   <span className="text-gray-600 dark:text-gray-400">Item:</span>
                   <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {purchaseType === 'collection' ? 'Entire Collection' : `Token #${selectedTokenId}`}
+                    {purchaseType === 'collection' ? 'Entire Listing' : `Token #${selectedTokenId}`}
                   </span>
                 </div>
                 <div className="flex justify-between mb-2">
@@ -1708,7 +1721,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               listingPrice: token.listingPrice,
               metadata: tokenMetadataCache[token.tokenId]
             }))}
-          collectionName={collection.nftTitle}
+          collectionName={formatCollectionName(collection.nftTitle)}
           collectionId={collection.collectionId}
         />
       )}
