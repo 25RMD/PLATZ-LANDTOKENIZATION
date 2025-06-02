@@ -1,12 +1,13 @@
-import Link from "next/link";
 import React, { useRef } from "react";
 import { formatEther } from 'viem';
 import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import { CollectionDetail } from '../lib/types';
-import { useCurrency } from '@/context/CurrencyContext'; 
+import { useCurrency } from '@/context/CurrencyContext'; // Re-enabled with hydration guards
+import { usePreservedNavigation } from '@/hooks/usePreservedNavigation';
 
 const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
-  const { formatPriceWithConversion } = useCurrency();
+  const { formatPriceWithConversion } = useCurrency(); // Re-enabled
+  const { navigateToCollection } = usePreservedNavigation();
   const cardRef = useRef<HTMLDivElement>(null);
   
   // Enhanced 3D tilt effect
@@ -39,7 +40,12 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
     x.set(0);
     y.set(0);
   };
+
+  const handleCardClick = () => {
+    navigateToCollection(collection.collectionId.toString());
+  };
   
+  // Enhanced price formatting with currency conversion
   const formatDisplayPrice = (priceInWei?: bigint): string => {
     if (!collection.isListed || typeof priceInWei === 'undefined' || priceInWei === 0n) return "Not Listed";
     const priceInEth = parseFloat(formatEther(priceInWei));
@@ -59,10 +65,8 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
     return name;
   };
 
-  const linkHref = `/explore/${collection.collectionId.toString()}`;
-
   return (
-    <Link href={linkHref} className="block group">
+    <div className="block group cursor-pointer" onClick={handleCardClick}>
       {/* Floating container with enhanced animations */}
       <motion.div
         animate={{
@@ -98,6 +102,7 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
             boxShadow: "0 0 40px rgba(0, 0, 0, 0.3)",
             scale: 1.02
           }}
+          whileTap={{ scale: 0.98 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -271,7 +276,7 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
               >
             {collection.description || 'No description available.'}
               </motion.p>
-            )}
+        )}
 
             {/* Stats Section with enhanced styling */}
             <div className="flex justify-between items-center pt-4 border-t border-black/20 dark:border-white/20">
@@ -351,7 +356,7 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
           />
         </motion.div>
       </motion.div>
-    </Link>
+    </div>
   );
 }
 

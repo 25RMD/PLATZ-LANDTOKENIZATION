@@ -184,52 +184,52 @@ const LegalDocumentsSection: React.FC<LegalDocumentsProps> = ({
         </motion.h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-            <FileInputField
-              id="titleCertFile"
-              label="Title Certificate Document"
-              accept=".pdf,.jpg,.jpeg,.png"
-              file={formData.titleCertFile}
-              previewUrl={filePreviews.titleCertFile || null}
-              onChange={handleFileChange}
+         <FileInputField
+          id="titleCertFile"
+          label="Title Certificate Document"
+          accept=".pdf,.jpg,.jpeg,.png"
+          file={formData.titleCertFile}
+          previewUrl={filePreviews.titleCertFile || null}
+          onChange={handleFileChange}
               onDrop={(e) => handleDrop(e, 'titleCertFile')}
-            />
+        />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="certNumber" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Certificate Number</label>
-            <input
-              type="text"
-              id="certNumber"
-              name="certNumber"
-              value={formData.certNumber}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
-              placeholder="e.g., TC9876543"
-              disabled={isSubmitting}
-            />
+          <input
+            type="text"
+            id="certNumber"
+            name="certNumber"
+            value={formData.certNumber}
+            onChange={handleInputChange}
+            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+            placeholder="e.g., TC9876543"
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="certIssueDate" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Certificate Issue Date</label>
-            <input
-              type="date"
-              id="certIssueDate"
-              name="certIssueDate"
-              value={formData.certIssueDate}
-              onChange={handleInputChange}
-              className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-              disabled={isSubmitting}
-            />
+          <input
+            type="date"
+            id="certIssueDate"
+            name="certIssueDate"
+            value={formData.certIssueDate}
+            onChange={handleInputChange}
+            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="certExpiryDate" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Certificate Expiry Date</label>
-            <input
-              type="date"
-              id="certExpiryDate"
-              name="certExpiryDate"
-              value={formData.certExpiryDate}
-              onChange={handleInputChange}
-              className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-              disabled={isSubmitting}
-            />
+          <input
+            type="date"
+            id="certExpiryDate"
+            name="certExpiryDate"
+            value={formData.certExpiryDate}
+            onChange={handleInputChange}
+            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
+            disabled={isSubmitting}
+          />
           </motion.div>
         </div>
       </motion.div>
@@ -249,52 +249,52 @@ const LegalDocumentsSection: React.FC<LegalDocumentsProps> = ({
         </motion.h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-            <FileInputField
-              id="encumbranceFile"
-              label="Encumbrance Certificate Document"
-              accept=".pdf,.jpg,.jpeg,.png"
-              file={formData.encumbranceFile}
-              previewUrl={filePreviews.encumbranceFile || null}
-              onChange={handleFileChange}
+         <FileInputField
+          id="encumbranceFile"
+          label="Encumbrance Certificate Document"
+          accept=".pdf,.jpg,.jpeg,.png"
+          file={formData.encumbranceFile}
+          previewUrl={filePreviews.encumbranceFile || null}
+          onChange={handleFileChange}
               onDrop={(e) => handleDrop(e, 'encumbranceFile')}
-            />
+        />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="encumbranceId" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Encumbrance ID</label>
-            <input
-              type="text"
-              id="encumbranceId"
-              name="encumbranceId"
-              value={formData.encumbranceId}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+          <input
+            type="text"
+            id="encumbranceId"
+            name="encumbranceId"
+            value={formData.encumbranceId}
+            onChange={handleInputChange}
+            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="e.g., EC2023456789"
-              disabled={isSubmitting}
-            />
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="encumbrancePeriodStart" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Period Start Date</label>
-            <input
-              type="date"
-              id="encumbrancePeriodStart"
-              name="encumbrancePeriodStart"
-              value={formData.encumbrancePeriodStart}
-              onChange={handleInputChange}
-              className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-              disabled={isSubmitting}
-            />
+          <input
+            type="date"
+            id="encumbrancePeriodStart"
+            name="encumbrancePeriodStart"
+            value={formData.encumbrancePeriodStart}
+            onChange={handleInputChange}
+            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="encumbrancePeriodEnd" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Period End Date</label>
-            <input
-              type="date"
-              id="encumbrancePeriodEnd"
-              name="encumbrancePeriodEnd"
-              value={formData.encumbrancePeriodEnd}
-              onChange={handleInputChange}
-              className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-              disabled={isSubmitting}
-            />
+          <input
+            type="date"
+            id="encumbrancePeriodEnd"
+            name="encumbrancePeriodEnd"
+            value={formData.encumbrancePeriodEnd}
+            onChange={handleInputChange}
+            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
+            disabled={isSubmitting}
+          />
           </motion.div>
         </div>
       </motion.div>

@@ -77,29 +77,29 @@ const ChainOfTitleSection: React.FC<ChainOfTitleProps> = ({
           <label htmlFor="previousDeedFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
             Previous Deed Documents
           </label>
-          <FileInputField
-            id="previousDeedFile"
+        <FileInputField
+          id="previousDeedFile"
             label=""
             accept=".pdf,.jpg,.jpeg,.png"
-            file={formData.previousDeedFile}
-            previewUrl={filePreviews.previousDeedFile || null}
-            onChange={handleFileChange}
-            onDrop={(e) => handleDrop(e, 'previousDeedFile')}
-          />
+          file={formData.previousDeedFile}
+          previewUrl={filePreviews.previousDeedFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'previousDeedFile')}
+        />
         </motion.div>
         <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
           <label htmlFor="titleReportFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
             Title Report Upload
           </label>
-          <FileInputField
-            id="titleReportFile"
+        <FileInputField
+          id="titleReportFile"
             label=""
             accept=".pdf,.doc,.docx"
-            file={formData.titleReportFile}
-            previewUrl={filePreviews.titleReportFile || null}
-            onChange={handleFileChange}
-            onDrop={(e) => handleDrop(e, 'titleReportFile')}
-          />
+          file={formData.titleReportFile}
+          previewUrl={filePreviews.titleReportFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'titleReportFile')}
+        />
         </motion.div>
       </motion.div>
 
@@ -121,41 +121,41 @@ const ChainOfTitleSection: React.FC<ChainOfTitleProps> = ({
             <label htmlFor="titleInsuranceFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
               Title Insurance Policy
             </label>
-            <FileInputField
-              id="titleInsuranceFile"
+        <FileInputField
+          id="titleInsuranceFile"
               label=""
               accept=".pdf,.doc,.docx"
-              file={formData.titleInsuranceFile}
-              previewUrl={filePreviews.titleInsuranceFile || null}
-              onChange={handleFileChange}
-              onDrop={(e) => handleDrop(e, 'titleInsuranceFile')}
-            />
+          file={formData.titleInsuranceFile}
+          previewUrl={filePreviews.titleInsuranceFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'titleInsuranceFile')}
+        />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="titleInsuranceCompany" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Insurance Company</label>
-            <input
-              type="text"
-              id="titleInsuranceCompany"
-              name="titleInsuranceCompany"
-              value={formData.titleInsuranceCompany}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+          <input
+            type="text"
+            id="titleInsuranceCompany"
+            name="titleInsuranceCompany"
+            value={formData.titleInsuranceCompany}
+            onChange={handleInputChange}
+            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="e.g., First American Title Insurance"
-              disabled={isSubmitting}
-            />
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="titleInsurancePolicyNumber" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Policy Number</label>
-            <input
-              type="text"
-              id="titleInsurancePolicyNumber"
-              name="titleInsurancePolicyNumber"
-              value={formData.titleInsurancePolicyNumber}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+          <input
+            type="text"
+            id="titleInsurancePolicyNumber"
+            name="titleInsurancePolicyNumber"
+            value={formData.titleInsurancePolicyNumber}
+            onChange={handleInputChange}
+            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="e.g., TI-2023-12345"
-              disabled={isSubmitting}
-            />
+            disabled={isSubmitting}
+          />
           </motion.div>
         </div>
       </motion.div>
@@ -176,30 +176,30 @@ const ChainOfTitleSection: React.FC<ChainOfTitleProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="encumbranceDetails" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Encumbrance Details</label>
-            <textarea
-              id="encumbranceDetails"
-              name="encumbranceDetails"
-              value={formData.encumbranceDetails}
-              onChange={handleInputChange}
-              rows={4}
+             <textarea
+                id="encumbranceDetails"
+                name="encumbranceDetails"
+                value={formData.encumbranceDetails}
+                onChange={handleInputChange}
+                rows={4}
               className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="Describe any liens, easements, or other encumbrances"
-              disabled={isSubmitting}
-            />
+                disabled={isSubmitting}
+             />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="encumbranceHistoryFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
               Encumbrance History Documents
             </label>
-            <FileInputField
-              id="encumbranceHistoryFile"
+        <FileInputField
+          id="encumbranceHistoryFile"
               label=""
               accept=".pdf,.doc,.docx"
-              file={formData.encumbranceHistoryFile}
-              previewUrl={filePreviews.encumbranceHistoryFile || null}
-              onChange={handleFileChange}
-              onDrop={(e) => handleDrop(e, 'encumbranceHistoryFile')}
-            />
+          file={formData.encumbranceHistoryFile}
+          previewUrl={filePreviews.encumbranceHistoryFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'encumbranceHistoryFile')}
+        />
           </motion.div>
         </div>
       </motion.div>
@@ -222,25 +222,25 @@ const ChainOfTitleSection: React.FC<ChainOfTitleProps> = ({
             <label htmlFor="titleOpinionFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
               Attorney Title Opinion
             </label>
-            <FileInputField
-              id="titleOpinionFile"
+        <FileInputField
+          id="titleOpinionFile"
               label=""
               accept=".pdf,.doc,.docx"
-              file={formData.titleOpinionFile}
-              previewUrl={filePreviews.titleOpinionFile || null}
-              onChange={handleFileChange}
-              onDrop={(e) => handleDrop(e, 'titleOpinionFile')}
-            />
+          file={formData.titleOpinionFile}
+          previewUrl={filePreviews.titleOpinionFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'titleOpinionFile')}
+        />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="attorneyOpinionProvider" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Attorney / Law Firm</label>
-            <input
-              type="text"
-              id="attorneyOpinionProvider"
-              name="attorneyOpinionProvider"
-              value={formData.attorneyOpinionProvider}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+          <input
+            type="text"
+            id="attorneyOpinionProvider"
+            name="attorneyOpinionProvider"
+            value={formData.attorneyOpinionProvider}
+            onChange={handleInputChange}
+            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="e.g., Smith & Associates Law Firm"
               disabled={isSubmitting}
             />
@@ -255,8 +255,8 @@ const ChainOfTitleSection: React.FC<ChainOfTitleProps> = ({
               rows={3}
               className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="List any recorded instruments affecting the property"
-              disabled={isSubmitting}
-            />
+            disabled={isSubmitting}
+          />
           </motion.div>
         </div>
       </motion.div>

@@ -67,7 +67,7 @@ const Card3D = ({
   
   const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["17.5deg", "-17.5deg"]);
   const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-17.5deg", "17.5deg"]);
-  
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || isFlipped) return; // Don't tilt when flipped
     
@@ -155,11 +155,23 @@ const Card3D = ({
         </motion.div>
       </motion.div>
       
-      {/* Enhanced animated glow effect */}
+      {/* Enhanced animated glow effect - Light mode */}
       <motion.div
-        className="absolute inset-0 rounded-cyber-lg pointer-events-none"
+        className="absolute inset-0 rounded-cyber-lg pointer-events-none dark:hidden"
         style={{
           background: "radial-gradient(circle at center, rgba(0, 0, 0, 0.4), transparent 70%)",
+          filter: "blur(30px)",
+          zIndex: -1,
+          opacity: 0,
+        }}
+        whileHover={{ opacity: isFlipped ? 0 : 1 }}
+        transition={{ duration: 0.3 }}
+      />
+      {/* Dark mode glow effect */}
+      <motion.div
+        className="absolute inset-0 rounded-cyber-lg pointer-events-none dark:block hidden"
+        style={{
+          background: "radial-gradient(circle at center, rgba(255, 255, 255, 0.3), transparent 70%)",
           filter: "blur(30px)",
           zIndex: -1,
           opacity: 0,
@@ -331,11 +343,12 @@ const HomePage = () => {
                 index={index}
                 front={
                   <motion.div 
-                    className="relative z-10 p-4 sm:p-6 border border-black/20 dark:border-white/20 rounded-cyber-lg h-full min-h-[280px] bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group flex flex-col"
+                    className="relative z-10 p-4 sm:p-6 border border-black/20 dark:border-white/20 rounded-cyber-lg h-full min-h-[280px] bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group flex flex-col card-hover-effect"
                     whileHover={{ 
                       borderColor: "rgba(0, 0, 0, 0.8)",
                       boxShadow: "0 0 40px rgba(0, 0, 0, 0.3)"
                     }}
+                    transition={{ duration: 0.3 }}
                   >
                     {/* Enhanced cyber scan line effect */}
                     <motion.div
@@ -351,7 +364,7 @@ const HomePage = () => {
                     />
                     
                     {/* Enhanced animated gradient background */}
-            <motion.div 
+                    <motion.div 
                       className="absolute inset-0 opacity-10 dark:opacity-15 rounded-cyber-lg"
                       animate={{
                         background: [
@@ -376,13 +389,13 @@ const HomePage = () => {
                           textShadow: "0 0 15px rgba(0, 0, 0, 0.4)",
                         }}
                       >
-                  {feature.title}
+                        {feature.title}
                       </motion.h3>
                       
                       <p className="text-sm sm:text-base text-black/70 dark:text-white/70 relative z-10 font-mono flex-grow">
-                  {feature.description}
-                </p>
-              </div>
+                        {feature.description}
+                      </p>
+                    </div>
                   </motion.div>
                 }
                 back={
@@ -403,8 +416,8 @@ const HomePage = () => {
                     />
                     
                     <h3 className="text-lg sm:text-xl font-semibold font-mono uppercase tracking-wider text-black dark:text-white mb-2 text-center relative z-10">
-                  {feature.title}
-                 </h3>
+                      {feature.title}
+                    </h3>
                     
                     <motion.button
                       className="mt-4 px-4 py-2 border border-black/50 dark:border-white/50 rounded-cyber text-sm text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-colors relative z-10 font-mono uppercase tracking-wider"
@@ -416,7 +429,7 @@ const HomePage = () => {
                   </motion.div>
                 }
               />
-              </div>
+            </div>
           ))}
         </div>
       </FadeInSection>
@@ -448,11 +461,11 @@ const HomePage = () => {
           />
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 md:gap-12 [perspective:1000px] relative">
-          {[ // Steps data
-            { icon: FiUserCheck, title: "1. Verify & Onboard", description: "Upload your title deeds and complete our secure KYC process to verify property ownership." },
-            { icon: FiCpu, title: "2. Tokenize Asset", description: "Smart contracts mint digital tokens representing your land's equity, ready for distribution." },
-            { icon: FiBarChart2, title: "3. Trade & Manage", description: "List tokens on integrated exchanges, track ownership, and receive dividends automatically." },
-          ].map((step, index) => (
+            {[ // Steps data
+              { icon: FiUserCheck, title: "1. Verify & Onboard", description: "Upload your title deeds and complete our secure KYC process to verify property ownership." },
+              { icon: FiCpu, title: "2. Tokenize Asset", description: "Smart contracts mint digital tokens representing your land's equity, ready for distribution." },
+              { icon: FiBarChart2, title: "3. Trade & Manage", description: "List tokens on integrated exchanges, track ownership, and receive dividends automatically." },
+            ].map((step, index) => (
               <div key={index} className="relative min-h-[350px] h-full">
                 {/* Enhanced step number badge */}
                 <motion.div
@@ -472,14 +485,15 @@ const HomePage = () => {
                   index={index}
                   front={
                     <motion.div 
-                      className="relative z-10 p-4 sm:p-6 border-2 border-black/30 dark:border-white/30 rounded-cyber-lg h-full min-h-[320px] bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group flex flex-col"
+                      className="relative z-10 p-4 sm:p-6 border-2 border-black/30 dark:border-white/30 rounded-cyber-lg h-full min-h-[320px] bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group flex flex-col card-step-hover-effect"
                       whileHover={{ 
                         borderColor: "rgba(0, 0, 0, 0.8)",
                         boxShadow: "0 0 30px rgba(0, 0, 0, 0.3)",
                       }}
+                      transition={{ duration: 0.3 }}
                     >
                       {/* Enhanced pulse effect */}
-            <motion.div 
+                      <motion.div 
                         className="absolute inset-0 rounded-cyber-lg"
                         animate={{
                           boxShadow: [
@@ -503,18 +517,18 @@ const HomePage = () => {
                             textShadow: "0 0 20px rgba(0, 0, 0, 0.5)",
                           }}
                         >
-                  {step.title}
+                          {step.title}
                         </motion.h3>
                         
                         <p className="text-sm sm:text-base text-black/70 dark:text-white/70 relative z-10 font-mono flex-grow">
-                  {step.description}
-                </p>
-              </div>
+                          {step.description}
+                        </p>
+                      </div>
                     </motion.div>
                   }
                   back={
                     <motion.div 
-                      className="p-4 sm:p-6 border-2 border-black/50 dark:border-white/50 rounded-cyber-lg h-full min-h-[320px] bg-gradient-to-br from-black/10 dark:from-white/10 to-black/5 dark:to-white/5 backdrop-blur-cyber flex flex-col justify-center items-center overflow-hidden"
+                      className="p-4 sm:p-6 border border-black/50 dark:border-white/50 rounded-cyber-lg h-full min-h-[320px] bg-gradient-to-br from-black/10 dark:from-white/10 to-black/5 dark:to-white/5 backdrop-blur-cyber flex flex-col justify-center items-center overflow-hidden"
                     >
                       {/* Enhanced animated particles */}
                       {[...Array(8)].map((_, i) => (
@@ -541,8 +555,8 @@ const HomePage = () => {
                       ))}
                       
                       <h3 className="text-lg sm:text-xl font-semibold font-mono uppercase tracking-wider text-black dark:text-white mb-2 text-center relative z-10">
-                  {step.title}
-                 </h3>
+                        {step.title}
+                      </h3>
                       
                       <div className="mt-4 space-y-2 text-sm text-black dark:text-white relative z-10 font-mono">
                         <motion.div
@@ -568,7 +582,7 @@ const HomePage = () => {
                   }
                 />
               </div>
-          ))}
+            ))}
           </div>
         </div>
       </FadeInSection>

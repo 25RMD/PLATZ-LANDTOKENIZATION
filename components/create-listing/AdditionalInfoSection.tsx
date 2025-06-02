@@ -64,7 +64,7 @@ const AdditionalInfoSection: React.FC<AdditionalInfoProps> = ({
         ADDITIONAL INFORMATION
       </motion.h2>
       
-      {/* Property Description */}
+        {/* Property Description */}
       <motion.div 
         className="mb-12"
         initial={{ opacity: 0 }}
@@ -86,7 +86,7 @@ const AdditionalInfoSection: React.FC<AdditionalInfoProps> = ({
         </motion.div>
       </motion.div>
 
-      {/* Property Photos */}
+        {/* Property Photos */}
       <motion.div
         className="border-t-2 border-black/20 dark:border-white/20 pt-8 mb-12"
         initial={{ opacity: 0, y: 20 }}
@@ -103,20 +103,20 @@ const AdditionalInfoSection: React.FC<AdditionalInfoProps> = ({
           <label htmlFor="propertyPhotosFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
             Property Photos Upload
           </label>
-          <FileInputField
-            id="propertyPhotosFile"
+        <FileInputField
+          id="propertyPhotosFile"
             label=""
             accept=".jpg,.jpeg,.png,.webp"
             file={formData.propertyPhotosFile as File | null}
-            previewUrl={filePreviews.propertyPhotosFile || null}
-            onChange={handleFileChange}
-            onDrop={(e) => handleDrop(e, 'propertyPhotosFile')}
+          previewUrl={filePreviews.propertyPhotosFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'propertyPhotosFile')}
             multiple={true}
-          />
+        />
         </motion.div>
       </motion.div>
 
-      {/* Property Valuation */}
+        {/* Property Valuation */}
       <motion.div
         className="border-t-2 border-black/20 dark:border-white/20 pt-8 mb-12"
         initial={{ opacity: 0, y: 20 }}
@@ -132,42 +132,42 @@ const AdditionalInfoSection: React.FC<AdditionalInfoProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="propertyValuation" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Valuation Amount</label>
-            <input
+          <input
               type="number"
-              id="propertyValuation"
-              name="propertyValuation"
-              value={formData.propertyValuation}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+            id="propertyValuation"
+            name="propertyValuation"
+            value={formData.propertyValuation}
+            onChange={handleInputChange}
+            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="e.g., 500000"
-              disabled={isSubmitting}
-            />
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="valuationDate" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Valuation Date</label>
-            <input
-              type="date"
-              id="valuationDate"
-              name="valuationDate"
-              value={formData.valuationDate}
-              onChange={handleInputChange}
-              className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-              disabled={isSubmitting}
-            />
+          <input
+            type="date"
+            id="valuationDate"
+            name="valuationDate"
+            value={formData.valuationDate}
+            onChange={handleInputChange}
+            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }} className="md:col-span-2">
             <label htmlFor="propertyValuationFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
               Valuation Report Upload
             </label>
-            <FileInputField
-              id="propertyValuationFile"
+        <FileInputField
+          id="propertyValuationFile"
               label=""
               accept=".pdf,.doc,.docx"
-              file={formData.propertyValuationFile}
-              previewUrl={filePreviews.propertyValuationFile || null}
-              onChange={handleFileChange}
-              onDrop={(e) => handleDrop(e, 'propertyValuationFile')}
-            />
+          file={formData.propertyValuationFile}
+          previewUrl={filePreviews.propertyValuationFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'propertyValuationFile')}
+        />
           </motion.div>
         </div>
       </motion.div>
@@ -188,30 +188,30 @@ const AdditionalInfoSection: React.FC<AdditionalInfoProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="zoningClassification" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Zoning Classification</label>
-            <input
-              type="text"
-              id="zoningClassification"
-              name="zoningClassification"
-              value={formData.zoningClassification}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+          <input
+            type="text"
+            id="zoningClassification"
+            name="zoningClassification"
+            value={formData.zoningClassification}
+            onChange={handleInputChange}
+            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="e.g., R-1, Commercial, Industrial"
-              disabled={isSubmitting}
-            />
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="zoningComplianceFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
               Zoning Compliance Document
             </label>
-            <FileInputField
-              id="zoningComplianceFile"
+        <FileInputField
+          id="zoningComplianceFile"
               label=""
               accept=".pdf,.doc,.docx"
-              file={formData.zoningComplianceFile}
-              previewUrl={filePreviews.zoningComplianceFile || null}
-              onChange={handleFileChange}
-              onDrop={(e) => handleDrop(e, 'zoningComplianceFile')}
-            />
+          file={formData.zoningComplianceFile}
+          previewUrl={filePreviews.zoningComplianceFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'zoningComplianceFile')}
+        />
           </motion.div>
         </div>
       </motion.div>

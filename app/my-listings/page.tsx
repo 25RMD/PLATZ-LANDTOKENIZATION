@@ -278,7 +278,7 @@ export default function MyListingsPage() {
                 </p>
               </div>
             </div>
-          </div>
+        </div>
         )}
 
         {/* Minting Status */}
@@ -289,7 +289,7 @@ export default function MyListingsPage() {
               'bg-success-minimal/10 border-success-minimal/30 text-success-minimal'
           }`}>
             <p className="font-mono font-semibold">{mintingStatus}</p>
-          </div>
+        </div>
         )}
 
         {loading ? (
@@ -359,17 +359,17 @@ export default function MyListingsPage() {
                           {listing.mintStatus || 'NOT_MINTED'}
                         </span>
                       </div>
-                    </div>
-
+          </div>
+          
                     {/* Listing Details */}
                     <div className="space-y-3 mb-6">
                       {listing.parcelNumber && (
                         <div className="flex justify-between text-sm font-mono">
                           <span className="text-text-light dark:text-text-dark opacity-60">Parcel #</span>
                           <span className="text-text-light dark:text-text-dark">{listing.parcelNumber}</span>
-                        </div>
-                      )}
-                      
+            </div>
+          )}
+          
                       {listing.listingPrice && (
                         <div className="flex justify-between text-sm font-mono">
                           <span className="text-text-light dark:text-text-dark opacity-60">Price</span>
@@ -390,7 +390,7 @@ export default function MyListingsPage() {
                         <span className="text-text-light dark:text-text-dark opacity-60">Updated</span>
                         <span className="text-text-light dark:text-text-dark">
                           {new Date(listing.updatedAt).toLocaleDateString()}
-                        </span>
+                      </span>
                       </div>
                     </div>
 
@@ -406,7 +406,7 @@ export default function MyListingsPage() {
                     {/* Action Buttons */}
                     <div className="flex flex-col gap-3">
                       <div className="flex gap-2">
-                        <Link 
+                        <Link
                           href={`/create?edit=${listing.id}`}
                           className="flex-1 px-3 py-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-cyber text-center text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10 hover:border-cyber-accent/30 transition-all duration-300 font-mono text-sm group"
                         >
@@ -414,26 +414,26 @@ export default function MyListingsPage() {
                           Edit
                         </Link>
                         
-                        <Link 
+                          <Link
                           href={`/listings/${listing.id}`}
                           className="flex-1 px-3 py-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-cyber text-center text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10 hover:border-cyber-accent/30 transition-all duration-300 font-mono text-sm group"
                         >
                           <FiEye className="inline w-4 h-4 mr-1 group-hover:text-cyber-accent transition-colors duration-300" />
                           View
-                        </Link>
+                          </Link>
                       </div>
-
+                        
                       {/* Mint NFT Button */}
                       {listing.status === 'ACTIVE' && listing.mintStatus !== 'MINTED' && (
-                        <button
-                          onClick={() => handleOpenMintModal(listing)}
+                          <button
+                            onClick={() => handleOpenMintModal(listing)}
                           disabled={mintingListingId === listing.id || !isConnected}
                           className="w-full px-4 py-2 bg-cyber-accent/10 border border-cyber-accent/30 rounded-cyber text-cyber-accent hover:bg-cyber-accent/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-mono font-semibold group"
-                        >
+                          >
                           <FiCpu className="inline w-4 h-4 mr-2 group-hover:animate-spin transition-transform duration-300" />
                           {mintingListingId === listing.id ? 'Minting...' : 'Mint NFT Collection'}
-                        </button>
-                      )}
+                          </button>
+                        )}
 
                       {listing.mintStatus === 'MINTED' && (
                         <div className="w-full px-4 py-2 bg-success-minimal/10 border border-success-minimal/30 rounded-cyber text-success-minimal text-center font-mono font-semibold">
@@ -441,7 +441,7 @@ export default function MyListingsPage() {
                         </div>
                       )}
                     </div>
-                  </div>
+                      </div>
                 </motion.div>
               ))}
             </div>
@@ -459,20 +459,20 @@ export default function MyListingsPage() {
               </Link>
             </div>
           </div>
-        )}
+      )}
       </div>
 
       {/* Mint NFT Modal */}
-      <MintNFTModal
-        isOpen={showMintModal}
-        onClose={() => {
-          setShowMintModal(false);
-          setSelectedListing(null);
-        }}
+        <MintNFTModal
+          isOpen={showMintModal}
+          onClose={() => {
+            setShowMintModal(false);
+            setSelectedListing(null);
+          }}
         onSubmit={mintNft}
         landListing={selectedListing}
-        isSubmitting={isSubmitting}
-      />
+          isSubmitting={isSubmitting}
+        />
     </div>
   );
 }

@@ -63,8 +63,8 @@ const Create = () => {
       />
       
       <div className="relative z-10">
-        <CreateNFTPage />
-      </div>
+      <CreateNFTPage />
+    </div>
     </motion.div>
   );
 };

@@ -43,8 +43,8 @@ const ExplorePage = () => {
       />
       
       <div className="relative z-10">
-        <ExploreNFTPage />
-      </div>
+      <ExploreNFTPage />
+    </div>
     </motion.div>
   );
 };

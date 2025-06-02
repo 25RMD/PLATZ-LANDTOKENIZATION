@@ -421,7 +421,7 @@ export const createListing = async (
       
       // Look for ListingCreated event in the logs
       for (const log of receipt.logs) {
-        try {
+          try {
           const parsedLog = marketplaceContract.interface.parseLog({
             topics: log.topics,
             data: log.data

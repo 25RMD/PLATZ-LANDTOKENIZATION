@@ -41,7 +41,7 @@ const config: Config = {
         'warning-minimal': '#F59E0B',
         'error-minimal': '#EF4444',
       },
-      // Add font families for Geist
+       // Add font families for Geist
       fontFamily: {
         sans: ['var(--font-geist-sans)'],
         mono: ['var(--font-geist-mono)'],

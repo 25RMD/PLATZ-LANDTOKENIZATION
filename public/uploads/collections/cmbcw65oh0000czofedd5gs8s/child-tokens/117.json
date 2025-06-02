@@ -1,0 +1,24 @@
+{
+  "name": "Land NFT - Plot 5",
+  "description": "Capital Gardens Estate, Ibeju Lekki - Sub-plot 5 of the collection.",
+  "image": "http://localhost:3000/api/static/collections/cmbcw65oh0000czofedd5gs8s/ad68dbf1-072b-4add-8cd4-3ad895b863a1-main-token-image-cmbcw65oh0000czofedd5gs8s.jpeg",
+  "attributes": [
+    {
+      "trait_type": "Land Listing ID",
+      "value": "cmbcw65oh0000czofedd5gs8s"
+    },
+    {
+      "trait_type": "Token Type",
+      "value": "Child Token"
+    },
+    {
+      "trait_type": "Plot Number",
+      "value": 5
+    },
+    {
+      "trait_type": "Parent Collection",
+      "value": "Land NFT Collection"
+    }
+  ],
+  "external_url": "http://localhost:3000/listings/cmbcw65oh0000czofedd5gs8s"
+}

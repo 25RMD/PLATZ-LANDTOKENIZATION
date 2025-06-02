@@ -25,7 +25,7 @@ interface AuthContextType {
   isVerified: boolean;
   isAdmin: boolean; 
   user: User | null;
-  userId: string | null; // Add userId property
+  userId: string | null;
   isLoading: boolean; 
   error: string | null; 
   clearError: () => void;
@@ -35,7 +35,7 @@ interface AuthContextType {
   connectAndLoginEvmWallet: () => Promise<boolean>;
   fetchUserProfile: () => Promise<User | null>; 
   updateUserProfile: (profileData: Partial<User>) => Promise<boolean>;
-  fetchCurrentUser: () => Promise<User | null>; // Add this function
+  fetchCurrentUser: () => Promise<User | null>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,12 +45,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true); 
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
+  // Wagmi hooks
   const { address: evmAddress, isConnected: isEvmWalletConnected, connector: activeConnector } = useAccount();
   const { signMessageAsync } = useWagmiSignMessage();
   const { connectAsync } = useConnect(); 
   const { disconnectAsync } = useDisconnect(); 
+
+  // Handle hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isVerified = !!user?.kycVerified;
   const isAdmin = !!user?.isAdmin;
@@ -58,6 +65,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const clearError = () => setError(null);
 
   const fetchCurrentUser = useCallback(async () => {
+    if (!mounted) {
+      return null;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -66,6 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userData: User = await response.json();
         setUser(userData);
         setIsAuthenticated(true);
+        console.log('[AuthProvider] User loaded successfully:', userData.username);
         return userData;
       } else if (response.status === 401) {
         setIsAuthenticated(false);
@@ -76,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
       }
     } catch (err) {
-      console.error("Fetch current user error:", err);
+      console.error("[Fetch current user error:", err);
       setError('Network error checking authentication status.');
       setIsAuthenticated(false);
       setUser(null);
@@ -84,11 +96,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
     }
     return null;
-  }, []);
+  }, [mounted]);
 
   useEffect(() => {
-    fetchCurrentUser();
-  }, [fetchCurrentUser]);
+    if (mounted) {
+      fetchCurrentUser();
+    } else {
+      setIsLoading(false);
+    }
+  }, [fetchCurrentUser, mounted]);
 
   const login = async (username: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
@@ -163,9 +179,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const connectAndLoginEvmWallet = async (): Promise<boolean> => {
+    if (!mounted) {
+      setError('Wallet functionality not available during page load. Please wait and try again.');
+      return false;
+    }
+
     if (!isEvmWalletConnected || !evmAddress) {
       setError('EVM Wallet not connected. Please connect your wallet first.');
       console.error('EVM Wallet connection needed');
+      return false;
+    }
+
+    if (!signMessageAsync) {
+      setError('Wallet signing functionality not available. Please refresh the page.');
       return false;
     }
 

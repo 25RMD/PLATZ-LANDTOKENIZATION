@@ -12,7 +12,7 @@ interface CollectionDetailPageProps {
 
 const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({ params }) => {
   const resolvedParams = React.use(params);
-  
+
   return (
     <motion.div 
       className="min-h-screen bg-primary-light dark:bg-primary-dark relative overflow-hidden"
@@ -77,7 +77,7 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({ params }) =
       
       <div className="relative z-10">
         <NFTCollectionDetailPage collectionId={resolvedParams.id} />
-      </div>
+    </div>
     </motion.div>
   );
 };

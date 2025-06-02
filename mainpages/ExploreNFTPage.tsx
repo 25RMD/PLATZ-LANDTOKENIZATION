@@ -1,27 +1,28 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAccount, useContractRead, usePublicClient } from 'wagmi';
-import { Abi } from 'viem';
+// import { useAccount, useContractRead, usePublicClient } from 'wagmi'; // Temporarily disabled
+// import { Abi } from 'viem'; // Temporarily disabled
 import { motion } from 'framer-motion';
 import { FiAlertCircle, FiLoader, FiPackage, FiSearch, FiFilter, FiGrid, FiList, FiMap, FiX, FiLayers } from 'react-icons/fi';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext'; // Re-enabled with hydration guards
+import { useExploreState } from '@/context/ExploreStateContext';
 import AnimatedButton from '@/components/common/AnimatedButton';
 import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 import SkeletonLoader from '@/components/common/SkeletonLoader';
-import LowBalanceWarning from '@/components/common/LowBalanceWarning';
+// import LowBalanceWarning from '@/components/common/LowBalanceWarning'; // Temporarily disabled
 import NFTImage from '@/components/nft/NFTImage';
-import { LAND_MARKETPLACE_ADDRESS, PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
-import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
-import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
-import { formatEther, decodeEventLog, createPublicClient, http, PublicClient } from 'viem';
-import { getLogsInChunks, safeDecodeEventLog } from '@/lib/ethereum/blockchainUtils';
-import { getSepoliaClientConfig } from '@/lib/ethereum/rpcConfig';
+// import { LAND_MARKETPLACE_ADDRESS, PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts'; // Temporarily disabled
+// import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI'; // Temporarily disabled
+// import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI'; // Temporarily disabled
+// import { formatEther, decodeEventLog, createPublicClient, http, PublicClient } from 'viem'; // Temporarily disabled
+// import { getLogsInChunks, safeDecodeEventLog } from '@/lib/ethereum/blockchainUtils'; // Temporarily disabled
+// import { getSepoliaClientConfig } from '@/lib/ethereum/rpcConfig'; // Temporarily disabled
 import CollectionsGrid from '@/components/collections/CollectionsGrid';
 import CollectionCard from '@/components/CollectionCard'; // Restored import
 import { CollectionDetail } from '../lib/types';
-import { fetchAndProcessCollectionDetails } from '../lib/collectionUtils';
+// import { fetchAndProcessCollectionDetails } from '../lib/collectionUtils'; // Temporarily disabled
 
 // Define types for filter state
 interface FilterState {
@@ -35,198 +36,109 @@ interface FilterState {
 
 // --- MAIN PAGE COMPONENT ---
 const ExploreNFTPage: React.FC = () => {
-  const { user, isLoading: authLoading } = useAuth();
-  const publicClient = usePublicClient();
-  const { address: accountAddress } = useAccount();
-
-  const fetchCollectionDetails = useCallback(async (collectionId: bigint, client: PublicClient): Promise<CollectionDetail | null> => {
-    if (!client) {
-      console.error("[ExploreNFTPage] Public client is not available.");
-      return null;
-    }
-
-    let baseUrlToUse: string;
-    if (typeof window !== 'undefined') {
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        baseUrlToUse = window.location.origin; // e.g., http://localhost:3000
-      } else {
-        // If on client but not localhost (e.g., accessed via ngrok URL directly in browser)
-        baseUrlToUse = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-      }
-    } else {
-      // Server-side or window not available
-      baseUrlToUse = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'; // Fallback for SSR if needed
-    }
-    
-    // Fallback if somehow still undefined
-    if (!baseUrlToUse) {
-      console.warn("[ExploreNFTPage] baseUrlToUse could not be determined, defaulting to NEXT_PUBLIC_BASE_URL or a hardcoded localhost.");
-      baseUrlToUse = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    }
-
-    console.log(`[ExploreNFTPage] Determined baseUrlToUse for fetching: ${baseUrlToUse}`);
-
-    return fetchAndProcessCollectionDetails(
-      collectionId,
-      client,
-      baseUrlToUse, // Use the dynamically determined base URL
-      PLATZ_LAND_NFT_ADDRESS as `0x${string}`, 
-      LAND_MARKETPLACE_ADDRESS as `0x${string}`,
-      PlatzLandNFTABI as Abi, 
-      LandMarketplaceABI as Abi 
-    );
-  }, []); // Removed publicClient from dependency array as fetchAndProcessCollectionDetails now accepts it as an argument
-
-  // State for collections and loading
-  const [onChainCollections, setOnChainCollections] = useState<CollectionDetail[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, isLoading: authLoading } = useAuth(); // Re-enabled with hydration guards
+  // const publicClient = usePublicClient(); // Temporarily disabled
+  // const { address: accountAddress } = useAccount(); // Temporarily disabled
   
-  // State for pagination
-  const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [totalCollections, setTotalCollections] = useState<number>(0);
-  
-  // State for view mode
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
-  
-  // State for filters
-  const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [filters, setFilters] = useState<FilterState>({
-    status: '',
-    minPrice: '',
-    maxPrice: '',
-    country: '',
-    state: '',
-    search: '',
-  });
-  
-  // State for countries and states (for filter dropdowns)
-  const [countries, setCountries] = useState<string[]>([]);
-  const [states, setStates] = useState<string[]>([]);
+  // Use the explore state context instead of local state
+  const { state, updateState, hasState } = useExploreState();
+  const {
+    onChainCollections,
+    loading,
+    error,
+    page,
+    totalPages,
+    totalCollections,
+    viewMode,
+    showFilters,
+    filters,
+    countries,
+    states
+  } = state;
 
+  // Temporarily simplified collection loading using API only
   const loadCollections = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    updateState({ loading: true, error: null });
     try {
-      if (!publicClient) {
-        console.warn('[ExploreNFTPage] Public client not available yet.');
-        setError('Blockchain connection not available.');
-        return;
+      console.log('🔄 Loading collections from API...');
+      
+      const response = await fetch('/api/collections');
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
       }
       
-      let allCollectionIds: bigint[] = [];
+      const data = await response.json();
+      console.log('✅ API Response:', data);
       
-      try {
-        // First, try to get all collection IDs
-        allCollectionIds = await publicClient.readContract({
-          address: PLATZ_LAND_NFT_ADDRESS as `0x${string}`,
-          abi: PlatzLandNFTABI,
-          functionName: 'getAllCollectionIds',
-          args: [],
-        }) as bigint[];
+      if (data.collections && Array.isArray(data.collections)) {
+        // Transform API data to CollectionDetail format for display
+        const transformedCollections: CollectionDetail[] = data.collections.map((col: any) => ({
+          collectionId: BigInt(col.collectionId),
+          name: col.nftTitle || `Collection #${col.collectionId}`,
+          description: col.nftDescription || 'No description available',
+          image: col.nftImageFileRef || '',
+          creator: col.evmOwnerAddress || '0x0000000000000000000000000000000000000000',
+          isListed: col.isListedForSale || false,
+          price: col.listingPriceEth ? BigInt(Math.floor(col.listingPriceEth * 1e18)) : 0n,
+          totalSupply: BigInt(col.nftCollectionSize || 1),
+          baseURI: col.metadataUri || '',
+          collectionURI: col.metadataUri || '',
+          country: col.country || '',
+          state: col.state || '',
+          area: col.propertyAreaSqm || 0,
+          latitude: col.latitude || '',
+          longitude: col.longitude || ''
+        }));
         
-        console.log(`✅ Found ${allCollectionIds?.length || 0} collections on blockchain`);
-      } catch (getAllError: any) {
-        console.error('❌ getAllCollectionIds failed:', getAllError.message);
+        console.log(`✅ Transformed ${transformedCollections.length} collections for display`);
         
-        // Fallback 1: Try to get collection count and iterate
-        try {
-          const collectionCount = await publicClient.readContract({
-            address: PLATZ_LAND_NFT_ADDRESS as `0x${string}`,
-            abi: PlatzLandNFTABI,
-            functionName: 'getCollectionCount',
-            args: [],
-          }) as bigint;
-          
-          // Generate collection IDs from 1 to count (collections start at 1, not 0)
-          allCollectionIds = [];
-          for (let i = 1; i <= Number(collectionCount); i++) {
-            allCollectionIds.push(BigInt(i));
-          }
-          
-          console.log(`✅ Generated ${allCollectionIds.length} collection IDs from count`);
-        } catch (getCountError: any) {
-          console.error('❌ getCollectionCount also failed:', getCountError.message);
-          
-          // Fallback 2: Try to load from database/API
-          try {
-            const response = await fetch('/api/collections');
-            if (response.ok) {
-              const data = await response.json();
-              if (data.collections && Array.isArray(data.collections)) {
-                allCollectionIds = data.collections
-                  .filter((c: any) => c.collectionId)
-                  .map((c: any) => BigInt(c.collectionId));
-                console.log(`✅ Got ${allCollectionIds.length} collection IDs from API fallback`);
-              }
+        updateState({ 
+          onChainCollections: transformedCollections,
+          totalCollections: transformedCollections.length,
+          totalPages: Math.ceil(transformedCollections.length / 12),
+          loading: false 
+        });
             } else {
-              throw new Error(`API returned ${response.status}`);
-            }
-          } catch (apiError: any) {
-            console.error('❌ All fallback methods failed:', apiError.message);
-            
-            // Final fallback: Check if this is a contract deployment issue
-            const contractCode = await publicClient.getBytecode({
-              address: PLATZ_LAND_NFT_ADDRESS as `0x${string}`,
-            });
-            
-            if (!contractCode || contractCode === '0x') {
-              setError(`Contract not deployed at address ${PLATZ_LAND_NFT_ADDRESS}. Please check your contract deployment.`);
-            } else {
-              setError(`Contract exists but doesn't have expected functions. This might be an older version of the contract or ABI mismatch.`);
-            }
-            setLoading(false);
-            return;
-          }
-        }
+        console.log('⚠️ No collections found in API response');
+        updateState({ onChainCollections: [], loading: false });
       }
-
-      if (!allCollectionIds || allCollectionIds.length === 0) {
-        console.log("No collections found");
-        setOnChainCollections([]);
-        setLoading(false);
-        return;
-      }
-
-      // Process collections sequentially to avoid RPC rate limiting
-      console.log(`🔄 Loading ${allCollectionIds.length} collections...`);
-      const fetchedOnChainCollections: CollectionDetail[] = [];
-      
-      for (let i = 0; i < allCollectionIds.length; i++) {
-        const collectionId = allCollectionIds[i];
-        
-        try {
-          const collectionDetail = await fetchCollectionDetails(collectionId, publicClient);
-          if (collectionDetail) {
-            fetchedOnChainCollections.push(collectionDetail);
-          }
-        } catch (error: any) {
-          console.error(`❌ Failed to fetch collection ${collectionId}:`, error.message);
-        }
-        
-        // Add a small delay between requests to avoid rate limiting
-        if (i < allCollectionIds.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
-        }
-      }
-      
-      console.log(`✅ Successfully loaded ${fetchedOnChainCollections.length}/${allCollectionIds.length} collections`);
-      setOnChainCollections(fetchedOnChainCollections.sort((a, b) => Number(b.collectionId) - Number(a.collectionId)));
-
-      setTotalCollections(fetchedOnChainCollections.length);
-      setTotalPages(Math.ceil(fetchedOnChainCollections.length / 12)); // Assuming 12 items per page
-      setLoading(false);
     } catch (err: any) {
       console.error('❌ Error loading collections:', err.message);
-      setError(err.message || 'Failed to load collections.');
+      updateState({ 
+        error: err.message || 'Failed to load collections.',
+        loading: false 
+      });
     }
-    setLoading(false);
-  }, [publicClient]);
+  }, [updateState]);
 
   useEffect(() => {
+    // Only load collections if we don't have cached state or if the state is too old (older than 5 minutes)
+    const shouldRefresh = !hasState() || 
+      (state.lastUpdated && Date.now() - state.lastUpdated > 5 * 60 * 1000);
+    
+    if (shouldRefresh) {
     loadCollections();
-  }, [loadCollections]);
+    } else {
+      console.log('✅ Using cached explore state');
+    }
+  }, [loadCollections, hasState, state.lastUpdated]);
+
+  // Helper functions to update specific parts of state
+  const setPage = useCallback((newPage: number) => {
+    updateState({ page: newPage });
+  }, [updateState]);
+
+  const setViewMode = useCallback((mode: 'grid' | 'list' | 'map') => {
+    updateState({ viewMode: mode });
+  }, [updateState]);
+
+  const setShowFilters = useCallback((show: boolean) => {
+    updateState({ showFilters: show });
+  }, [updateState]);
+
+  const setFilters = useCallback((newFilters: typeof filters) => {
+    updateState({ filters: newFilters });
+  }, [updateState]);
 
   if (loading) {
     return (
@@ -257,7 +169,7 @@ const ExploreNFTPage: React.FC = () => {
           transition={{ duration: 2, repeat: Infinity }}
           className="mb-6"
         >
-          <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
+        <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
         </motion.div>
         
         <motion.h2 
@@ -279,7 +191,7 @@ const ExploreNFTPage: React.FC = () => {
           animate={{ opacity: [0.7, 1, 0.7] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         >
-          Scanning blockchain for land tokenization data...
+          Fetching NFT collection data...
         </motion.p>
       </motion.div>
     );
@@ -401,7 +313,7 @@ const ExploreNFTPage: React.FC = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          The blockchain scan returned zero land tokenization collections. Initialize the first collection to begin.
+          No NFT collections found. Create the first collection to begin.
         </motion.p>
         
         <Link href="/create-land-listing" passHref>
@@ -491,7 +403,7 @@ const ExploreNFTPage: React.FC = () => {
                 animate={{ opacity: [0.7, 1, 0.7] }}
                 transition={{ duration: 2, repeat: Infinity, delay: 1 }}
               >
-                BLOCKCHAIN VERIFIED
+                API VERIFIED
               </motion.span>
             </motion.div>
           </motion.div>
@@ -513,18 +425,6 @@ const ExploreNFTPage: React.FC = () => {
           </motion.div>
         </motion.div>
 
-        {/* Low Balance Warning with cyber styling */}
-      {accountAddress && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="mb-8"
-          >
-            <LowBalanceWarning threshold={0.01} />
-          </motion.div>
-        )}
-
         {/* Collections Grid with enhanced animations */}
         <motion.div 
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10"
@@ -533,8 +433,8 @@ const ExploreNFTPage: React.FC = () => {
           transition={{ delay: 1 }}
         >
           {onChainCollections.map((collection: CollectionDetail, index: number) => (
-            <motion.div
-              key={collection.collectionId.toString()}
+          <motion.div
+            key={collection.collectionId.toString()}
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ 
@@ -542,7 +442,7 @@ const ExploreNFTPage: React.FC = () => {
                 delay: index * 0.1,
                 ease: "easeOut"
               }}
-              className="w-full" 
+            className="w-full" 
           >
             <CollectionCard collection={collection} />
           </motion.div>

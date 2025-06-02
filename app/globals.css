@@ -11,6 +11,39 @@
   }
 }
 
+@layer components {
+  /* Enhanced hover effects for cards */
+  .card-hover-effect:hover {
+    border-color: rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .dark .card-hover-effect:hover {
+    border-color: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 
+      0 0 60px rgba(255, 255, 255, 0.6), 
+      0 0 100px rgba(255, 255, 255, 0.4),
+      0 0 140px rgba(255, 255, 255, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.3) !important;
+  }
+  
+  .card-step-hover-effect:hover {
+    border-color: rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .dark .card-step-hover-effect:hover {
+    border-color: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 
+      0 0 50px rgba(255, 255, 255, 0.6), 
+      0 0 80px rgba(255, 255, 255, 0.4),
+      0 0 120px rgba(255, 255, 255, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.3) !important;
+  }
+}
+
 /* Cyber-themed animations and effects */
 @keyframes cyber-glitch {
   0%, 100% {
@@ -92,6 +125,16 @@
   }
 }
 
+/* Backdrop blur for cyber aesthetic */
+@keyframes backdrop-blur-cyber {
+  from {
+    backdrop-filter: blur(0px);
+  }
+  to {
+    backdrop-filter: blur(8px);
+  }
+}
+
 /* Cyber-themed utility classes */
 .cyber-glitch {
   animation: cyber-glitch 0.3s ease-in-out;
@@ -103,6 +146,20 @@
 
 .data-stream {
   animation: data-stream 3s linear infinite;
+}
+
+.backdrop-blur-cyber {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Cyber-themed border radius classes */
+.rounded-cyber-lg {
+  border-radius: 0.75rem;
+}
+
+.rounded-cyber-xl {
+  border-radius: 1rem;
 }
 
 /* Utility classes for animations */
@@ -201,5 +258,6 @@
 }
 
 .dark ::selection {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
 }

@@ -395,10 +395,10 @@ const CreateListingContent = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            Please complete your profile and submit the required KYC information.
+          Please complete your profile and submit the required KYC information.
           </motion.p>
           
-          <Link href="/profile">
+        <Link href="/profile">
             <motion.div
               whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(0, 0, 0, 0.3)" }}
               whileTap={{ scale: 0.95 }}
@@ -408,10 +408,10 @@ const CreateListingContent = () => {
             >
               <AnimatedButton className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-8 py-4 text-lg font-mono uppercase tracking-wider border border-black/30 dark:border-white/30">
                 ACCESS PROFILE
-              </AnimatedButton>
+          </AnimatedButton>
             </motion.div>
-          </Link>
-        </div>
+        </Link>
+      </div>
       </motion.div>
     );
   }
@@ -520,92 +520,92 @@ const CreateListingContent = () => {
             transition={{ duration: 8, repeat: Infinity }}
           />
 
-          {/* === Core Legal Documents Section === */}
-          <LegalDocumentsSection
+        {/* === Core Legal Documents Section === */}
+        <LegalDocumentsSection
              formData={formData as LegalDocumentsFormData}
-             handleInputChange={handleInputChange}
-             handleFileChange={handleFileChange}
+           handleInputChange={handleInputChange}
+           handleFileChange={handleFileChange}
              handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: LegalDocumentsFileFieldNames) => void}
-             filePreviews={filePreviews}
+           filePreviews={filePreviews}
              inputFieldStyles={inputFieldStyles}
              inputFieldDisabledStyles={inputFieldDisabledStyles}
-             isSubmitting={isSubmitting}
-          />
+           isSubmitting={isSubmitting}
+        />
 
-          {/* === Registry & Parcel Identifiers Section === */}
-          <RegistryParcelSection
+        {/* === Registry & Parcel Identifiers Section === */}
+        <RegistryParcelSection
              formData={formData as RegistryParcelFormData}
-             handleInputChange={handleInputChange}
-             handleFileChange={handleFileChange}
+           handleInputChange={handleInputChange}
+           handleFileChange={handleFileChange}
              handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: RegistryParcelFileFieldNames) => void}
-             filePreviews={filePreviews}
+           filePreviews={filePreviews}
              inputFieldStyles={inputFieldStyles}
              inputFieldDisabledStyles={inputFieldDisabledStyles}
-             isSubmitting={isSubmitting}
-          />
+           isSubmitting={isSubmitting}
+        />
 
-          {/* === Geospatial & Boundary Data Section === */}
-          <GeospatialSection
+        {/* === Geospatial & Boundary Data Section === */}
+        <GeospatialSection
              formData={formData as GeospatialFormData}
-             handleInputChange={handleInputChange}
-             handleFileChange={handleFileChange}
+           handleInputChange={handleInputChange}
+           handleFileChange={handleFileChange}
              handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: GeospatialFileFieldNames) => void}
-             filePreviews={filePreviews}
+           filePreviews={filePreviews}
              inputFieldStyles={inputFieldStyles}
              inputFieldDisabledStyles={inputFieldDisabledStyles}
-             isSubmitting={isSubmitting}
-          />
+           isSubmitting={isSubmitting}
+        />
 
-          {/* === Owner Identity & KYC Section === */}
-          <OwnerKycSection
+        {/* === Owner Identity & KYC Section === */}
+        <OwnerKycSection
              formData={formData as OwnerKycFormData}
-             handleInputChange={handleInputChange}
-             handleFileChange={handleFileChange}
+           handleInputChange={handleInputChange}
+           handleFileChange={handleFileChange}
              handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: OwnerKycFileFieldNames) => void}
-             filePreviews={filePreviews}
+           filePreviews={filePreviews}
              inputFieldStyles={inputFieldStyles}
              inputFieldDisabledStyles={inputFieldDisabledStyles}
-             isSubmitting={isSubmitting}
-             isVerified={isVerified}
-          />
+           isSubmitting={isSubmitting}
+           isVerified={isVerified}
+        />
 
-          {/* === Additional Information Section === */}
-          <AdditionalInfoSection
+        {/* === Additional Information Section === */}
+        <AdditionalInfoSection
              formData={formData}
-             handleInputChange={handleInputChange}
-             handleFileChange={handleFileChange}
+           handleInputChange={handleInputChange}
+           handleFileChange={handleFileChange}
              handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: AdditionalInfoFileFieldNames) => void}
-             filePreviews={filePreviews}
+           filePreviews={filePreviews}
              inputFieldStyles={inputFieldStyles}
              inputFieldDisabledStyles={inputFieldDisabledStyles}
-             isSubmitting={isSubmitting}
-          />
+           isSubmitting={isSubmitting}
+        />
 
-          {/* === Chain-of-Title & Encumbrance History Section === */}
-          <ChainOfTitleSection
+        {/* === Chain-of-Title & Encumbrance History Section === */}
+        <ChainOfTitleSection
              formData={formData}
-             handleInputChange={handleInputChange}
-             handleFileChange={handleFileChange}
+           handleInputChange={handleInputChange}
+           handleFileChange={handleFileChange}
              handleDrop={handleDrop as (event: React.DragEvent<HTMLDivElement>, fieldName: ChainOfTitleFileFieldNames) => void}
-             filePreviews={filePreviews}
+           filePreviews={filePreviews}
              inputFieldStyles={inputFieldStyles}
              inputFieldDisabledStyles={inputFieldDisabledStyles}
-             isSubmitting={isSubmitting}
-          />
+           isSubmitting={isSubmitting}
+        />
 
-          {/* === NFT Details Section === */}
-          <NftDetailsSection
+        {/* === NFT Details Section === */}
+        <NftDetailsSection
              formData={formData}
-             handleInputChange={handleInputChange}
-             handleFileChange={handleFileChange}
+           handleInputChange={handleInputChange}
+           handleFileChange={handleFileChange}
              handleDrop={handleDrop}
-             filePreviews={filePreviews}
+           filePreviews={filePreviews}
              inputFieldStyles={inputFieldStyles}
              inputFieldDisabledStyles={inputFieldDisabledStyles}
-             isSubmitting={isSubmitting}
-          />
+           isSubmitting={isSubmitting}
+        />
 
-          {/* On-Chain Metadata Section */}
+        {/* On-Chain Metadata Section */}
           <motion.div 
             className="pt-12 px-12 pb-8 border-t-2 border-black/20 dark:border-white/20"
             initial={{ opacity: 0, y: 20 }}
@@ -636,69 +636,69 @@ const CreateListingContent = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
                 <label htmlFor="docHash" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Document Hashes</label>
-                <input 
-                  type="text" 
-                  id="docHash" 
-                  name="docHash" 
-                  value={formData.docHash} 
-                  readOnly 
-                  disabled 
+              <input 
+                type="text" 
+                id="docHash" 
+                name="docHash" 
+                value={formData.docHash} 
+                readOnly 
+                disabled 
                   className={inputFieldDisabledStyles}
                 />
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
                 <label htmlFor="ipfsUri" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">IPFS / Decentralized URI</label>
-                <input 
-                  type="url" 
-                  id="ipfsUri" 
-                  name="ipfsUri" 
-                  value={formData.ipfsUri} 
-                  readOnly 
-                  disabled 
-                  placeholder="e.g., ipfs://..." 
+              <input 
+                type="url" 
+                id="ipfsUri" 
+                name="ipfsUri" 
+                value={formData.ipfsUri} 
+                readOnly 
+                disabled 
+                placeholder="e.g., ipfs://..." 
                   className={inputFieldDisabledStyles}
                 />
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
                 <label htmlFor="mintTimestamp" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Minting Timestamp</label>
-                <input 
-                  type="datetime-local" 
-                  id="mintTimestamp" 
-                  name="mintTimestamp" 
-                  value={formData.mintTimestamp} 
-                  readOnly 
-                  disabled 
+              <input 
+                type="datetime-local" 
+                id="mintTimestamp" 
+                name="mintTimestamp" 
+                value={formData.mintTimestamp} 
+                readOnly 
+                disabled 
                   className={inputFieldDisabledStyles}
                 />
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
                 <label htmlFor="tokenId" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Token ID</label>
-                <input 
-                  type="text" 
-                  id="tokenId" 
-                  name="tokenId" 
-                  value={formData.tokenId} 
-                  readOnly 
-                  disabled 
+              <input 
+                type="text" 
+                id="tokenId" 
+                name="tokenId" 
+                value={formData.tokenId} 
+                readOnly 
+                disabled 
                   className={inputFieldDisabledStyles}
-                />
+              />
               </motion.div>
             </div>
           </motion.div>
-          
-          {/* NFT Minting Section */}
-          <div id="nft-minting-section">
-            <NftMintingSection
-              landListingId={savedListingId}
-              formData={formData}
-              isSubmitting={isSubmitting}
-              isEditMode={isEditMode}
-              inputFieldStyles={inputFieldStyles}
-              inputFieldDisabledStyles={inputFieldDisabledStyles}
-            />
-          </div>
+        
+        {/* NFT Minting Section */}
+        <div id="nft-minting-section">
+          <NftMintingSection
+            landListingId={savedListingId}
+            formData={formData}
+            isSubmitting={isSubmitting}
+            isEditMode={isEditMode}
+            inputFieldStyles={inputFieldStyles}
+            inputFieldDisabledStyles={inputFieldDisabledStyles}
+          />
+        </div>
 
-          {/* Submit Button */}
+        {/* Submit Button */}
           <motion.div 
             className="px-12 py-8 bg-black/5 dark:bg-white/5 border-t-2 border-black/20 dark:border-white/20 flex justify-between items-center"
             initial={{ opacity: 0, y: 20 }}
@@ -710,23 +710,23 @@ const CreateListingContent = () => {
               animate={{ opacity: [0.6, 1, 0.6] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              <span className="text-red-500">*</span> Required fields
+            <span className="text-red-500">*</span> Required fields
             </motion.div>
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <AnimatedButton 
-                type="submit" 
-                disabled={isSubmitting} 
+          <AnimatedButton 
+            type="submit" 
+            disabled={isSubmitting} 
                 className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-12 py-4 font-mono uppercase tracking-wider text-lg border border-black/30 dark:border-white/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+          >
                 {isSubmitting ? 'CREATING LISTING...' : 'CREATE LAND LISTING'}
-              </AnimatedButton>
+          </AnimatedButton>
             </motion.div>
           </motion.div>
         </motion.form>
-      </div>
+        </div>
     </motion.div>
   );
 };

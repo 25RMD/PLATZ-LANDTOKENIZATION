@@ -131,7 +131,14 @@ const createStarTexture = () => {
 
 // Helper function to create points that roughly follow continent patterns
 const getContinentPoints = (radius: number, count: number) => {
-  const points = [];
+  const points: Array<{
+    x: number;
+    y: number;
+    z: number;
+    phi: number;
+    theta: number;
+    continent: number;
+  }> = [];
   
   // Define rough continent regions (lat, lon ranges)
   const continents = [
@@ -478,32 +485,36 @@ const Globe = ({ scrollY, isMobile }: { scrollY: number; isMobile: boolean }) =>
       // EXPLOSIVE SCALING EFFECT BASED ON SCROLL
       const timePulse = 1 + Math.sin(time * 0.8) * (isMobile ? 0.01 : 0.02);
       
-      // Calculate explosive scale based on scroll with smooth easing
+      // Calculate conservative scale based on scroll - visible and contained within canvas
       const normalizedScrollY = Math.max(0, scrollY || 0);
-      const scrollProgress = Math.min(normalizedScrollY / 3000, 1); // Normalize to 0-1 over 3000px for smoother progression
+      const scrollProgress = Math.min(normalizedScrollY / 2500, 1); // Keep the balanced range
       
       // Smooth easing function for more immersive scaling
       const easeOutExpo = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
       const easeInOutQuad = (t: number) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       
-      // Multi-stage scaling for cinematic effect
+      // CONSERVATIVE scaling that stays within canvas bounds
       let explosiveScale = 1;
       if (scrollProgress < 0.3) {
-        // Gentle start
-        explosiveScale = 1 + easeInOutQuad(scrollProgress / 0.3) * 0.5;
+        // Gentle start - very conservative
+        explosiveScale = 1 + easeInOutQuad(scrollProgress / 0.3) * (isMobile ? 0.5 : 0.8);
       } else if (scrollProgress < 0.7) {
-        // Accelerating expansion
+        // Moderate growth - stay within bounds
         const localProgress = (scrollProgress - 0.3) / 0.4;
-        explosiveScale = 1.5 + easeOutExpo(localProgress) * (isMobile ? 4 : 6);
+        explosiveScale = 1 + (isMobile ? 0.5 : 0.8) + easeOutExpo(localProgress) * (isMobile ? 1.2 : 1.8);
       } else {
-        // Dramatic finale
+        // Final expansion - controlled maximum
         const localProgress = (scrollProgress - 0.7) / 0.3;
-        const baseScale = 1.5 + (isMobile ? 4 : 6);
-        explosiveScale = baseScale + Math.pow(localProgress, 2) * (isMobile ? 3.5 : 5.5);
+        const baseScale = 1 + (isMobile ? 0.5 : 0.8) + (isMobile ? 1.2 : 1.8);
+        explosiveScale = baseScale + Math.pow(localProgress, 1.5) * (isMobile ? 0.8 : 1.2);
       }
       
-      // Add subtle oscillation based on scroll for organic feel
-      const scrollOscillation = Math.sin(scrollProgress * Math.PI * 2) * 0.05 * scrollProgress;
+      // Clamp the scale to ensure it never goes beyond reasonable bounds
+      const maxScale = isMobile ? 3.5 : 4.8; // Maximum scale to stay in canvas
+      explosiveScale = Math.min(explosiveScale, maxScale);
+      
+      // Add gentle oscillation for organic feel
+      const scrollOscillation = Math.sin(scrollProgress * Math.PI * 2.5) * 0.04 * scrollProgress;
       
       // Combine time pulse with explosive scaling
       const finalScale = timePulse * explosiveScale * (1 + scrollOscillation);
@@ -595,31 +606,35 @@ const Globe = ({ scrollY, isMobile }: { scrollY: number; isMobile: boolean }) =>
       const baseRotation = time * 0.05;
       connectionsRef.current.rotation.y = baseRotation * 0.4;
       
-      // Scale connections with scroll using same easing as globe
+      // Scale connections with scroll using same CONSERVATIVE easing as globe
       const normalizedScrollY = Math.max(0, scrollY || 0);
-      const scrollProgress = Math.min(normalizedScrollY / 3000, 1);
+      const scrollProgress = Math.min(normalizedScrollY / 2500, 1); // Match globe's range
       
-      // Use same multi-stage scaling as globe for consistency
+      // Use same conservative multi-stage scaling as globe for consistency
       let explosiveScale = 1;
       if (scrollProgress < 0.3) {
-        explosiveScale = 1 + ((t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)(scrollProgress / 0.3) * 0.5;
+        explosiveScale = 1 + ((t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)(scrollProgress / 0.3) * 0.8;
       } else if (scrollProgress < 0.7) {
         const localProgress = (scrollProgress - 0.3) / 0.4;
-        explosiveScale = 1.5 + ((t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t))(localProgress) * 6;
+        explosiveScale = 1 + 0.8 + ((t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t))(localProgress) * 1.8;
       } else {
         const localProgress = (scrollProgress - 0.7) / 0.3;
-        explosiveScale = 7.5 + Math.pow(localProgress, 2) * 5.5;
+        explosiveScale = 3.6 + Math.pow(localProgress, 1.5) * 1.2;
       }
+      
+      // Clamp connections scale to match globe bounds
+      const maxScale = 4.8; // Match globe's maximum scale
+      explosiveScale = Math.min(explosiveScale, maxScale);
       
       connectionsRef.current.scale.setScalar(explosiveScale);
       
-      // Animate connection line opacity with scroll intensity
-      const scrollOpacityBoost = 1 + scrollProgress * 2;
+      // Animate connection line opacity with conservative scroll intensity
+      const scrollOpacityBoost = 1 + scrollProgress * 1.8; // More conservative
       connectionsRef.current.children.forEach((child, index) => {
         const lineMaterial = (child as THREE.Line).material as THREE.LineBasicMaterial;
         const phase = (index * 0.1) + time * 1.5;
         const baseOpacity = 0.15 + Math.sin(phase) * 0.15;
-        lineMaterial.opacity = Math.min(0.8, baseOpacity * scrollOpacityBoost);
+        lineMaterial.opacity = Math.min(0.7, baseOpacity * scrollOpacityBoost); // Lower max opacity
       });
     }
   });
@@ -656,34 +671,34 @@ const CameraController = ({ scrollY, isMobile }: { scrollY: number; isMobile: bo
   useFrame((state) => {
     const time = state.clock.elapsedTime;
     
-    // Calculate scroll-based camera distance with smooth easing
+    // Calculate scroll-based camera distance with AGGRESSIVE pullback to frame scaled globe
     const normalizedScrollY = Math.max(0, scrollY || 0);
-    const scrollProgress = Math.min(normalizedScrollY / 3000, 1);
+    const scrollProgress = Math.min(normalizedScrollY / 2500, 1); // Match globe's range
     
     // Smooth easing for camera movement
     const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     const easedProgress = easeInOutCubic(scrollProgress);
     
-    // Multi-stage camera pullback for cinematic effect
+    // AGGRESSIVE camera pullback to accommodate scaled globe and keep it in frame
     const baseDistance = isMobile ? 10 : 8;
     let explosiveDistance = baseDistance;
     
     if (scrollProgress < 0.3) {
-      // Subtle pullback at start
-      explosiveDistance = baseDistance + easedProgress * 2;
+      // Immediate pullback to prepare for scaling
+      explosiveDistance = baseDistance + easedProgress * (isMobile ? 8 : 12);
     } else if (scrollProgress < 0.7) {
-      // Accelerating pullback
+      // Strong acceleration to stay ahead of globe scaling
       const localProgress = (scrollProgress - 0.3) / 0.4;
-      explosiveDistance = baseDistance + 2 + easeInOutCubic(localProgress) * (isMobile ? 15 : 20);
+      explosiveDistance = baseDistance + (isMobile ? 8 : 12) + easeInOutCubic(localProgress) * (isMobile ? 20 : 28);
     } else {
-      // Dramatic final pullback
+      // Maximum pullback to keep large globe in frame
       const localProgress = (scrollProgress - 0.7) / 0.3;
-      const midDistance = baseDistance + 2 + (isMobile ? 15 : 20);
-      explosiveDistance = midDistance + Math.pow(localProgress, 1.5) * (isMobile ? 20 : 30);
+      const midDistance = baseDistance + (isMobile ? 8 : 12) + (isMobile ? 20 : 28);
+      explosiveDistance = midDistance + Math.pow(localProgress, 1.2) * (isMobile ? 25 : 35);
     }
     
-    // Add subtle camera shake for immersion
-    const cameraShake = scrollProgress > 0.5 ? Math.sin(time * 15) * 0.02 * (scrollProgress - 0.5) : 0;
+    // Add moderate camera shake for immersion
+    const cameraShake = scrollProgress > 0.4 ? Math.sin(time * 15) * 0.03 * (scrollProgress - 0.4) : 0;
     
     // On first frame, set initial camera position
     if (isFirstFrame.current) {

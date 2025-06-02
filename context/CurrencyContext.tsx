@@ -44,22 +44,29 @@ interface CurrencyProviderProps {
 }
 
 export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) => {
+  // Start with default values to ensure server/client consistency
   const [preferredCurrency, setPreferredCurrencyState] = useState<SupportedCurrency>('NGN');
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Start as false to prevent initial loading flash
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Handle hydration
+  // Handle hydration - this ensures we only run client-side code after mount
   useEffect(() => {
     setMounted(true);
   }, []);
 
   // Initialize preferred currency from localStorage only after mount
   useEffect(() => {
-    if (mounted) {
+    if (!mounted) return;
+    
+    try {
       const savedCurrency = getUserCurrencyPreference();
       setPreferredCurrencyState(savedCurrency);
+      console.log('[CurrencyProvider] Loaded saved currency preference:', savedCurrency);
+    } catch (error) {
+      console.warn('[CurrencyProvider] Failed to load currency preference:', error);
+      // Keep default NGN if localStorage fails
     }
   }, [mounted]);
 
@@ -72,11 +79,14 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
       setError(null);
       
       try {
+        console.log('[CurrencyProvider] Fetching exchange rates...');
         const rates = await fetchExchangeRates();
         setExchangeRates(rates);
+        console.log('[CurrencyProvider] Exchange rates loaded successfully');
       } catch (err) {
-        console.error('Failed to fetch exchange rates:', err);
+        console.error('[CurrencyProvider] Failed to fetch exchange rates:', err);
         setError('Failed to load exchange rates');
+        // Don't block the app if exchange rates fail - just show ETH prices
       } finally {
         setIsLoading(false);
       }
@@ -85,30 +95,46 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     loadExchangeRates();
 
     // Refresh rates every 5 minutes
-    const interval = setInterval(loadExchangeRates, 5 * 60 * 1000);
+    const interval = setInterval(() => {
+      console.log('[CurrencyProvider] Refreshing exchange rates...');
+      loadExchangeRates();
+    }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [mounted]);
 
   const setPreferredCurrency = useCallback((currency: SupportedCurrency) => {
     setPreferredCurrencyState(currency);
+    
+    // Only save to localStorage if mounted (client-side)
+    if (mounted) {
+      try {
     setUserCurrencyPreference(currency);
-  }, []);
+        console.log('[CurrencyProvider] Saved currency preference:', currency);
+      } catch (error) {
+        console.warn('[CurrencyProvider] Failed to save currency preference:', error);
+      }
+    }
+  }, [mounted]);
 
   const refreshExchangeRates = useCallback(async () => {
+    if (!mounted) return;
+    
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log('[CurrencyProvider] Manually refreshing exchange rates...');
       const rates = await fetchExchangeRates();
       setExchangeRates(rates);
+      console.log('[CurrencyProvider] Exchange rates refreshed successfully');
     } catch (err) {
-      console.error('Failed to refresh exchange rates:', err);
+      console.error('[CurrencyProvider] Failed to refresh exchange rates:', err);
       setError('Failed to refresh exchange rates');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [mounted]);
 
   const convertEthToCurrencyWrapper = useCallback((
     ethAmount: number, 
@@ -142,7 +168,8 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     ethAmount: number, 
     showBoth: boolean = true
   ): string => {
-    if (!exchangeRates) {
+    if (!exchangeRates || !mounted) {
+      // Return just ETH price if rates not loaded or not mounted
       return formatEthAmount(ethAmount);
     }
 
@@ -155,7 +182,7 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     } else {
       return formattedCurrency;
     }
-  }, [exchangeRates, preferredCurrency]);
+  }, [exchangeRates, preferredCurrency, mounted]);
 
   const getCurrencySymbol = useCallback((currency?: SupportedCurrency): string => {
     return CURRENCY_OPTIONS[currency || preferredCurrency].symbol;

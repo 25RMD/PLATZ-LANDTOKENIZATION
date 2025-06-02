@@ -56,16 +56,21 @@ const Header = () => {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated, isVerified, user, logout, isLoading: authLoading } = useAuth();
 
+  const { isAuthenticated, isVerified, isAdmin, user, logout, isLoading: authLoading } = useAuth();
+
+  // Wagmi hooks
   const { address, isConnected, connector } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: ensName } = useEnsName({ address });
 
-  // Get isAdmin status from context
-  const { isAdmin } = useAuth(); 
+  // Handle hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -156,7 +161,7 @@ const Header = () => {
             </div>
           ) : (
             <AnimatedButton 
-              onClick={() => connect({ connector: connectors[0] })} 
+              onClick={() => connect()} 
               className="flex items-center space-x-2 text-sm whitespace-nowrap border border-black/20 dark:border-white/20 rounded-md px-3 xl:px-4 py-2 font-medium hover:bg-black/5 dark:hover:bg-white/5 transition"
             >
               <FaWallet />
@@ -199,7 +204,7 @@ const Header = () => {
                           {user?.username || "Account"}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {user?.email || (isConnected ? `${address?.slice(0,6)}...${address?.slice(-4)}` : 'No wallet')} {isAdmin && <span className="font-bold text-blue-500">(Admin)</span>}
+                          {user?.email || (isConnected ? `${address?.slice(0,6)}...${address?.slice(-4)}` : 'No wallet')}
                         </p>
                       </div>
                       <div className="py-1">
@@ -343,7 +348,7 @@ const Header = () => {
                     ) : (
                       <AnimatedButton 
                         onClick={() => {
-                          connect({ connector: connectors[0] });
+                          connect();
                           setMobileMenuOpen(false);
                         }} 
                         className="w-full flex items-center justify-center space-x-2 py-3"
@@ -372,7 +377,6 @@ const Header = () => {
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                             {user?.email || (isConnected ? `${address?.slice(0,6)}...${address?.slice(-4)}` : 'No wallet')}
-                            {isAdmin && <span className="font-bold text-blue-500 ml-1">(Admin)</span>}
                           </div>
                         </div>
                       </div>

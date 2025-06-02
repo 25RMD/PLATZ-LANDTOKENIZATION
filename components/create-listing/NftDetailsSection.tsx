@@ -1,7 +1,7 @@
 import React from 'react';
 import FileInputField from '@/components/common/FileInputField';
 import { motion } from 'framer-motion';
-import { FormDataInterface } from '../../types/createListing';
+import { FormDataInterface } from '../../types/createListing'; 
 
 interface NftDetailsProps {
   formData: FormDataInterface;
@@ -14,10 +14,10 @@ interface NftDetailsProps {
   isSubmitting: boolean;
 }
 
-const NftDetailsSection: React.FC<NftDetailsProps> = ({ 
-  formData, 
-  handleInputChange, 
-  handleFileChange, 
+const NftDetailsSection: React.FC<NftDetailsProps> = ({
+  formData,
+  handleInputChange,
+  handleFileChange,
   handleDrop,
   filePreviews,
   inputFieldStyles,
@@ -57,7 +57,7 @@ const NftDetailsSection: React.FC<NftDetailsProps> = ({
         </motion.span>
         NFT DETAILS
       </motion.h2>
-      
+
       {/* NFT Metadata */}
       <motion.div 
         className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12"
@@ -81,30 +81,30 @@ const NftDetailsSection: React.FC<NftDetailsProps> = ({
         <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
           <label htmlFor="listingPrice" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Listing Price *</label>
           <div className="flex">
-            <input
-              type="number"
+          <input
+            type="number"
               id="listingPrice"
-              name="listingPrice"
+            name="listingPrice"
               value={formData.listingPrice}
-              onChange={handleInputChange}
+            onChange={handleInputChange}
               className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} rounded-r-none`}
               placeholder="0.00"
               step="0.001"
-              disabled={isSubmitting}
+            disabled={isSubmitting}
             />
-            <select
+          <select
               id="priceCurrency"
-              name="priceCurrency"
+            name="priceCurrency"
               value={formData.priceCurrency}
-              onChange={handleInputChange}
+            onChange={handleInputChange}
               className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} rounded-l-none border-l-0 w-24`}
-              disabled={isSubmitting}
-            >
-              <option value="ETH">ETH</option>
+            disabled={isSubmitting}
+          >
+            <option value="ETH">ETH</option>
               <option value="MATIC">MATIC</option>
               <option value="USD">USD</option>
-            </select>
-          </div>
+          </select>
+        </div>
         </motion.div>
       </motion.div>
 
@@ -123,15 +123,15 @@ const NftDetailsSection: React.FC<NftDetailsProps> = ({
         </motion.h3>
         <motion.div whileHover={{ scale: 1.01 }} transition={{ duration: 0.2 }}>
           <label htmlFor="nftDescription" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Description *</label>
-          <textarea
+        <textarea
             id="nftDescription"
-            name="nftDescription"
+          name="nftDescription"
             value={formData.nftDescription}
             onChange={handleInputChange}
-            rows={4}
+          rows={4}
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
             placeholder="Detailed description of the NFT and underlying property..."
-            disabled={isSubmitting}
+          disabled={isSubmitting}
           />
         </motion.div>
       </motion.div>
@@ -153,14 +153,14 @@ const NftDetailsSection: React.FC<NftDetailsProps> = ({
           <label htmlFor="nftImageFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
             NFT Image Upload *
           </label>
-          <FileInputField
-            id="nftImageFile"
-            label=""
+        <FileInputField
+            id="nftImageFile" 
+            label="" 
             accept=".jpg,.jpeg,.png,.gif,.webp"
-            file={formData.nftImageFile}
-            previewUrl={filePreviews.nftImageFile || null}
-            onChange={handleFileChange}
-            onDrop={(e) => handleDrop(e, 'nftImageFile')}
+            file={formData.nftImageFile} 
+            previewUrl={filePreviews.nftImageFile || null} 
+            onChange={handleFileChange} 
+            onDrop={(e) => handleDrop(e, 'nftImageFile')} 
           />
         </motion.div>
       </motion.div>
@@ -240,8 +240,8 @@ const NftDetailsSection: React.FC<NftDetailsProps> = ({
             rows={3}
             className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
             placeholder="Any additional information, special terms, or notes..."
-            disabled={isSubmitting}
-          />
+            disabled={isSubmitting} 
+        />
         </motion.div>
       </motion.div>
     </motion.div>

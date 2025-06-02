@@ -16,6 +16,7 @@ import BatchPurchaseModal from '@/components/nft/BatchPurchaseModal';
 import LowBalanceWarning from '@/components/common/LowBalanceWarning';
 import { useImagePreloading } from '@/hooks/useImagePreloading';
 import { useIsClient } from '@/hooks/useIsClient';
+import { usePreservedNavigation } from '@/hooks/usePreservedNavigation';
 import { LAND_MARKETPLACE_ADDRESS, PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
 import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
 import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
@@ -97,6 +98,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
   const { data: walletClient } = useWalletClient();
   const isClient = useIsClient();
   const { formatPriceWithConversion } = useCurrency();
+  const { navigateToExplore } = usePreservedNavigation();
   
   // State for collection data and loading
   const [collection, setCollection] = useState<NFTCollection | null>(null);
@@ -806,9 +808,12 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
       >
-      <Link
-        href="/explore"
-          className="inline-flex items-center text-white hover:text-cyber-accent mb-6 font-mono uppercase tracking-wider transition-all duration-300 group">
+        <motion.button
+          onClick={navigateToExplore}
+          className="inline-flex items-center text-white hover:text-cyber-accent mb-6 font-mono uppercase tracking-wider transition-all duration-300 group cursor-pointer"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
           <motion.div
             whileHover={{ x: -5 }}
             transition={{ duration: 0.2 }}
@@ -825,7 +830,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           >
             BACK TO EXPLORE
           </motion.span>
-      </Link>
+        </motion.button>
       </motion.div>
 
         {/* Low Balance Warning */}

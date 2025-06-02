@@ -135,40 +135,40 @@ const RegistryParcelSection: React.FC<RegistryParcelProps> = ({
             <label htmlFor="surveyPlanFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
               Survey Plan Document
             </label>
-            <FileInputField
-              id="surveyPlanFile"
+        <FileInputField
+          id="surveyPlanFile"
               label=""
               accept=".pdf,.jpg,.jpeg,.png"
-              file={formData.surveyPlanFile}
-              previewUrl={filePreviews.surveyPlanFile || null}
-              onChange={handleFileChange}
-              onDrop={(e) => handleDrop(e, 'surveyPlanFile')}
-            />
+          file={formData.surveyPlanFile}
+          previewUrl={filePreviews.surveyPlanFile || null}
+          onChange={handleFileChange}
+          onDrop={(e) => handleDrop(e, 'surveyPlanFile')}
+        />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="surveyPlanNumber" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Survey Plan Number</label>
-            <input
-              type="text"
-              id="surveyPlanNumber"
-              name="surveyPlanNumber"
-              value={formData.surveyPlanNumber}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
+          <input
+            type="text"
+            id="surveyPlanNumber"
+            name="surveyPlanNumber"
+            value={formData.surveyPlanNumber}
+            onChange={handleInputChange}
+            className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
               placeholder="e.g., SP987654321"
-              disabled={isSubmitting}
-            />
+            disabled={isSubmitting}
+          />
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="surveyDate" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Survey Date</label>
-            <input
-              type="date"
-              id="surveyDate"
-              name="surveyDate"
-              value={formData.surveyDate}
-              onChange={handleInputChange}
-              className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
-              disabled={isSubmitting}
-            />
+          <input
+            type="date"
+            id="surveyDate"
+            name="surveyDate"
+            value={formData.surveyDate}
+            onChange={handleInputChange}
+            className={`${isSubmitting ? inputFieldDisabledStyles : inputFieldStyles} appearance-none`}
+            disabled={isSubmitting}
+          />
           </motion.div>
         </div>
       </motion.div>

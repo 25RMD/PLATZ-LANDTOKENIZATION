@@ -25,3 +25,8 @@ export function WagmiProvider({ children, initialState }: WagmiProviderProps) {
     </Provider>
   );
 }
+
+// Shim component that provides basic context structure during SSR
+const WagmiProviderShim: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return <>{children}</>;
+};
