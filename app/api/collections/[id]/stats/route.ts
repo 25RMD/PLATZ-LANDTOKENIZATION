@@ -25,7 +25,7 @@ export async function GET(
     // 4. Get top offers from bid data
     
     const mockStats: PriceStatistics = {
-      floorPrice: Math.random() * 5 + 0.1, // Random between 0.1 and 5.1 ETH
+      floorPrice: 0.0001, // Set to 0.0001 ETH as requested
       averagePrice: Math.random() * 8 + 0.5, // Random between 0.5 and 8.5 ETH
       volume24h: Math.random() * 50 + 1, // Random between 1 and 51 ETH
       priceChange24h: (Math.random() - 0.5) * 20, // Random between -10% and +10%

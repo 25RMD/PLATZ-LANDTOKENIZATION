@@ -224,6 +224,7 @@ model LandListing {
   localGovernmentArea        String?              @map("local_government_area")
   propertyValuation          String?              @map("property_valuation")
   zoningClassification       String?              @map("zoning_classification")
+  creatorAddress             String?              @map("creator_address")
   evmCollectionTokens        EvmCollectionToken[] @relation("LandListingTokens")
   user                       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   nfts                       NFT[]                @relation("LandListingToNFTs")

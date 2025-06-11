@@ -21,6 +21,7 @@ interface BidModalProps {
   tokenName: string;
   currentHighestBid?: number;
   floorPrice?: number;
+  tokenListingPrice?: number;
   collectionId: string;
 }
 
@@ -32,6 +33,7 @@ const BidModal: React.FC<BidModalProps> = ({
   tokenName,
   currentHighestBid = 0,
   floorPrice = 0,
+  tokenListingPrice = 0,
   collectionId
 }) => {
   const { address, isConnected } = useAccount();
@@ -55,8 +57,11 @@ const BidModal: React.FC<BidModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [estimatedGasCost, setEstimatedGasCost] = useState<bigint | null>(null);
 
-  // Calculate minimum bid (higher than current highest bid)
-  const minimumBid = Math.max(currentHighestBid * 1.05, floorPrice * 0.8, 0.001);
+  // Calculate minimum bid (use token listing price as base, fall back to current logic)
+  const minimumBid = Math.max(
+    currentHighestBid > 0 ? currentHighestBid + 0.001 : 0, // If there are bids, minimum is current + 0.001 ETH
+    tokenListingPrice > 0 ? tokenListingPrice : Math.max(floorPrice * 0.8, 0.001) // Use token price or fall back to floor price logic
+  );
 
   // Check if user has sufficient balance
   const userBalance = balance ? parseFloat(formatEther(balance.value)) : 0;

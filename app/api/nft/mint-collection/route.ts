@@ -322,90 +322,138 @@ export async function POST(request: NextRequest) {
       throw new Error('NEXT_PUBLIC_BASE_URL must be a valid HTTP/HTTPS URL for metadata to be accessible by smart contracts');
     }
 
-    // --- 9. Create NFT Collection on-chain ---
+    // --- 9. Mint Collection on blockchain ---
+    let createCollectionResult;
     try {
-      console.log(`Creating NFT collection for listing ${landListingId} with owner ${ownerAddress}...`);
-      
-      // Check for valid contract configuration first
-      if (!process.env.NFT_CONTRACT_ADDRESS || process.env.NFT_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
-        throw new Error("NFT contract address is not properly configured. Please set the NFT_CONTRACT_ADDRESS environment variable.");
-      }
-      
-      // Call createCollection from contractUtils.ts
-      const result = await createCollection(
+      console.log('Calling createCollection contract utility...');
+      createCollectionResult = await createCollection(
         landListingId,
         ownerAddress,
         mainTokenMetadataFullUrl,
-        quantity, // Number of child tokens
+        quantity,
         collectionMetadataFullUrl,
         childTokensBaseURI
       );
       
-      if (!result.success) {
-        // If createCollection itself failed, it should have already updated mintStatus to FAILED.
-        // We just re-throw the error to be caught by the outer try-catch which will also attempt to set FAILED status.
-        throw new Error(result.error || 'Unknown error creating collection in contractUtils');
+      if (!createCollectionResult.success) {
+        throw new Error(createCollectionResult.error || 'Failed to create collection in contractUtils');
       }
+      
+      console.log('createCollection successful:', createCollectionResult);
+    } catch (error) {
+      const errorMessage = `Failed to mint collection on blockchain: ${(error as Error).message}`;
+      console.error(errorMessage, error);
+      await updateMintStatus(landListingId, 'FAILED', errorMessage);
+      return NextResponse.json({ 
+        success: false, 
+        error: errorMessage
+      }, { status: 500 });
+    }
+    
+    const { 
+      collectionId, 
+      mainTokenId, 
+      creator, 
+      startTokenId,
+      quantity: mintedQuantity,
+      transactionHash 
+    } = createCollectionResult;
 
-      // After a successful transaction and event parsing within createCollection,
-      // collectionId and mainTokenId should be non-null strings.
-      if (!result.collectionId || !result.mainTokenId) {
-        console.error('Critical Error: Collection ID or Main Token ID is missing from a successful createCollection result.');
-        // Attempt to update status to FAILED, then throw.
-        try {
-          await prisma.landListing.update({
-            where: { id: landListingId },
-            data: { mintStatus: 'FAILED', mintErrorReason: 'Post-mint ID parsing inconsistency' },
-          });
-        } catch (dbUpdateError) {
-          console.error('Failed to update LandListing to FAILED after ID inconsistency:', dbUpdateError);
-        }
-        throw new Error('Critical Error: Post-mint ID parsing inconsistency. Contact support.');
-      }
-      
-      console.log(`NFT collection created successfully: Collection ID ${result.collectionId}, Main Token ID: ${result.mainTokenId}, Transaction: ${result.transactionHash}`);
-      
-      // --- 10. Update database with NFT data ---
-      // result.collectionId and result.mainTokenId are already strings here.
+    // --- 7. Update Database with Minting Results ---
+    try {
+      console.log('Updating database with minting results...');
+
+      // Update the LandListing with all the new data
       await prisma.landListing.update({
         where: { id: landListingId },
         data: {
           mintStatus: 'COMPLETED',
-          mintTransactionHash: { set: result.transactionHash },
-          tokenId: { set: parseInt(result.mainTokenId) }, // Convert to number
-          collectionId: { set: result.collectionId }, // Explicitly set String
-          nftTitle: { set: nftTitle },
-          nftDescription: { set: nftDescription || '' },
-          nftImageFileRef: { set: imageUrl },
-          nftMetadataIrysUri: { set: mainTokenMetadataFullUrl },
-        },
-      });
-      
-      // Return success response
-      return NextResponse.json({
-        success: true,
-        message: 'NFT collection minted successfully',
-        data: {
-          landListingId,
-          collectionId: result.collectionId,
-          mainTokenId: result.mainTokenId,
-          transactionHash: result.transactionHash,
+          mintTransactionHash: transactionHash,
+          tokenId: mainTokenId ? parseInt(mainTokenId) : undefined,
+          collectionId: collectionId,
+          mainTokenId: mainTokenId,
+          creatorAddress: creator,
+          nftTitle: nftTitle,
+          nftDescription: nftDescription || '',
+          nftImageFileRef: imageUrl,
+          mainTokenMetadataUrl: mainTokenMetadataFullUrl,
+          collectionMetadataUrl: collectionMetadataFullUrl,
+          childTokensBaseUrl: childTokensBaseURI,
+          nftCollectionSize: quantity + 1,
         }
       });
       
+      // --- 8. Create EvmCollectionToken records ---
+      const tokensToCreate = [];
+      const numericStartTokenId = BigInt(startTokenId || '0');
+      const numericQuantity = BigInt(mintedQuantity || '0');
+
+      // Add the main token
+      if (mainTokenId) {
+        tokensToCreate.push({
+          landListingId: landListingId,
+          tokenId: Number(mainTokenId),
+          isMainToken: true,
+          tokenURI: mainTokenMetadataFullUrl,
+          ownerAddress: ownerAddress,
+          mintTransactionHash: transactionHash,
+          mintTimestamp: new Date(),
+        });
+      }
+
+      // Add the child tokens
+      if (startTokenId && mintedQuantity) {
+        for (let i = 0n; i < numericQuantity; i++) {
+          const tokenId = numericStartTokenId + i;
+          const tokenURI = childTokensBaseURI.includes('{id}')
+            ? `${childTokensBaseURI.replace('{id}', tokenId.toString())}.json`
+            : `${childTokensBaseURI.endsWith('/') ? childTokensBaseURI : `${childTokensBaseURI}/`}${tokenId.toString()}.json`;
+          
+          tokensToCreate.push({
+            landListingId: landListingId,
+            tokenId: Number(tokenId),
+            isMainToken: false,
+            tokenURI: tokenURI,
+            ownerAddress: ownerAddress,
+            mintTransactionHash: transactionHash,
+            mintTimestamp: new Date(),
+          });
+        }
+      }
+
+      if (tokensToCreate.length > 0) {
+        await prisma.evmCollectionToken.createMany({
+          data: tokensToCreate,
+          skipDuplicates: true,
+        });
+        console.log(`Successfully created ${tokensToCreate.length} EvmCollectionToken records.`);
+      }
+
     } catch (error) {
-      console.error('Error minting NFT collection:', error);
-      
-      // Update mint status to FAILED
-      await updateMintStatus(landListingId, 'FAILED', (error as Error).message);
-      
-      return NextResponse.json({
-        success: false,
-        error: 'Error minting NFT collection',
-        details: (error as Error).message
-      }, { status: 500 });
+      const errorMessage = `Minting successful, but failed to update database: ${(error as Error).message}`;
+      console.error(errorMessage, error);
+      // Don't mark mint as FAILED, as it succeeded on-chain. But log the error.
+      await prisma.landListing.update({
+        where: { id: landListingId },
+        data: {
+          mintErrorReason: errorMessage,
+        },
+      });
     }
-    
+
+    // --- 9. Final Success Response ---
+    return NextResponse.json({
+      success: true,
+      message: 'NFT collection minted successfully and database updated',
+      data: {
+        landListingId,
+        collectionId,
+        mainTokenId,
+        creator,
+        transactionHash,
+      }
+    });
+
   } catch (error) {
     console.error('Unhandled error in mint-collection API:', error);
     return NextResponse.json({

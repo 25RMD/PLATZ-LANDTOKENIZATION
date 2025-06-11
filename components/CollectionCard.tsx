@@ -163,13 +163,13 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
             
             {/* Image or Placeholder */}
             {collection.image && !imageError ? (
-              <motion.img
+            <motion.img
                 src={collection.image}
-                alt={collection.name || 'Collection Image'}
-                className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-110 group-hover:brightness-110"
-                whileHover={{ 
-                  filter: "brightness(1.2) contrast(1.1) saturate(1.1)",
-                }}
+          alt={collection.name || 'Collection Image'}
+              className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-110 group-hover:brightness-110"
+              whileHover={{ 
+                filter: "brightness(1.2) contrast(1.1) saturate(1.1)",
+              }}
                 onError={() => setImageError(true)}
               />
             ) : (
@@ -303,58 +303,58 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
           <div className="relative p-5 space-y-3 bg-gradient-to-b from-transparent to-gray-50/50 dark:to-primary-dark/50">
             {/* Title and Creator Section - Full Width */}
             <div className="space-y-1">
-              <motion.h3 
+                <motion.h3 
                 className="text-lg font-bold text-black dark:text-white font-mono tracking-tight line-clamp-2 group-hover:text-black dark:group-hover:text-white transition-colors duration-300" 
-                title={formatCollectionName(collection.name)}
-                style={{
-                  textShadow: "0 0 15px rgba(0, 0, 0, 0.4)",
-                }}
-                whileHover={{
-                  textShadow: "0 0 20px rgba(0, 0, 0, 0.8)",
-                }}
-              >
-                {formatCollectionName(collection.name)}
-              </motion.h3>
-              <p 
+                  title={formatCollectionName(collection.name)}
+                  style={{
+                    textShadow: "0 0 15px rgba(0, 0, 0, 0.4)",
+                  }}
+                  whileHover={{
+                    textShadow: "0 0 20px rgba(0, 0, 0, 0.8)",
+                  }}
+                >
+                  {formatCollectionName(collection.name)}
+                </motion.h3>
+                <p 
                 className="text-sm text-black/60 dark:text-white/60 font-mono" 
-                title={displayCreator(collection.creator)}
-              >
-                Creator: {displayCreator(collection.creator)}
-              </p>
-            </div>
+                  title={displayCreator(collection.creator)}
+                >
+                  Creator: {displayCreator(collection.creator)}
+                </p>
+      </div>
 
             {/* Price Section - Compact Row */}
-            {collection.isListed && typeof collection.price === 'bigint' && (
-              <motion.div 
+          {collection.isListed && typeof collection.price === 'bigint' && (
+                <motion.div 
                 className="flex items-center justify-between"
                 whileHover={{ scale: 1.02 }}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
+                  transition={{ delay: 0.3 }}
+                >
                 <div className="text-xs text-black/60 dark:text-white/60 font-mono uppercase tracking-wider">
                   Listing Price
                 </div>
                 <div className="px-2 py-1 bg-gradient-to-br from-white/15 to-white/10 dark:from-black/15 dark:to-black/10 rounded border border-black/20 dark:border-white/20 backdrop-blur-sm">
-                  <motion.div 
-                    className="text-sm font-bold text-black dark:text-white font-mono"
-                    animate={{ 
-                      textShadow: [
-                        "0 0 10px rgba(0, 0, 0, 0.3)",
-                        "0 0 15px rgba(0, 0, 0, 0.5)",
-                        "0 0 10px rgba(0, 0, 0, 0.3)",
-                      ]
-                    }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  >
-                    {formatDisplayPrice(collection.price)}
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
+                    <motion.div 
+                      className="text-sm font-bold text-black dark:text-white font-mono"
+                      animate={{ 
+                        textShadow: [
+                          "0 0 10px rgba(0, 0, 0, 0.3)",
+                          "0 0 15px rgba(0, 0, 0, 0.5)",
+                          "0 0 10px rgba(0, 0, 0, 0.3)",
+                        ]
+                      }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                    >
+              {formatDisplayPrice(collection.price)}
+                    </motion.div>
+                  </div>
+                </motion.div>
+          )}
 
             {/* Description */}
-            {collection.description && (
+        {collection.description && (
               <motion.p 
                 className="text-sm text-black/70 dark:text-white/70 line-clamp-2 leading-relaxed font-mono pt-1" 
                 title={collection.description || 'No description'}
@@ -362,9 +362,9 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                {collection.description || 'No description available.'}
+            {collection.description || 'No description available.'}
               </motion.p>
-            )}
+        )}
 
             {/* Stats Section with enhanced styling */}
             <div className="flex justify-between items-center pt-3 border-t border-black/20 dark:border-white/20">
@@ -382,7 +382,7 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
                     {collection.totalSupply?.toString() || 'N/A'}
                   </motion.div>
                 </motion.div>
-              </div>
+          </div>
               
               {/* Enhanced Hover Effect Indicator */}
               <motion.div 
@@ -399,7 +399,7 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
               >
                 <div className="w-3 h-3 bg-gradient-to-r from-black to-black/80 dark:from-white dark:to-white/80 rounded-full shadow-lg"></div>
               </motion.div>
-            </div>
+          </div>
 
             {/* Enhanced Cyber Grid Pattern Overlay */}
             <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none rounded-cyber-lg">
@@ -417,8 +417,8 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
                   backgroundSize: '20px 20px'
                 }}>
               </motion.div>
-            </div>
-          </div>
+        </div>
+      </div>
 
           {/* Enhanced pulse effect with multiple layers */}
           <motion.div

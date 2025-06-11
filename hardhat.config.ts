@@ -1,15 +1,15 @@
 import path from "path";
 import * as dotenv from "dotenv";
 
-// Load .env.local as early as possible, assuming hardhat commands are run from project root
+// Load deploy.env file from project root
 const projectRoot = process.cwd();
-const envPath = path.join(projectRoot, ".env.local");
+const envPath = path.join(projectRoot, "deploy.env");
 const envConfig = dotenv.config({ path: envPath });
 
 if (envConfig.error) {
-  console.error("[ERROR] Failed to load .env.local in hardhat.config.ts:", envConfig.error);
+  console.error("[ERROR] Failed to load deploy.env in hardhat.config.ts:", envConfig.error);
 } else {
-  console.log("[DEBUG] .env.local loaded in hardhat.config.ts. Parsed keys:", Object.keys(envConfig.parsed || {}));
+  console.log("[DEBUG] deploy.env loaded in hardhat.config.ts. Parsed keys:", Object.keys(envConfig.parsed || {}));
 }
 
 console.log("[DEBUG] SEPOLIA_RPC_URL from process.env (in hardhat.config.ts):", process.env.SEPOLIA_RPC_URL);
@@ -21,10 +21,10 @@ import "@nomicfoundation/hardhat-toolbox";
 
 const DEFAULT_SEPOLIA_RPC_URL = "https://eth-sepolia.public.blastapi.io";
 // IMPORTANT: This default private key is for placeholder/fallback only. 
-// Ensure your actual private key is loaded from .env.local for transactions.
+// Ensure your actual private key is loaded from deploy.env for transactions.
 const DEFAULT_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; 
 
-const sepoliaRpcUrl = process.env.FALLBACK_RPC_URL_1 || process.env.RPC_URL || process.env.NEXT_PUBLIC_RPC_URL || process.env.FALLBACK_RPC_URL_2 || "https://rpc.sepolia.org";
+const sepoliaRpcUrl = process.env.SEPOLIA_RPC_URL || DEFAULT_SEPOLIA_RPC_URL;
 const privateKey = process.env.PRIVATE_KEY || DEFAULT_PRIVATE_KEY;
 const etherscanApiKey = process.env.ETHERSCAN_API_KEY || "";
 

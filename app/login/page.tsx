@@ -41,17 +41,12 @@ const LoginPage = () => {
 
   // Redirect if already authenticated when page loads
   useEffect(() => {
-    console.log("Login useEffect triggered:", { isAuthenticated, user: !!user, hasRedirected, isLoading });
-    
     if (isAuthenticated && user && !hasRedirected && !isLoading) {
-      console.log("Conditions met for redirect, setting hasRedirected and redirecting...");
       setHasRedirected(true);
       
       if (user.isAdmin) {
-        console.log("Login: Detected admin, redirecting to /admin/dashboard");
         router.push('/admin/dashboard');
       } else {
-        console.log("Login: Detected regular user, redirecting to /profile");
         router.push('/profile');
       }
     }
@@ -94,12 +89,34 @@ const LoginPage = () => {
       
       if (success) {
         console.log("EVM Wallet login successful, refreshing authentication state...");
-        await fetchCurrentUser();
+        
+        // Wait for state to update properly
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Force a fresh authentication state fetch
+        const refreshedUser = await fetchCurrentUser();
+        
+        if (refreshedUser) {
+          console.log("Authentication state refreshed, setting redirect flag...");
+          setHasRedirected(true);
+          
+          // Use a more reliable redirect mechanism
+          if (refreshedUser.isAdmin) {
+            console.log("EVM Wallet login: Detected admin, redirecting to /admin/dashboard");
+            window.location.href = '/admin/dashboard';
+          } else {
+            console.log("EVM Wallet login: Detected regular user, redirecting to /profile");
+            window.location.href = '/profile';
+          }
+        } else {
+          console.error("Failed to refresh user data after EVM wallet login");
+          toast.error("Login successful but failed to load user data. Please refresh the page.");
+        }
       } else {
         console.error("EVM Wallet sign-in failed (toast displayed by context)");
       }
     } catch (error) {
-      toast.dismiss(loadingToastId);
+    toast.dismiss(loadingToastId);
       console.error("Error during EVM wallet login:", error);
     }
   };
@@ -118,9 +135,9 @@ const LoginPage = () => {
       <div className="fixed inset-0 cyber-grid opacity-30 dark:opacity-20 pointer-events-none" />
       
       <div className="relative z-10 container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-12 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="max-w-md w-full"
         >
@@ -138,7 +155,7 @@ const LoginPage = () => {
               ACCESS TERMINAL
             </motion.h1>
 
-            {/* Username/Password Form */}
+      {/* Username/Password Form */}
             <motion.form 
               onSubmit={handleLoginSubmit} 
               className="space-y-6"
@@ -146,21 +163,21 @@ const LoginPage = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              <div>
+        <div>
                 <label htmlFor="username" className="block text-sm font-medium text-text-light/80 dark:text-text-dark/80 mb-2 font-mono uppercase tracking-wide">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  className={inputClasses(!!formErrors.username)}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
-                />
+            Username
+          </label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            autoComplete="username"
+            required
+            className={inputClasses(!!formErrors.username)}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter your username"
+          />
                 {formErrors.username && (
                   <motion.p 
                     className="mt-2 text-sm text-red-500 dark:text-red-400 font-mono"
@@ -170,24 +187,24 @@ const LoginPage = () => {
                     {formErrors.username[0]}
                   </motion.p>
                 )}
-              </div>
+        </div>
 
-              <div>
+        <div>
                 <label htmlFor="password" className="block text-sm font-medium text-text-light/80 dark:text-text-dark/80 mb-2 font-mono uppercase tracking-wide">
-                  Password
-                </label>
+            Password
+          </label>
                 <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
+          <input
+            id="password"
+            name="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    required
-                    className={inputClasses(!!formErrors.password)}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                  />
+            autoComplete="current-password"
+            required
+            className={inputClasses(!!formErrors.password)}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+          />
                   <button
                     type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-text-light/60 dark:text-text-dark/60 hover:text-text-light dark:hover:text-text-dark transition-colors"
@@ -209,32 +226,32 @@ const LoginPage = () => {
                     {formErrors.password[0]}
                   </motion.p>
                 )}
-              </div>
+        </div>
 
-              <div>
-                <AnimatedButton
-                  type="submit"
-                  disabled={isLoading}
+        <div>
+          <AnimatedButton
+            type="submit"
+            disabled={isLoading}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-cyber-lg shadow-sm text-sm font-bold text-white bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black/20 dark:focus:ring-white/20 disabled:opacity-60 transition-all duration-200 font-mono uppercase tracking-wider"
-                >
+          >
                   {isLoading ? 'ACCESSING...' : 'INITIALIZE LOGIN'}
-                </AnimatedButton>
-              </div>
+          </AnimatedButton>
+        </div>
             </motion.form>
 
-            {/* Divider */}
+      {/* Divider */}
             <motion.div 
               className="my-8 relative flex items-center justify-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
             >
-              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+         <div className="absolute inset-0 flex items-center" aria-hidden="true">
                 <div className="w-full border-t border-black/20 dark:border-white/20" />
-              </div>
+         </div>
               <span className="relative px-4 text-sm font-medium text-text-light/60 dark:text-text-dark/60 bg-white dark:bg-primary-dark font-mono uppercase tracking-wider">
-                OR
-              </span>
+            OR
+        </span>
             </motion.div>
 
             {/* EVM Wallet Login Section */}
@@ -264,20 +281,20 @@ const LoginPage = () => {
                     <span className="text-sm text-text-light dark:text-text-dark font-mono">
                       {address?.slice(0,6)}...{address?.slice(-4)}
                     </span>
-                  </div>
-                  <AnimatedButton
-                    onClick={handleWalletLogin}
+         </div>
+             <AnimatedButton
+                onClick={handleWalletLogin}
                     disabled={isLoading}
                     className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-cyber-lg shadow-sm text-sm font-bold text-white bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black/20 dark:focus:ring-white/20 disabled:opacity-60 transition-all duration-200 font-mono uppercase tracking-wider"
-                  >
-                    <FaWallet className="w-4 h-4"/>
+            >
+                 <FaWallet className="w-4 h-4"/>
                     {isLoading ? 'VERIFYING...' : 'AUTHENTICATE WALLET'}
-                  </AnimatedButton>
-                </div>
+             </AnimatedButton>
+      </div>
               )}
             </motion.div>
 
-            {/* Link to Sign Up */}
+      {/* Link to Sign Up */}
             <motion.div 
               className="mt-8 text-center"
               initial={{ opacity: 0 }}
@@ -291,8 +308,8 @@ const LoginPage = () => {
                   className="font-medium text-black dark:text-white hover:text-black/80 dark:hover:text-white/80 underline underline-offset-2 font-mono uppercase tracking-wide transition-colors"
                 >
                   Register Here
-                </Link>
-              </p>
+          </Link>
+        </p>
             </motion.div>
           </div>
         </motion.div>

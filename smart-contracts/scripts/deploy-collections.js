@@ -15,7 +15,14 @@ async function main() {
   // Deploy PlatzLandNFTWithCollections
   console.log("Deploying PlatzLandNFTWithCollections...");
   const PlatzLandNFTFactory = await ethers.getContractFactory("PlatzLandNFTWithCollections");
-  const platzLandNFT = await PlatzLandNFTFactory.deploy(nftName, nftSymbol);
+  
+  // Deploy with explicit constructor arguments
+  const deploymentArgs = [nftName, nftSymbol];
+  console.log("Deployment arguments:", deploymentArgs);
+  
+  const platzLandNFT = await PlatzLandNFTFactory.deploy(...deploymentArgs);
+  console.log("Waiting for deployment to complete...");
+  
   await platzLandNFT.waitForDeployment();
   const platzLandNFTAddress = await platzLandNFT.getAddress();
   

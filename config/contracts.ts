@@ -8,7 +8,7 @@ export type Address = `0x${string}`;
 export const PLATZ_LAND_NFT_ADDRESS: Address = (
   process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || 
   process.env.NFT_CONTRACT_ADDRESS || 
-  "0x837527fa3206Adcba2a8909CAE39280D606540c4"
+  "0x8447dEe42d0cbBa5fa7DE617a3983Eb2da1d7Dde"
 ) as Address;
 
 export const LAND_MARKETPLACE_ADDRESS: Address = (
@@ -18,7 +18,7 @@ export const LAND_MARKETPLACE_ADDRESS: Address = (
 ) as Address;
 
 // For local development
-export const LOCALHOST_PLATZ_LAND_NFT_ADDRESS: Address = "0x837527fa3206Adcba2a8909CAE39280D606540c4" as Address;
+export const LOCALHOST_PLATZ_LAND_NFT_ADDRESS: Address = "0x8447dEe42d0cbBa5fa7DE617a3983Eb2da1d7Dde" as Address;
 export const LOCALHOST_LAND_MARKETPLACE_ADDRESS: Address = "0xfAE9Ef51fea4D220cD427EC47C8dFDA4a6426De8" as Address;
 
 // Get the correct contract address based on the environment

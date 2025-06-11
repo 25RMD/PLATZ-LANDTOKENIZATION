@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { generateNonce } from '@/lib/authUtils';
-import { isAddress } from 'ethers'; // Corrected import, was 'ethers/utils' which is for ethers v5
+import { isAddress } from 'ethers';
 
 export async function POST(request: Request) {
   try {

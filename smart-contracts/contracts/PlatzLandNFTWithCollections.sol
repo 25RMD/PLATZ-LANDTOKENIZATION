@@ -90,7 +90,7 @@ contract PlatzLandNFTWithCollections is ERC721URIStorage, Ownable {
         
         _collections[collectionId] = Collection({
             startTokenId: startTokenId,
-            totalSupply: quantity,
+            totalSupply: quantity + 1,
             mainTokenId: mainTokenId,
             baseURI: baseURI,
             collectionURI: collectionURI,

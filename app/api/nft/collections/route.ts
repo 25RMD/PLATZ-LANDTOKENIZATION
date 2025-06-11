@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         listingPrice: true,
         priceCurrency: true,
         nftImageFileRef: true,
-        nftCollectionSize: true,
+        nftCollectionSize: true, // Keep for backward compatibility
         country: true,
         state: true,
         localGovernmentArea: true,
@@ -109,8 +109,6 @@ export async function GET(request: NextRequest) {
         collectionId: true,
         mainTokenId: true,
         nftMetadataIrysUri: true,
-
-
         mintTransactionHash: true,
         mintTimestamp: true,
         createdAt: true,
@@ -122,12 +120,9 @@ export async function GET(request: NextRequest) {
           },
         },
         evmCollectionTokens: {
-          where: {
-            isMainToken: true,
-          },
           select: {
             tokenId: true,
-            tokenURI: true,
+            isMainToken: true,
             ownerAddress: true,
             isListed: true,
             listingPrice: true,
@@ -141,18 +136,30 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    // Convert BigInt fields to strings and Decimal to numbers for JSON serialization
-    const serializableCollections = collections.map(collection => ({
+    // Convert BigInt fields to strings and Decimal to numbers for JSON serialization with hybrid token counts
+    const serializableCollections = collections.map(collection => {
+      // Calculate actual collection size from minted tokens
+      const actualTokenCount = collection.evmCollectionTokens.length;
+      const dbCollectionSize = collection.nftCollectionSize || 0;
+      
+      // Hybrid approach: use actual count if tokens exist, otherwise use database field
+      const hybridCollectionSize = actualTokenCount > 0 ? actualTokenCount : dbCollectionSize;
+      
+      console.log(`[API /api/nft/collections] Collection ${collection.collectionId}: DB size=${dbCollectionSize}, Actual tokens=${actualTokenCount}, Using=${hybridCollectionSize}`);
+      
+      return {
       ...collection,
       listingPrice: collection.listingPrice ? (collection.listingPrice as any as import('@prisma/client').Prisma.Decimal).toNumber() : null,
       collectionId: collection.collectionId?.toString(),
       mainTokenId: collection.mainTokenId?.toString(),
+        nftCollectionSize: hybridCollectionSize, // Use hybrid count: actual tokens if available, otherwise DB field
       evmCollectionTokens: collection.evmCollectionTokens.map(token => ({
         ...token,
         tokenId: token.tokenId?.toString(),
         listingPrice: token.listingPrice ? (token.listingPrice as any as import('@prisma/client').Prisma.Decimal).toNumber() : null,
       })),
-    }));
+      };
+    });
 
     return NextResponse.json({
       success: true,

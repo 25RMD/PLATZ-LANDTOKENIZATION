@@ -7,6 +7,10 @@ export interface ExchangeRates {
   lastUpdated: number;
 }
 
+export interface FetchExchangeRatesResult extends ExchangeRates {
+  success: boolean;
+}
+
 export interface CurrencyPreference {
   currency: SupportedCurrency;
   symbol: string;
@@ -33,10 +37,12 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 /**
  * Fetch current ETH exchange rates from CoinGecko API
  */
-export async function fetchExchangeRates(): Promise<ExchangeRates> {
+export async function fetchExchangeRates(): Promise<FetchExchangeRatesResult> {
   // Check cache first
   if (exchangeRatesCache && Date.now() - exchangeRatesCache.lastUpdated < CACHE_DURATION) {
-    return exchangeRatesCache;
+    // If the cached item is a fallback, we mark success as false
+    const isFallback = exchangeRatesCache.USD === 2500; // A simple check for fallback data
+    return { ...exchangeRatesCache, success: !isFallback };
   }
 
   try {
@@ -68,9 +74,9 @@ export async function fetchExchangeRates(): Promise<ExchangeRates> {
     // Update cache
     exchangeRatesCache = rates;
     
-    return rates;
+    return { ...rates, success: true };
   } catch (error) {
-    console.error('Error fetching exchange rates:', error);
+    console.warn('Could not fetch live exchange rates. Using fallback estimates.', error);
     
     // Return fallback rates if API fails
     const fallbackRates: ExchangeRates = {
@@ -82,7 +88,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRates> {
     // Cache fallback rates for a shorter duration
     exchangeRatesCache = fallbackRates;
     
-    return fallbackRates;
+    return { ...fallbackRates, success: false };
   }
 }
 

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
         nftTitle: true,
         nftDescription: true,
         nftImageFileRef: true,
-        nftCollectionSize: true,
+        nftCollectionSize: true, // Keep for backward compatibility
         listingPrice: true,
         priceCurrency: true,
         country: true,
@@ -52,6 +52,11 @@ export async function GET(request: NextRequest) {
             username: true,
             evmAddress: true
           }
+        },
+        evmCollectionTokens: {
+          select: {
+            tokenId: true
+          }
         }
       },
       orderBy: {
@@ -61,15 +66,25 @@ export async function GET(request: NextRequest) {
 
     console.log(`[API /api/collections] Found ${collections.length} collections in database`);
 
-    // Transform the data to match the expected format
-    const transformedCollections = collections.map(collection => ({
+    // Transform the data to match the expected format with hybrid token counting
+    const transformedCollections = collections.map(collection => {
+      // Calculate actual collection size from minted tokens
+      const actualTokenCount = collection.evmCollectionTokens.length;
+      const dbCollectionSize = collection.nftCollectionSize || 0;
+      
+      // Hybrid approach: use actual count if tokens exist, otherwise use database field
+      const hybridCollectionSize = actualTokenCount > 0 ? actualTokenCount : dbCollectionSize;
+      
+      console.log(`[API /api/collections] Collection ${collection.collectionId}: DB size=${dbCollectionSize}, Actual tokens=${actualTokenCount}, Using=${hybridCollectionSize}`);
+      
+      return {
       id: collection.id,
       collectionId: collection.collectionId,
       mainTokenId: collection.mainTokenId,
       nftTitle: collection.nftTitle,
       nftDescription: collection.nftDescription,
       nftImageFileRef: collection.nftImageFileRef,
-      nftCollectionSize: collection.nftCollectionSize,
+        nftCollectionSize: hybridCollectionSize, // Use hybrid count: actual tokens if available, otherwise DB field
       listingPrice: collection.listingPrice,
       priceCurrency: collection.priceCurrency,
       country: collection.country,
@@ -83,7 +98,8 @@ export async function GET(request: NextRequest) {
       mintTimestamp: collection.mintTimestamp,
       createdAt: collection.createdAt,
       user: collection.user
-    }));
+      };
+    });
 
     return NextResponse.json({
       success: true,
