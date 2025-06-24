@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import path from 'path';
 import { mkdir, writeFile } from 'fs/promises';
 
+
 /**
  * GET /api/collections
  * 
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
     const collections = await prisma.landListing.findMany({
       where: {
         AND: [
+          { status: 'APPROVED' }, // <<< Only fetch approved listings
           { collectionId: { not: null } },
           { 
             OR: [
@@ -42,6 +44,7 @@ export async function GET(request: NextRequest) {
         propertyAreaSqm: true,
         latitude: true,
         longitude: true,
+        creatorAddress: true,
         contractAddress: true,
         mintTransactionHash: true,
         mintTimestamp: true,
@@ -66,6 +69,46 @@ export async function GET(request: NextRequest) {
 
     console.log(`[API /api/collections] Found ${collections.length} collections in database`);
 
+    // Map wallet address -> user profile for creators
+    let creatorUserMap: Record<string, { id: string; username: string | null; evmAddress: string | null }> = {};
+
+    // Collect distinct creator addresses present in these listings
+    const creatorAddresses = Array.from(new Set(
+      collections
+        .filter(col => col.creatorAddress)
+        .map(col => (col.creatorAddress as string).toLowerCase())
+    ));
+
+    if (creatorAddresses.length > 0) {
+      // Build OR conditions to allow case-insensitive matching per address
+      const orConditions = creatorAddresses.map(addr => ({
+        evmAddress: {
+          equals: addr,
+          mode: 'insensitive',
+        },
+      }));
+
+      const creatorUsers = await prisma.user.findMany({
+        where: {
+          OR: orConditions,
+        },
+        select: {
+          id: true,
+          username: true,
+          evmAddress: true,
+        },
+      });
+
+      creatorUserMap = creatorUsers.reduce((acc, u) => {
+        if (u.evmAddress) {
+          acc[u.evmAddress.toLowerCase()] = u;
+        }
+        return acc;
+      }, {} as Record<string, { id: string; username: string | null; evmAddress: string | null }>);
+
+      console.log(`[API /api/collections] Mapped ${creatorUsers.length} creator profiles from wallet addresses`);
+    }
+
     // Transform the data to match the expected format with hybrid token counting
     const transformedCollections = collections.map(collection => {
       // Calculate actual collection size from minted tokens
@@ -74,6 +117,12 @@ export async function GET(request: NextRequest) {
       
       // Hybrid approach: use actual count if tokens exist, otherwise use database field
       const hybridCollectionSize = actualTokenCount > 0 ? actualTokenCount : dbCollectionSize;
+      
+      // Use only onchain creatorAddress to find profile; otherwise leave user null so front-end shows truncated address
+      const effectiveAddress = collection.creatorAddress;
+      const preferredUser = effectiveAddress && creatorUserMap[effectiveAddress.toLowerCase()]
+        ? creatorUserMap[effectiveAddress.toLowerCase()]
+        : null;
       
       console.log(`[API /api/collections] Collection ${collection.collectionId}: DB size=${dbCollectionSize}, Actual tokens=${actualTokenCount}, Using=${hybridCollectionSize}`);
       
@@ -93,11 +142,12 @@ export async function GET(request: NextRequest) {
       propertyAreaSqm: collection.propertyAreaSqm,
       latitude: collection.latitude,
       longitude: collection.longitude,
+      creatorAddress: effectiveAddress,
       contractAddress: collection.contractAddress,
       mintTransactionHash: collection.mintTransactionHash,
       mintTimestamp: collection.mintTimestamp,
       createdAt: collection.createdAt,
-      user: collection.user
+      user: preferredUser
       };
     });
 

@@ -26,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body 
+        suppressHydrationWarning={true}
         className={`${GeistSans.variable} ${GeistMono.variable} font-mono bg-primary-light dark:bg-primary-dark text-text-light dark:text-text-dark transition-all duration-500 cyber-grid`}
       >        
         <ThemeProvider 

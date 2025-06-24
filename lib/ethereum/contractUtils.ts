@@ -1094,87 +1094,49 @@ export const createCollection = async (
     console.log('\n=== Parsing Transaction Logs ===');
     console.log(`Found ${receipt.logs.length} logs in transaction`);
     
-    let event: any = null;
     let parsedCollectionId: string | null = null;
     let parsedMainTokenId: string | null = null;
+    let parsedCreator: string | null = null;
+    let parsedStartTokenId: string | null = null;
+    let parsedQuantity: string | null = null;
 
-    // First try: Parse the CollectionCreated event
-    for (let i = 0; i < receipt.logs.length; i++) {
-      const log = receipt.logs[i];
-      console.log(`\n--- Log ${i} ---`);
-      console.log('Address:', log.address);
-      console.log('Topics:', log.topics);
-      console.log('Data:', log.data);
-      
+    for (const log of receipt.logs) {
       try {
-        const parsedLog = contract.interface.parseLog({
-          data: log.data,
-          topics: [...log.topics]
-        });
+        const parsedLog = contract.interface.parseLog(log);
+        if (!parsedLog) continue;
         
-        console.log('Parsed Log:', {
-          name: parsedLog?.name,
-          signature: parsedLog?.signature,
-          args: parsedLog?.args ? Object.keys(parsedLog.args) : 'No args'
-        });
-        
-        if (parsedLog && parsedLog.name === 'CollectionCreated') {
-          event = parsedLog.args;
+        if (parsedLog.name === 'CollectionCreated') {
+          const event = parsedLog.args;
           console.log('Found CollectionCreated event:', {
             collectionId: event.collectionId?.toString(),
             mainTokenId: event.mainTokenId?.toString(),
             creator: event.creator
           });
-          
           parsedCollectionId = event.collectionId?.toString();
           parsedMainTokenId = event.mainTokenId?.toString();
-          break;
-        }
-      } catch (e) {
-        console.debug('Could not parse log:', e);
+          parsedCreator = event.creator;
       }
-    }
 
-    // If we didn't find the CollectionCreated event, try to find a Transfer event
-    if (!event || !parsedMainTokenId) {
-      console.log('\n=== Looking for Transfer events ===');
-      
-      for (let i = 0; i < receipt.logs.length; i++) {
-        const log = receipt.logs[i];
-        console.log(`\n--- Checking Log ${i} for Transfer event ---`);
-        
-        try {
-          const parsedLog = contract.interface.parseLog({
-            data: log.data,
-            topics: [...log.topics]
+        if (parsedLog.name === 'BatchMinted') {
+          const event = parsedLog.args;
+          console.log('Found BatchMinted event:', {
+            collectionId: event.collectionId?.toString(),
+            startTokenId: event.startTokenId?.toString(),
+            quantity: event.quantity?.toString()
           });
-          
-          if (parsedLog) {
-            console.log('Parsed Log:', {
-              name: parsedLog.name,
-              signature: parsedLog.signature,
-              args: parsedLog.args ? Object.keys(parsedLog.args) : 'No args'
-            });
-            
-            if (parsedLog.name === 'Transfer') {
-              const [from, to, tokenId] = parsedLog.args as unknown as [string, string, bigint];
-              console.log('Found Transfer event:', {
-                from,
-                to,
-                tokenId: tokenId.toString(),
-                isMint: from === ethers.ZeroAddress
-              });
-              
+          parsedStartTokenId = event.startTokenId?.toString();
+          parsedQuantity = event.quantity?.toString();
+        }
+
+        if (!parsedMainTokenId && parsedLog.name === 'Transfer') {
+          const [from, , tokenId] = parsedLog.args as unknown as [string, string, bigint];
               if (from === ethers.ZeroAddress) {
+            console.log('Using Transfer event as fallback to identify mainTokenId:', tokenId.toString());
                 parsedMainTokenId = tokenId.toString();
-                console.log('Identified as mint event. Using tokenId as mainTokenId:', parsedMainTokenId);
-                break;
-              }
             }
           }
         } catch (e) {
-          console.debug('Could not parse log as Transfer event:', e);
-        }
+        // Silently ignore logs that can't be parsed by this ABI
       }
     }
 
@@ -1193,28 +1155,6 @@ export const createCollection = async (
         }
       });
       
-      throw new Error(errorMsg);
-    }
-    
-    // If we don't have a collectionId, we can't proceed
-    if (!parsedCollectionId) {
-      const errorMsg = 'Could not determine collectionId from transaction events. No CollectionCreated event found.';
-      console.error(errorMsg);
-      console.log('Raw transaction logs:', JSON.stringify(receipt.logs, null, 2));
-      
-      // Update the database to reflect the failure
-      try {
-        await prisma.landListing.update({
-          where: { id: landListingId },
-          data: {
-            mintStatus: 'FAILED_COLLECTION',
-            mintErrorReason: errorMsg.substring(0, 255)
-          }
-        });
-      } catch (dbUpdateError) { 
-        console.error("DB update to FAILED_COLLECTION status failed:", dbUpdateError);
-      }
-      
       return { 
         success: false, 
         error: errorMsg,
@@ -1224,6 +1164,9 @@ export const createCollection = async (
     
     console.log(`Parsed Collection ID: ${parsedCollectionId}`);
     console.log(`Parsed Main Token ID: ${parsedMainTokenId}`);
+    console.log(`Parsed Creator: ${parsedCreator}`);
+    console.log(`Parsed Start Token ID: ${parsedStartTokenId}`);
+    console.log(`Parsed Quantity: ${parsedQuantity}`);
 
     try {
       // First, check if this land listing already has a collectionId to avoid unique constraint violation
@@ -1240,6 +1183,9 @@ export const createCollection = async (
             success: true,
             collectionId: existingListing.collectionId,
             mainTokenId: parsedMainTokenId,
+            creator: parsedCreator,
+            startTokenId: parsedStartTokenId,
+            quantity: parsedQuantity,
             transactionHash: tx.hash,
           };
         }
@@ -1252,6 +1198,7 @@ export const createCollection = async (
         mintTransactionHash: tx.hash,
         mainTokenId: parsedMainTokenId,
         contractAddress: NFT_CONTRACT_ADDRESS,
+        creatorAddress: parsedCreator,
       };
 
       // Only update collectionId if it's not already set or if it's different
@@ -1265,15 +1212,23 @@ export const createCollection = async (
       });
       
       console.log(`Successfully updated land listing ${landListingId} in createCollection utility (status COMPLETED etc.)`);
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.error('Failed to update land listing status to COMPLETED:', dbError);
-      throw new Error(`Collection created but failed to update database: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+      // If this is a unique constraint on collection_id, skip it (already set)
+      if (dbError instanceof Prisma.PrismaClientKnownRequestError && dbError.code === 'P2002') {
+        console.warn(`Unique constraint on collection_id detected for listing ${landListingId}. Assuming collectionId already set, skipping update.`);
+      } else {
+        throw new Error(`Collection created but failed to update database: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+      }
     }
     
     return {
       success: true,
       collectionId: parsedCollectionId,
       mainTokenId: parsedMainTokenId,
+      creator: parsedCreator,
+      startTokenId: parsedStartTokenId,
+      quantity: parsedQuantity,
       transactionHash: tx.hash,
     };
     

@@ -9,6 +9,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { Prisma } from '@prisma/client';
 
 /**
  * NFT Collection minting endpoint using JSON with base64 encoded image for the main token.
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
         childTokensBaseURI        // baseURI (for child tokens)
       );
       
-      const { collectionId, mainTokenId, transactionHash } = collectionResult; // Assuming this structure from createCollection
+      const { collectionId, mainTokenId, transactionHash, creator } = collectionResult; // Added creator from onchain event
 
       if (typeof collectionId === 'undefined' || typeof mainTokenId === 'undefined') {
         console.error('Failed to retrieve collectionId or mainTokenId from minting transaction receipt.', collectionResult);
@@ -284,7 +285,8 @@ export async function POST(request: NextRequest) {
         coverImageUrl: mainTokenImageUrlPath, 
         collectionMetadataUrl: collectionMetadataFullUrl,
         childTokensBaseUrl: childTokensBaseURI,
-        mainTokenMetadataUrl: mainTokenMetadataFullUrl
+        mainTokenMetadataUrl: mainTokenMetadataFullUrl,
+        creatorAddress: creator, // Record onchain minter's wallet address
       };
 
       // Only update collectionId and mainTokenId if they're not already set or different
@@ -295,10 +297,19 @@ export async function POST(request: NextRequest) {
         updateData.mainTokenId = mainTokenId.toString();
       }
 
-      await prisma.landListing.update({
-        where: { id: landListingId },
-        data: updateData,
-      });
+      try {
+        await prisma.landListing.update({
+          where: { id: landListingId },
+          data: updateData,
+        });
+      } catch (dbError: any) {
+        console.error('Failed to update land listing for completion in mint-json route:', dbError);
+        if (dbError instanceof Prisma.PrismaClientKnownRequestError && dbError.code === 'P2002') {
+          console.warn(`Duplicate collectionId/mainTokenId for listing ${landListingId}, skipping update.`);
+        } else {
+          throw dbError;
+        }
+      }
 
       return NextResponse.json({ 
         success: true, 

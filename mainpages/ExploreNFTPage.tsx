@@ -19,7 +19,7 @@ import NFTImage from '@/components/nft/NFTImage';
 // import { formatEther, decodeEventLog, createPublicClient, http, PublicClient } from 'viem'; // Temporarily disabled
 // import { getLogsInChunks, safeDecodeEventLog } from '@/lib/ethereum/blockchainUtils'; // Temporarily disabled
 // import { getSepoliaClientConfig } from '@/lib/ethereum/rpcConfig'; // Temporarily disabled
-import CollectionsGrid from '@/components/collections/CollectionsGrid';
+// import CollectionsGrid from '@/components/collections/CollectionsGrid'; // Temporarily commented out - file not found
 import CollectionCard from '@/components/CollectionCard'; // Restored import
 import { CollectionDetail } from '../lib/types';
 // import { fetchAndProcessCollectionDetails } from '../lib/collectionUtils'; // Temporarily disabled
@@ -111,13 +111,14 @@ const ExploreNFTPage: React.FC = () => {
           }
           
           console.log(`Collection ${col.collectionId}: nftImageFileRef="${col.nftImageFileRef}" -> imageUrl="${imageUrl}"`);
-          
+
           return {
             collectionId: BigInt(col.collectionId),
             name: generateCollectionName(col),
             description: col.nftDescription || 'No description available',
             image: imageUrl,
-            creator: col.user?.evmAddress || col.evmOwnerAddress || '0x0000000000000000000000000000000000000000',
+            creator: col.creatorAddress || col.user?.evmAddress || '0x0000000000000000000000000000000000000000',
+            creatorUsername: col.user?.username || null,
             isListed: col.isListedForSale || (col.listingPrice && col.listingPrice > 0) || false,
             price: col.listingPrice ? BigInt(Math.floor(col.listingPrice * 1e18)) : 0n,
             totalSupply: BigInt(col.nftCollectionSize || 1),
@@ -140,7 +141,7 @@ const ExploreNFTPage: React.FC = () => {
             name: col.name,
             image: col.image,
             isListed: col.isListed,
-            price: col.price.toString()
+            price: col.price?.toString() || 'N/A'
           })));
         }
         

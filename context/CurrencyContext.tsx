@@ -79,7 +79,7 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
       setIsLoading(true);
       setError(null);
       
-      console.log('[CurrencyProvider] Fetching exchange rates...');
+        console.log('[CurrencyProvider] Fetching exchange rates...');
       const result = await fetchExchangeRates();
       
       setExchangeRates(result);
@@ -124,7 +124,7 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     setIsLoading(true);
     setError(null);
     
-    console.log('[CurrencyProvider] Manually refreshing exchange rates...');
+      console.log('[CurrencyProvider] Manually refreshing exchange rates...');
     const result = await fetchExchangeRates();
 
     setExchangeRates(result);
@@ -135,7 +135,7 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
       console.log('[CurrencyProvider] Exchange rates refreshed successfully.');
     }
     
-    setIsLoading(false);
+      setIsLoading(false);
   }, [mounted]);
 
   const convertEthToCurrencyWrapper = useCallback((

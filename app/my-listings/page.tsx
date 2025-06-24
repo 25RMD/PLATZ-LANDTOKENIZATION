@@ -53,23 +53,23 @@ export default function MyListingsPage() {
     }
 
     const fetchListings = async () => {
-      setLoading(true);
+        setLoading(true);
       setError(null);
       try {
         const headers: HeadersInit = { 'Content-Type': 'application/json' };
         if (userId) {
           headers['x-user-id'] = userId;
         }
-        const response = await fetch('/api/my-listings', { headers });
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const response = await fetch('/api/my-listings', { headers });
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.message || 'Error fetching listings');
-        }
-        const data = await response.json();
-        if (data.success) {
-          setListings(data.listings || []);
-        } else {
-          throw new Error(data.message || 'Failed to fetch listings');
+          }
+          const data = await response.json();
+          if (data.success) {
+            setListings(data.listings || []);
+          } else {
+            throw new Error(data.message || 'Failed to fetch listings');
         }
       } catch (err) {
         setError('Failed to load your listings. Please try again later.');
@@ -94,10 +94,10 @@ export default function MyListingsPage() {
 
   // Function to mint NFT for a listing
   const mintNft = async (mintData: MintNFTData) => {
-    setIsSubmitting(true);
-    const listingId = mintData.landListingId;
-    setMintingListingId(listingId);
-    setMintingStatus('Initiating minting process...');
+      setIsSubmitting(true);
+      const listingId = mintData.landListingId;
+      setMintingListingId(listingId);
+      setMintingStatus('Initiating minting process...');
     try {
       const imageBase64 = await fileToBase64(mintData.imageFile);
       const jsonData = {
@@ -231,8 +231,8 @@ export default function MyListingsPage() {
                         <div className="ml-2 flex-shrink-0 flex">
                           <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(listing.status)}`}>
                             {listing.status}
-                          </p>
-                        </div>
+                        </p>
+                      </div>
                       </div>
                       <div className="mt-2 sm:flex sm:justify-between">
                         <div className="sm:flex">
@@ -242,7 +242,7 @@ export default function MyListingsPage() {
                           <p className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 sm:mt-0 sm:ml-6">
                             Created: {new Date(listing.createdAt).toLocaleDateString()}
                           </p>
-                        </div>
+          </div>
                         <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 sm:mt-0">
                           <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getMintStatusColor(listing.mintStatus)}`}>
                             {listing.mintStatus || 'NOT MINTED'}
@@ -278,14 +278,14 @@ export default function MyListingsPage() {
               ))}
             </ul>
           </div>
-        )}
+      )}
       </main>
-      
+
       {showMintModal && selectedListing && (
         <MintNFTModal
           isOpen={showMintModal}
           onClose={() => setShowMintModal(false)}
-          onSubmit={mintNft}
+        onSubmit={mintNft}
           listing={selectedListing}
           isSubmitting={isSubmitting}
         />

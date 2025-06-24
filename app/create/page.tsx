@@ -3,10 +3,12 @@
 import React from "react";
 import { motion } from 'framer-motion';
 import CreateNFTPage from "@/mainpages/CreateLandListingPage";
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 const Create = () => {
   return (
-    <motion.div 
+    <ProtectedRoute>
+      <motion.div 
       className="min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-96px)] bg-white dark:bg-black relative overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -66,6 +68,7 @@ const Create = () => {
       <CreateNFTPage />
     </div>
     </motion.div>
+    </ProtectedRoute>
   );
 };
 

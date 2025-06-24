@@ -7,7 +7,8 @@ export interface CollectionDetail {
   mainTokenId: bigint;
   baseURI: string;
   collectionURI: string; // This was effectively collectionMetaURI in the original function
-  creator: string;
+  creator: string; // EVM Address of the creator
+  creatorUsername?: string | null; // Username of the creator, if available
   isListed: boolean;
   price?: bigint;
   seller?: string;

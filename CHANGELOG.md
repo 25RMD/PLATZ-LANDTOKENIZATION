@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Admin Dashboard & Listing Approval Workflow**:
+  - Implemented a new, secure admin dashboard at `/admin/dashboard` for managing land listing approvals.
+  - Created a dedicated `AdminAuth` component to ensure only users with admin privileges can access the dashboard.
+  - Added a new API endpoint (`GET /api/admin/listings`) to securely fetch all listings with associated user data for the dashboard.
+  - Designed a tabbed UI to filter listings by `PENDING`, `APPROVED`, and `REJECTED` statuses.
+  - Implemented `Approve` and `Reject` actions for pending listings, with a modal requiring a mandatory reason for rejections.
+  - Created a new API endpoint (`PUT /api/admin/listings/[listingId]`) to handle listing status updates and store rejection reasons.
+
+### Changed
+- **Public Listing Visibility**: Updated the public collections API (`/api/collections`) to filter for and only return listings with an `APPROVED` status, ensuring pending or rejected listings are not visible on the explore page.
+
+### Fixed
+- **Admin Dashboard Refactor**: Completely rewrote `app/admin/dashboard/page.tsx` to remove legacy KYC code, resolving numerous TypeScript errors, component prop mismatches, and state management bugs.
+- **Prisma Client Sync**: Regenerated the Prisma client to correctly include the `ListingStatus` enum, resolving import errors in the frontend.
+
+### Fixed
+- Resolved React hydration mismatch error by adding `suppressHydrationWarning` to the `<body>` tag in `app/layout.tsx`. This prevents errors caused by browser extensions (e.g., Grammarly) that modify the DOM.
+- **Collection Card Layout**: Fixed inconsistent card heights on the Explore page by refactoring the `CollectionCard` component to use a flexbox layout. This ensures all cards have a uniform height, regardless of content length, for a cleaner and more consistent UI.
+- Ensured the `/create` page is only accessible to authenticated users by wrapping its content with the `ProtectedRoute` component. Unauthenticated users are now correctly redirected to `/login`.
+
+### Added
 - **Trading and Item Management Features**:
   - **Bidding System**: Implemented comprehensive bidding functionality with smart contract integration
     - Created `BidModal` component for placing bids on individual NFTs

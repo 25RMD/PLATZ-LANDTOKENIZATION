@@ -50,7 +50,8 @@ const filterValidFields = (data: any): any => {
     'mintTransactionHash', 'mintErrorReason', 'nftImageIrysUri', 'nftMetadataIrysUri', 
     'marketplaceListingId', 'user', 'localGovernmentArea', 'propertyValuation', 
     'zoningClassification', 'nftTitle', 'nftDescription', 'nftImageFileRef', 'nftCollectionSize',
-    'marketplaceListingError', 'contractAddress', 'collectionId', 'mainTokenId', 'metadataUri', 'slug'
+    'marketplaceListingError', 'contractAddress', 'collectionId', 'mainTokenId', 'metadataUri', 'slug',
+    'creatorAddress'
   ];
   
   // Create a new object with only valid fields
@@ -217,8 +218,7 @@ export async function POST(req: NextRequest) {
       // If you were using propertyDescription for other structured data, adjust accordingly
       // For now, let's assume propertyDescription might hold other notes or can be simplified
       propertyDescription: JSON.stringify({
-        notes: ((formData as any).get('additionalNotes') as string | null) || '',
-        evmOwnerAddress: ownerEthAddressForDb
+        notes: ((formData as any).get('additionalNotes') as string | null) || ''
       }),
       
       listingTitle: nftTitle,
@@ -272,6 +272,8 @@ export async function POST(req: NextRequest) {
     // Now we should have a valid user to connect to
     const prismaData = {
       ...baseData,
+      // Record the creator's Ethereum address on creation
+      creatorAddress: ownerEthAddressForDb,
       user: {
         connect: {
           id: userToConnect.id

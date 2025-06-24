@@ -343,7 +343,7 @@ const HomePage = () => {
                 index={index}
                 front={
                   <motion.div 
-                    className="relative z-10 p-4 sm:p-6 border border-black/20 dark:border-white/20 rounded-cyber-lg h-full min-h-[280px] bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group flex flex-col card-hover-effect"
+                    className="relative z-10 p-4 sm:p-6 border border-black/40 dark:border-white/40 rounded-cyber-lg h-full min-h-[280px] bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group flex flex-col card-hover-effect"
                     whileHover={{ 
                       borderColor: "rgba(0, 0, 0, 0.8)",
                       boxShadow: "0 0 40px rgba(0, 0, 0, 0.3)"
@@ -485,7 +485,7 @@ const HomePage = () => {
                   index={index}
                   front={
                     <motion.div 
-                      className="relative z-10 p-4 sm:p-6 border-2 border-black/30 dark:border-white/30 rounded-cyber-lg h-full min-h-[320px] bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group flex flex-col card-step-hover-effect"
+                      className="relative z-10 p-4 sm:p-6 border-2 border-black/50 dark:border-white/50 rounded-cyber-lg h-full min-h-[320px] bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group flex flex-col card-step-hover-effect"
                       whileHover={{ 
                         borderColor: "rgba(0, 0, 0, 0.8)",
                         boxShadow: "0 0 30px rgba(0, 0, 0, 0.3)",
@@ -599,7 +599,7 @@ const HomePage = () => {
         </motion.h2>
         
         <motion.div 
-          className="max-w-3xl mx-auto p-8 border border-black/20 dark:border-white/20 rounded-cyber-lg bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber"
+          className="max-w-3xl mx-auto p-8 border border-black/40 dark:border-white/40 rounded-cyber-lg bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber"
           whileHover={{ 
             borderColor: "rgba(0, 0, 0, 0.4)",
             boxShadow: "0 0 30px rgba(0, 0, 0, 0.2)"

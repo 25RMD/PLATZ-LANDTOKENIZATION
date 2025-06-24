@@ -338,7 +338,7 @@ export async function POST(request: NextRequest) {
       if (!createCollectionResult.success) {
         throw new Error(createCollectionResult.error || 'Failed to create collection in contractUtils');
       }
-      
+
       console.log('createCollection successful:', createCollectionResult);
     } catch (error) {
       const errorMessage = `Failed to mint collection on blockchain: ${(error as Error).message}`;
@@ -364,8 +364,8 @@ export async function POST(request: NextRequest) {
       console.log('Updating database with minting results...');
 
       // Update the LandListing with all the new data
-      await prisma.landListing.update({
-        where: { id: landListingId },
+          await prisma.landListing.update({
+            where: { id: landListingId },
         data: {
           mintStatus: 'COMPLETED',
           mintTransactionHash: transactionHash,
@@ -395,7 +395,7 @@ export async function POST(request: NextRequest) {
           tokenId: Number(mainTokenId),
           isMainToken: true,
           tokenURI: mainTokenMetadataFullUrl,
-          ownerAddress: ownerAddress,
+          ownerAddress: ownerAddress, // User's wallet is the owner
           mintTransactionHash: transactionHash,
           mintTimestamp: new Date(),
         });
@@ -414,7 +414,7 @@ export async function POST(request: NextRequest) {
             tokenId: Number(tokenId),
             isMainToken: false,
             tokenURI: tokenURI,
-            ownerAddress: ownerAddress,
+            ownerAddress: ownerAddress, // User's wallet is the owner
             mintTransactionHash: transactionHash,
             mintTimestamp: new Date(),
           });
@@ -422,17 +422,18 @@ export async function POST(request: NextRequest) {
       }
 
       if (tokensToCreate.length > 0) {
+        // Use createMany for efficiency
         await prisma.evmCollectionToken.createMany({
           data: tokensToCreate,
-          skipDuplicates: true,
+          skipDuplicates: true, // Prevents errors on re-runs
         });
-        console.log(`Successfully created ${tokensToCreate.length} EvmCollectionToken records.`);
+        console.log(`Successfully created or found ${tokensToCreate.length} EvmCollectionToken records.`);
       }
 
     } catch (error) {
       const errorMessage = `Minting successful, but failed to update database: ${(error as Error).message}`;
       console.error(errorMessage, error);
-      // Don't mark mint as FAILED, as it succeeded on-chain. But log the error.
+      // Don't mark mint as FAILED, as it succeeded on-chain. But log the error for debugging.
       await prisma.landListing.update({
         where: { id: landListingId },
         data: {
@@ -440,20 +441,20 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-
+      
     // --- 9. Final Success Response ---
-    return NextResponse.json({
-      success: true,
+      return NextResponse.json({
+        success: true,
       message: 'NFT collection minted successfully and database updated',
-      data: {
-        landListingId,
+        data: {
+          landListingId,
         collectionId,
         mainTokenId,
         creator,
         transactionHash,
-      }
-    });
-
+        }
+      });
+    
   } catch (error) {
     console.error('Unhandled error in mint-collection API:', error);
     return NextResponse.json({

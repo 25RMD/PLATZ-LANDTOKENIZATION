@@ -152,7 +152,7 @@ const LoginPage = () => {
                 textShadow: "0 0 20px rgba(0, 0, 0, 0.3)",
               }}
             >
-              ACCESS TERMINAL
+              LOGIN
             </motion.h1>
 
       {/* Username/Password Form */}
