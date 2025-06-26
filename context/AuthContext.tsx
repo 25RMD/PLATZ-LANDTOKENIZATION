@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (mounted) {
-    fetchCurrentUser();
+      fetchCurrentUser();
     } else {
       setIsLoading(false);
     }
@@ -228,19 +228,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (loginResponse.ok) {
         console.log('[AuthContext EVM Login] Setting user and authentication state...');
         console.log('[AuthContext EVM Login] User data:', loginData.user);
-        
-        // Update state immediately
         setUser(loginData.user);
         setIsAuthenticated(true);
-        setIsLoading(false);
-        
         console.log('[AuthContext EVM Login] Authentication state updated - isAuthenticated: true');
         toast.success('Logged in with EVM Wallet successfully!');
         console.log('[AuthContext EVM Login] EVM Wallet login successful for user:', loginData.user?.username);
-        
-        // Small delay to ensure cookie is set and state is fully synchronized
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        setIsLoading(false);
         console.log('[AuthContext EVM Login] Returning true from connectAndLoginEvmWallet');
         return true;
       } else {

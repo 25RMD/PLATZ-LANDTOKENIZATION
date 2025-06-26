@@ -11,8 +11,7 @@ import {
   convertCurrencyToEth,
   formatCurrencyAmount,
   formatEthAmount,
-  CURRENCY_OPTIONS,
-  FetchExchangeRatesResult
+  CURRENCY_OPTIONS
 } from '@/lib/utils/currencyConversion';
 
 interface CurrencyContextType {
@@ -79,18 +78,18 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
       setIsLoading(true);
       setError(null);
       
-      console.log('[CurrencyProvider] Fetching exchange rates...');
-      const result = await fetchExchangeRates();
-      
-      setExchangeRates(result);
-      if (!result.success) {
-        setError('Using estimated prices. Live rates unavailable.');
-        console.log('[CurrencyProvider] Exchange rates loaded with fallback data.');
-      } else {
-        console.log('[CurrencyProvider] Exchange rates loaded successfully.');
+      try {
+        console.log('[CurrencyProvider] Fetching exchange rates...');
+        const rates = await fetchExchangeRates();
+        setExchangeRates(rates);
+        console.log('[CurrencyProvider] Exchange rates loaded successfully');
+      } catch (err) {
+        console.error('[CurrencyProvider] Failed to fetch exchange rates:', err);
+        setError('Failed to load exchange rates');
+        // Don't block the app if exchange rates fail - just show ETH prices
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     };
 
     loadExchangeRates();
@@ -124,18 +123,17 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     setIsLoading(true);
     setError(null);
     
-    console.log('[CurrencyProvider] Manually refreshing exchange rates...');
-    const result = await fetchExchangeRates();
-
-    setExchangeRates(result);
-    if (!result.success) {
-      setError('Using estimated prices. Live rates unavailable.');
-      console.log('[CurrencyProvider] Exchange rates refreshed with fallback data.');
-    } else {
-      console.log('[CurrencyProvider] Exchange rates refreshed successfully.');
+    try {
+      console.log('[CurrencyProvider] Manually refreshing exchange rates...');
+      const rates = await fetchExchangeRates();
+      setExchangeRates(rates);
+      console.log('[CurrencyProvider] Exchange rates refreshed successfully');
+    } catch (err) {
+      console.error('[CurrencyProvider] Failed to refresh exchange rates:', err);
+      setError('Failed to refresh exchange rates');
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   }, [mounted]);
 
   const convertEthToCurrencyWrapper = useCallback((

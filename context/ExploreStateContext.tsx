@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { CollectionDetail } from '../lib/types';
 
 // Define types for filter state
@@ -69,10 +69,6 @@ interface ExploreStateProviderProps {
 
 export const ExploreStateProvider: React.FC<ExploreStateProviderProps> = ({ children }) => {
   const [state, setState] = useState<ExplorePageState>(initialState);
-  const stateRef = useRef<ExplorePageState>(state);
-  
-  // Keep ref in sync with state
-  stateRef.current = state;
 
   const updateState = useCallback((updates: Partial<ExplorePageState>) => {
     setState(prevState => ({
@@ -87,10 +83,8 @@ export const ExploreStateProvider: React.FC<ExploreStateProviderProps> = ({ chil
   }, []);
 
   const hasState = useCallback(() => {
-    // Use ref to get current state without creating dependency on state
-    const currentState = stateRef.current;
-    return currentState.lastUpdated !== undefined && currentState.onChainCollections.length > 0;
-  }, []); // No dependencies - stable across renders
+    return state.lastUpdated !== undefined && state.onChainCollections.length > 0;
+  }, [state.lastUpdated, state.onChainCollections.length]);
 
   const value: ExploreStateContextType = {
     state,
