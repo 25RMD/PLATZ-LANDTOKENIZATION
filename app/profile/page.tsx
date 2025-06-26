@@ -67,32 +67,33 @@ const ProfileContent = () => {
   }, [contextError, clearContextError]);
 
   useEffect(() => {
-    setPageLoading(true);
-    fetchUserProfile().then(data => {
-      if (data) {
-        const dob = data.dateOfBirth ? new Date(data.dateOfBirth).toISOString().split('T')[0] : null;
+    // If the user object from the context is available, populate the form
+    if (user) {
+      const dob = user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : null;
 
-        setProfileData({
-          username: data.username,
-          email: data.email,
-          evmAddress: data.evmAddress, 
-          fullName: data.fullName,
-          dateOfBirth: dob,
-          phone: (data as any).phone, 
-          addressLine1: (data as any).addressLine1,
-          addressLine2: (data as any).addressLine2,
-          city: (data as any).city,
-          stateProvince: (data as any).stateProvince,
-          postalCode: (data as any).postalCode,
-          country: (data as any).country,
-          govIdType: (data as any).govIdType,
-          govIdRef: (data as any).govIdRef,
-          sofDocRef: (data as any).sofDocRef,
-        });
-      }
+      setProfileData({
+        username: user.username,
+        email: user.email,
+        evmAddress: user.evmAddress,
+        fullName: user.fullName,
+        dateOfBirth: dob,
+        phone: (user as any).phone,
+        addressLine1: (user as any).addressLine1,
+        addressLine2: (user as any).addressLine2,
+        city: (user as any).city,
+        stateProvince: (user as any).stateProvince,
+        postalCode: (user as any).postalCode,
+        country: (user as any).country,
+        govIdType: (user as any).govIdType,
+        govIdRef: (user as any).govIdRef,
+        sofDocRef: (user as any).sofDocRef,
+      });
       setPageLoading(false);
-    });
-  }, [fetchUserProfile]);
+    } else if (!actionLoading) {
+      // If there's no user and we're not in a loading state, we can stop the page loader.
+      setPageLoading(false);
+    }
+  }, [user, actionLoading]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
@@ -106,51 +107,47 @@ const ProfileContent = () => {
     setLinkWalletLoading(true);
     clearContextError();
 
-      try {
-    if (!isEvmWalletConnected || !connectedEvmAddress) {
-              toast.error("Please connect your wallet first.");
-      return;
-    }
+    try {
+      if (!isEvmWalletConnected || !connectedEvmAddress) {
+        toast.error("Please connect your wallet first.");
+        return;
+      }
 
-      const challengeResponse = await fetch('/api/profile/evm/challenge', { 
+      const challengeResponse = await fetch('/api/profile/evm/challenge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ evmAddress: connectedEvmAddress }),
-      }); 
+        body: JSON.stringify({ evm_address: connectedEvmAddress }),
+      });
+
+      const challengeData = await challengeResponse.json();
 
       if (!challengeResponse.ok) {
-              const challengeData = await challengeResponse.json();
-              throw new Error(challengeData.message || 'Failed to get challenge.');
-          }
+        throw new Error(challengeData.message || 'Failed to get challenge.');
+      }
 
-          const { challenge } = await challengeResponse.json();
+      const { challenge } = challengeData;
+      const signature = await signMessageAsync({ message: challenge });
 
-          const signature = await signMessageAsync({ message: challenge });
-
-      const linkResponse = await fetch('/api/profile/evm/link-wallet', { 
+      const linkResponse = await fetch('/api/profile/evm/link-wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  evmAddress: connectedEvmAddress,
-                  signature,
-                  challenge,
-              }),
-          });
+        body: JSON.stringify({
+          evm_address: connectedEvmAddress,
+          signature,
+          challenge,
+        }),
+      });
+
+      const linkData = await linkResponse.json();
 
       if (!linkResponse.ok) {
-              const linkData = await linkResponse.json();
-              throw new Error(linkData.message || 'Failed to link wallet.');
-          }
-
-          toast.success('EVM wallet linked successfully!');
-          await fetchUserProfile(); 
-      } catch (error: any) {
-          console.error('Error linking wallet:', error);
-          if (error.message?.includes('rejected') || error.message?.includes('denied')) {
-              toast.error('Wallet connection cancelled by user.');
-      } else {
-              toast.error(`Failed to link wallet: ${error.message}`);
+        throw new Error(linkData.message || 'Failed to link wallet.');
       }
+
+      toast.success('Wallet linked successfully!');
+      await fetchUserProfile();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'An unknown error occurred.');
     } finally {
       setLinkWalletLoading(false);
     }
@@ -160,22 +157,21 @@ const ProfileContent = () => {
     setUnlinkWalletLoading(true);
     clearContextError();
 
-      try {
-          const response = await fetch('/api/profile/evm/link-wallet', {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-          });
+    try {
+      const response = await fetch('/api/profile/evm/link-wallet', {
+        method: 'DELETE',
+      });
 
-          if (!response.ok) {
-              const data = await response.json();
-              throw new Error(data.message || 'Failed to unlink wallet.');
-          }
+      const data = await response.json();
 
-          toast.success('EVM wallet unlinked successfully!');
-          await fetchUserProfile(); 
-    } catch (error: any) {
-          console.error('Error unlinking wallet:', error);
-          toast.error(`Failed to unlink wallet: ${error.message}`);
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to unlink wallet.');
+      }
+
+      toast.success('Wallet unlinked successfully!');
+      await fetchUserProfile();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'An unknown error occurred.');
     } finally {
       setUnlinkWalletLoading(false);
     }
@@ -241,33 +237,11 @@ const ProfileContent = () => {
     clearContextError();
     console.log("[Profile Page] Attempting to update profile with data:", profileData);
 
-    const validationResult = ProfileUpdateSchema.safeParse(profileData);
-
-    if (!validationResult.success) {
-        const newErrors: FieldErrors = {};
-        validationResult.error.errors.forEach(err => {
-            if (err.path.length > 0) {
-                newErrors[String(err.path[0])] = [err.message]; 
-            }
-        });
-        setFormErrors(newErrors);
-        toast.error("Please correct the errors in the form.");
-        return;
-    }
-        
-    const dataToSend = { ...validationResult.data };
-    if (profileData.evmAddress) {
-        (dataToSend as any).evmAddress = profileData.evmAddress;
-    } else {
-        delete (dataToSend as any).evmAddress; 
-    }
-
     try {
-        const success = await updateUserProfile(dataToSend as ProfileFormData);
+        const success = await updateUserProfile(profileData);
         if (success) {
             toast.success('Profile updated successfully!');
             setIsEditing(false);
-            await fetchUserProfile(); 
         } else {
             toast.error(contextError || 'Failed to update profile.');
         }

@@ -6,20 +6,21 @@ import type { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import { ProfileUpdateSchema } from '@/lib/schemas';
+import { randomUUID } from 'crypto';
 
 // --- Define KYC-related fields --- 
-const kycFields: (keyof Prisma.UserUpdateInput)[] = [ 
-    'fullName',
-    'dateOfBirth',
+const kycFields: (keyof Prisma.usersUpdateInput)[] = [ 
+    'full_name',
+    'date_of_birth',
     'phone',
-    'addressLine1',
-    'addressLine2',
+    'address_line1',
+    'address_line2',
     'city',
-    'stateProvince',
-    'postalCode',
+    'state_province',
+    'postal_code',
     'country',
-    'govIdType',
-    'govIdRef'
+    'gov_id_type',
+    'gov_id_ref'
 ];
 
 // GET handler to fetch current user's profile
@@ -30,25 +31,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
     }
 
-    const userProfile = await prisma.user.findUnique({
+    const userProfile = await prisma.users.findUnique({
       where: { id: userId },
       select: {
-        // Select only the fields relevant to the profile page
         username: true,
         email: true,
-        evmAddress: true,
-        fullName: true,
-        dateOfBirth: true,
+        evm_address: true,
+        full_name: true,
+        date_of_birth: true,
         phone: true,
-        addressLine1: true,
-        addressLine2: true,
+        address_line1: true,
+        address_line2: true,
         city: true,
-        stateProvince: true,
-        postalCode: true,
+        state_province: true,
+        postal_code: true,
         country: true,
-        govIdType: true,
-        govIdRef: true,
-        kycVerified: true,
+        gov_id_type: true,
+        gov_id_ref: true,
+        kyc_verified: true,
       },
     });
 
@@ -56,7 +56,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'User profile not found' }, { status: 404 });
     }
 
-    return NextResponse.json(userProfile, { status: 200 });
+    // Transform to camelCase for the frontend
+    const transformedProfile = {
+      username: userProfile.username,
+      email: userProfile.email,
+      evmAddress: userProfile.evm_address,
+      fullName: userProfile.full_name,
+      dateOfBirth: userProfile.date_of_birth,
+      phone: userProfile.phone,
+      addressLine1: userProfile.address_line1,
+      addressLine2: userProfile.address_line2,
+      city: userProfile.city,
+      stateProvince: userProfile.state_province,
+      postalCode: userProfile.postal_code,
+      country: userProfile.country,
+      govIdType: userProfile.gov_id_type,
+      govIdRef: userProfile.gov_id_ref,
+      kycVerified: userProfile.kyc_verified,
+    };
+
+    return NextResponse.json(transformedProfile, { status: 200 });
 
   } catch (error) {
     console.error("Get Profile Error:", error);
@@ -81,24 +100,24 @@ export async function PUT(request: NextRequest) {
 
     let validatedData = validationResult.data;
 
-    const currentUser = await prisma.user.findUnique({
+    const currentUser = await prisma.users.findUnique({
       where: { id: userId },
       select: {
         username: true,
         email: true,
-        evmAddress: true, // Important for our logic
-        fullName: true,
-        dateOfBirth: true,
+        evm_address: true, // Important for our logic
+        full_name: true,
+        date_of_birth: true,
         phone: true,
-        addressLine1: true,
-        addressLine2: true,
+        address_line1: true,
+        address_line2: true,
         city: true,
-        stateProvince: true,
-        postalCode: true,
+        state_province: true,
+        postal_code: true,
         country: true,
-        govIdType: true,
-        govIdRef: true,
-        kycVerified: true,
+        gov_id_type: true,
+        gov_id_ref: true,
+        kyc_verified: true,
       }
     });
 
@@ -106,27 +125,27 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
-    const updatesForPrisma: Prisma.UserUpdateInput = {};
+    const updatesForPrisma: Prisma.usersUpdateInput = {};
 
-    // --- START: Special handling for evmAddress ---
-    if (validatedData.hasOwnProperty('evmAddress')) {
-      const incomingEvmAddress = (validatedData.evmAddress === '' || validatedData.evmAddress === undefined) ? null : validatedData.evmAddress;
-      const currentEvmAddress = currentUser.evmAddress;
+    // --- START: Special handling for evm_address ---
+    if (Object.prototype.hasOwnProperty.call(validatedData, 'evm_address')) {
+      const incomingEvmAddress = (validatedData.evm_address === '' || validatedData.evm_address === undefined) ? null : validatedData.evm_address;
+      const currentEvmAddress = currentUser.evm_address;
 
       if (incomingEvmAddress && incomingEvmAddress.toLowerCase() !== currentEvmAddress?.toLowerCase()) {
-        // User is trying to set or change evmAddress to a new non-null value
+        // User is trying to set or change evm_address to a new non-null value
         return NextResponse.json({
-          message: 'EVM address cannot be directly set or changed via this endpoint. Please use the dedicated wallet linking process. To unlink your current EVM address, provide `null` or an empty string for the `evmAddress` field.'
+          message: 'EVM address cannot be directly set or changed via this endpoint. Please use the dedicated wallet linking process. To unlink your current EVM address, provide `null` or an empty string for the `evm_address` field.'
         }, { status: 400 });
       } else if (incomingEvmAddress === null && currentEvmAddress !== null) {
         // User is unlinking the EVM address
-        updatesForPrisma.evmAddress = null;
+        updatesForPrisma.evm_address = null;
       }
-      // If incomingEvmAddress is the same as current (case-insensitive), or both are null, no change to evmAddress needs to be added here.
-      // Remove evmAddress from validatedData so it's not processed by the generic loop below
-      delete validatedData.evmAddress;
+      // If incomingEvmAddress is the same as current (case-insensitive), or both are null, no change to evm_address needs to be added here.
+      // Remove evm_address from validatedData so it's not processed by the generic loop below
+      delete validatedData.evm_address;
     }
-    // --- END: Special handling for evmAddress ---
+    // --- END: Special handling for evm_address ---
 
     const kycChanges: Record<string, any> = {};
     let hasKycChanges = false;
@@ -145,7 +164,7 @@ export async function PUT(request: NextRequest) {
       if (incomingValue === '') incomingValue = null;
 
       // Date comparison normalization
-      if (typedKey === 'dateOfBirth' && currentValue instanceof Date && incomingValue) {
+      if (typedKey === 'date_of_birth' && currentValue instanceof Date && incomingValue) {
         currentValue = currentValue.toISOString().split('T')[0] as any;
         // incomingValue from Zod is already a Date object or null if preprocessed successfully
         // For string comparison, ensure incomingValue is also formatted if it's a string date
@@ -166,73 +185,87 @@ export async function PUT(request: NextRequest) {
     }
 
     if (hasKycChanges) {
-      console.log(`[API PUT /profile] User ${userId} submitting KYC changes for review:`, kycChanges);
-      await prisma.kycUpdateRequest.create({
+      console.log(`[API PUT /profile] KYC changes persisted to user record and marked unverified.`);
+
+      // 1) Create a pending KYC update request record
+      await prisma.kyc_update_requests.create({
         data: {
+          id: randomUUID(),
           userId: userId,
           changes: kycChanges as Prisma.JsonObject,
           status: 'PENDING',
+          createdAt: new Date(),
+          updatedAt: new Date(),
         }
       });
-      updatesForPrisma.kycVerified = false;
-      console.log(`[API PUT /profile] User ${userId} submitted KYC changes, kycVerified set to false pending review.`);
+
+      // 2) Also apply the requested changes to the user record immediately so the UI reflects the edit
+      Object.assign(updatesForPrisma, kycChanges);
+
+      // 3) Mark the account as unverified until admin approval
+      updatesForPrisma.kyc_verified = false;
     }
 
     if (Object.keys(updatesForPrisma).length > 0) {
       console.log(`[API PUT /profile] User ${userId} updating user record:`, updatesForPrisma);
-      await prisma.user.update({
+      await prisma.users.update({
         where: { id: userId },
         data: updatesForPrisma,
       });
     }
 
-    const latestUserProfile = await prisma.user.findUnique({
+    const latestUserProfile = await prisma.users.findUnique({
       where: { id: userId },
       select: {
         username: true,
         email: true,
-        evmAddress: true,
-        fullName: true,
-        dateOfBirth: true,
+        evm_address: true,
+        full_name: true,
+        date_of_birth: true,
         phone: true,
-        addressLine1: true,
-        addressLine2: true,
+        address_line1: true,
+        address_line2: true,
         city: true,
-        stateProvince: true,
-        postalCode: true,
+        state_province: true,
+        postal_code: true,
         country: true,
-        govIdType: true,
-        govIdRef: true,
-        kycVerified: true,
-      }
+        gov_id_type: true,
+        gov_id_ref: true,
+        kyc_verified: true,
+      },
     });
 
-    if (hasKycChanges) {
-      return NextResponse.json(
-        { 
-          message: 'Profile updated. Some changes require KYC review; verification status reset.', 
-          user: latestUserProfile
-        },
-        { status: 200 } 
-      );
-    } else if (Object.keys(updatesForPrisma).length > 0) {
-      return NextResponse.json(
-        { 
-          message: 'Profile updated successfully.', 
-          user: latestUserProfile 
-        },
-        { status: 200 }
-      );
-    } else {
-      console.log(`[API PUT /profile] User ${userId} submitted profile update with no actual changes.`);
-      return NextResponse.json(
-        { 
-          message: 'No changes detected in profile data.',
-          user: latestUserProfile
-        }, 
-        { status: 200 }
-      );
+    if (!latestUserProfile) {
+      return NextResponse.json({ message: 'User not found after update' }, { status: 404 });
     }
+
+    // Transform to camelCase for the frontend
+    const transformedProfile = {
+      username: latestUserProfile.username,
+      email: latestUserProfile.email,
+      evmAddress: latestUserProfile.evm_address,
+      fullName: latestUserProfile.full_name,
+      dateOfBirth: latestUserProfile.date_of_birth,
+      phone: latestUserProfile.phone,
+      addressLine1: latestUserProfile.address_line1,
+      addressLine2: latestUserProfile.address_line2,
+      city: latestUserProfile.city,
+      stateProvince: latestUserProfile.state_province,
+      postalCode: latestUserProfile.postal_code,
+      country: latestUserProfile.country,
+      govIdType: latestUserProfile.gov_id_type,
+      govIdRef: latestUserProfile.gov_id_ref,
+      kycVerified: latestUserProfile.kyc_verified,
+    };
+
+    let message = 'No changes detected in profile update.';
+    if (hasKycChanges) {
+      message = 'Profile updated. Some changes require KYC review; verification status reset.';
+    } else if (Object.keys(updatesForPrisma).length > 0) {
+      message = 'Profile updated successfully.';
+    }
+
+    return NextResponse.json({ message, user: transformedProfile }, { status: 200 });
 
   } catch (error) {
     if ((error as any).code === 'P2002' && (error as any).meta?.target?.includes('email')) {
@@ -248,7 +281,7 @@ export async function PUT(request: NextRequest) {
 const profileSelectFields = {
     username: true,
     email: true,
-    evmAddress: true,
+    evm_address: true,
     fullName: true,
     dateOfBirth: true,
     phone: true,

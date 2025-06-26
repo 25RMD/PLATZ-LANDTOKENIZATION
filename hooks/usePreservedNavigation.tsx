@@ -14,8 +14,8 @@ export const usePreservedNavigation = () => {
     router.push('/explore');
   }, [router]);
 
-  const navigateToCollection = useCallback((collectionId: string) => {
-    router.push(`/explore/${collectionId}`);
+  const navigateToCollection = useCallback((id: string) => {
+    router.push(`/explore/${id}`);
   }, [router]);
 
   return {

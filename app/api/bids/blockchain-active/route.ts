@@ -4,51 +4,51 @@ import { getActiveBidsForOwner } from '@/lib/blockchain/bidAggregation';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userAddress = searchParams.get('userAddress');
+    const user_address = searchParams.get('user_address');
 
-    if (!userAddress) {
+    if (!user_address) {
       return NextResponse.json(
-        { success: false, error: 'User address is required' },
+        { success: false, error: 'user_address is required' },
         { status: 400 }
       );
     }
 
-    console.log(`[BLOCKCHAIN_ACTIVE_BIDS] Fetching blockchain-based active bids for user: ${userAddress}`);
+    console.log(`[BLOCKCHAIN_ACTIVE_BIDS] Fetching blockchain-based active bids for user: ${user_address}`);
 
     // Use blockchain-based bid aggregation
-    const activeBids = await getActiveBidsForOwner(userAddress);
+    const activeBids = await getActiveBidsForOwner(user_address);
 
     console.log(`[BLOCKCHAIN_ACTIVE_BIDS] Found ${activeBids.length} active bids on tokens owned by user`);
     console.log(`[BLOCKCHAIN_ACTIVE_BIDS] Active bids details:`, activeBids.map(bid => ({
       id: bid.id,
-      tokenId: bid.tokenId,
-      bidAmount: bid.bidAmount,
-      bidStatus: bid.bidStatus,
-      currentOwner: bid.currentOwner,
+      token_id: bid.tokenId,
+      bid_amount: bid.bidAmount,
+      bid_status: bid.bidStatus,
+      current_owner: bid.currentOwner,
       bidder: bid.bidder.evmAddress
     })));
 
     // Format response for frontend compatibility
     const formattedBids = activeBids.map(bid => ({
       id: bid.id,
-      bidAmount: bid.bidAmount,
-      bidStatus: bid.bidStatus,
-      transactionHash: bid.transactionHash,
-      createdAt: bid.createdAt,
-      userRole: bid.userRole,
-      tokenId: bid.tokenId,
-      currentOwner: bid.currentOwner,
+      bid_amount: bid.bidAmount,
+      bid_status: bid.bidStatus,
+      transaction_hash: bid.transactionHash,
+      created_at: bid.createdAt,
+      user_role: bid.userRole,
+      token_id: bid.tokenId,
+      current_owner: bid.currentOwner,
       bidder: bid.bidder,
-      landListing: bid.landListing
+      land_listing: bid.landListing
     }));
 
     return NextResponse.json({
       success: true,
       bids: formattedBids,
       metadata: {
-        totalActiveBids: formattedBids.length,
-        userAddress,
-        dataSource: 'blockchain',
+        total_active_bids: formattedBids.length,
+        user_address,
+        data_source: 'blockchain',
         note: 'Ownership verified via blockchain data'
       }
     });

@@ -2,6 +2,56 @@
 
 This directory contains maintenance and utility scripts for the PLATZ Land Tokenization platform.
 
+## Get Earliest Listings Script
+
+### Purpose
+The `get-earliest-listings.js` and `get-earliest-listings.ts` scripts fetch the 2 earliest listings from the database, providing detailed information about the oldest land listings in the system.
+
+### Usage
+
+#### JavaScript Version
+```bash
+node scripts/get-earliest-listings.js
+```
+
+#### TypeScript Version
+```bash
+npx tsx scripts/get-earliest-listings.ts
+```
+
+### Output
+The script displays:
+- **Listing Details**: ID, title, address, location, price, status
+- **Blockchain Info**: Collection ID, token ID, mint status
+- **User Info**: Owner username/email
+- **Timestamps**: Creation and update dates
+- **Database Statistics**: Total listings count and age of oldest listing
+
+### Example Output
+```
+🔍 Fetching the 2 earliest listings from the database...
+
+✅ Found 2 earliest listing(s):
+
+📋 Listing #1:
+   ID: cmb2wcefj0000czlrzwoxaitp
+   Title: Serene Hilltop plot #1
+   Address: No address
+   Location: No location
+   Price: 0.0001 ETH
+   Status: PENDING
+   Mint Status: COMPLETED_COLLECTION
+   Collection ID: 15
+   Token ID: Not minted
+   Owner: bidder_user
+   Created: 2025-05-25T00:04:34.447Z
+   Updated: 2025-05-31T20:34:20.755Z
+
+📊 Database Statistics:
+   Total listings in database: 7
+   Oldest listing created: 31 days ago
+```
+
 ## User Consolidation Script
 
 ### Purpose
@@ -36,11 +86,11 @@ npm run consolidate-users:no-backup
 1. **Identifies Duplicates**: Finds all users with the same EVM address (case-insensitive)
 
 2. **Selects Primary User**: Uses smart prioritization:
-   - ✅ Admin users first
-   - ✅ KYC verified users
-   - ✅ Users with complete profile data
-   - ✅ Users with most activity (listings, bids, etc.)
-   - ✅ Oldest user (earliest `createdAt`)
+   - Admin users first
+   - KYC verified users
+   - Users with complete profile data
+   - Users with most activity (listings, bids, etc.)
+   - Oldest user (earliest `createdAt`)
 
 3. **Consolidates Data**: Updates all related records to point to primary user:
    - Land Listings

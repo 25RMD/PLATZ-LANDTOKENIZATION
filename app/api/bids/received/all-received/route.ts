@@ -1,34 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userAddress = searchParams.get('userAddress');
+    const user_address = searchParams.get('user_address');
 
-    if (!userAddress) {
+    if (!user_address) {
       return NextResponse.json(
         { success: false, error: 'User address is required' },
         { status: 400 }
       );
     }
 
-    console.log(`[RECEIVED BIDS] Fetching completed/resolved bids for user: ${userAddress}`);
+    console.log(`[ALL_BIDS] Fetching all resolved bids for user: ${user_address}`);
 
     // Find the user by EVM address
-    const user = await prisma.user.findFirst({
+    const user = await prisma.users.findFirst({
       where: {
-        evmAddress: {
-          equals: userAddress,
+        evm_address: {
+          equals: user_address,
           mode: 'insensitive'
         }
       }
     });
 
     if (!user) {
-      console.log(`[RECEIVED BIDS] User not found for address: ${userAddress}`);
+      console.log(`[ALL_BIDS] User not found for address: ${user_address}`);
       return NextResponse.json({
         success: true,
         bids: [],
@@ -36,31 +34,31 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log(`[RECEIVED BIDS] Found user: ${user.id} (${user.username})`);
+    console.log(`[ALL_BIDS] Found user: ${user.id} (${user.username})`);
 
     // Find all completed/resolved bids where this user was involved (either as bidder or listing owner)
-    // Excludes ACTIVE bids (those are shown in the Active Bids section)
-    const resolvedBids = await prisma.nftBid.findMany({
+    // Excludes ACTIVE bids
+    const resolvedBids = await prisma.nft_bids.findMany({
       where: {
-        bidStatus: {
+        bid_status: {
           in: ['ACCEPTED', 'REJECTED', 'WITHDRAWN', 'OUTBID']
         },
         OR: [
           // Bids made by this user (they were the bidder)
           {
-            bidder: {
-              evmAddress: {
-                equals: userAddress,
+            users: {
+              evm_address: {
+                equals: user_address,
                 mode: 'insensitive'
               }
             }
           },
           // Bids received on listings owned by this user (they were the listing owner)
           {
-            landListing: {
-              user: {
-                evmAddress: {
-                  equals: userAddress,
+            land_listings: {
+              users: {
+                evm_address: {
+                  equals: user_address,
                   mode: 'insensitive'
                 }
               }
@@ -69,97 +67,94 @@ export async function GET(request: NextRequest) {
         ]
       },
       include: {
-        bidder: {
+        users: { // Bidder
           select: {
             id: true,
             username: true,
-            evmAddress: true
+            evm_address: true
           }
         },
-        landListing: {
+        land_listings: {
           include: {
-            user: {
+            users: { // Owner
               select: {
                 id: true,
                 username: true,
-                evmAddress: true
+                evm_address: true
               }
             }
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     });
 
-    console.log(`[RECEIVED BIDS] Found ${resolvedBids.length} resolved bids involving user`);
+    console.log(`[ALL_BIDS] Found ${resolvedBids.length} resolved bids involving user`);
 
     // Format the response with additional context about the user's role
-    const formattedBids = resolvedBids.map(bid => {
-      const isBidder = bid.bidder.evmAddress?.toLowerCase() === userAddress.toLowerCase();
-      const isListingOwner = bid.landListing.user.evmAddress?.toLowerCase() === userAddress.toLowerCase();
+    const formatted_bids = resolvedBids.map(bid => {
+      const is_bidder = bid.users.evm_address?.toLowerCase() === user_address.toLowerCase();
 
       return {
         id: bid.id,
-        bidAmount: bid.bidAmount,
-        bidStatus: bid.bidStatus,
-        transactionHash: bid.transactionHash || '',
-        createdAt: bid.createdAt.toISOString(),
-        userRole: isBidder ? 'bidder' : 'listing_owner', // User's role in this bid
+        bid_amount: bid.bid_amount,
+        bid_status: bid.bid_status,
+        transaction_hash: bid.transaction_hash || '',
+        created_at: bid.created_at.toISOString(),
+        user_role: is_bidder ? 'bidder' : 'listing_owner',
         bidder: {
-          id: bid.bidder.id,
-          username: bid.bidder.username,
-          evmAddress: bid.bidder.evmAddress
+          id: bid.users.id,
+          username: bid.users.username,
+          evm_address: bid.users.evm_address
         },
-        landListing: {
-          id: bid.landListing.id,
-          nftTitle: bid.landListing.nftTitle,
-          collectionId: bid.landListing.collectionId,
-          nftImageFileRef: bid.landListing.nftImageFileRef,
+        land_listing: {
+          id: bid.land_listings.id,
+          nft_title: bid.land_listings.nft_title,
+          collection_id: bid.land_listings.collection_id,
+          nft_image_file_ref: bid.land_listings.nft_image_file_ref,
           owner: {
-            id: bid.landListing.user.id,
-            username: bid.landListing.user.username,
-            evmAddress: bid.landListing.user.evmAddress
+            id: bid.land_listings.users.id,
+            username: bid.land_listings.users.username,
+            evm_address: bid.land_listings.users.evm_address
           }
         }
       };
     });
 
-    // Separate bids by user role and status for better organization
-    const bidsMade = formattedBids.filter(bid => bid.userRole === 'bidder');
-    const bidsReceived = formattedBids.filter(bid => bid.userRole === 'listing_owner');
+    // Separate bids by user role for better organization
+    const bids_made = formatted_bids.filter(bid => bid.user_role === 'bidder');
+    const bids_received = formatted_bids.filter(bid => bid.user_role === 'listing_owner');
     
-    const statusCounts = formattedBids.reduce((acc, bid) => {
-      acc[bid.bidStatus] = (acc[bid.bidStatus] || 0) + 1;
+    const status_counts = formatted_bids.reduce((acc, bid) => {
+      acc[bid.bid_status] = (acc[bid.bid_status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    console.log(`[RECEIVED BIDS] User made ${bidsMade.length} resolved bids, received ${bidsReceived.length} resolved bids`);
+    console.log(`[ALL_BIDS] User made ${bids_made.length} resolved bids, received ${bids_received.length} resolved bids`);
 
     return NextResponse.json({
       success: true,
-      bids: formattedBids,
+      bids: formatted_bids,
       metadata: {
-        userFound: !!user,
-        totalResolvedBids: formattedBids.length,
-        bidsMade: bidsMade.length,
-        bidsReceived: bidsReceived.length,
-        statusBreakdown: statusCounts
+        user_found: !!user,
+        total_resolved_bids: formatted_bids.length,
+        bids_made: bids_made.length,
+        bids_received: bids_received.length,
+        status_breakdown: status_counts
       }
     });
 
   } catch (error) {
-    console.error('[RECEIVED BIDS] Error fetching received bids:', error);
+    console.error('[ALL_BIDS] Error fetching all resolved bids:', error);
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to fetch received bids',
+        error: 'Failed to fetch all resolved bids',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 

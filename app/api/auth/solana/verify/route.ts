@@ -38,9 +38,9 @@ export async function POST(request: Request) {
     }
 
     // Find the user and their expected nonce (User MUST exist at this point)
-    // Note: solanaPubKey field is deprecated, using evmAddress as fallback
+    // Note: solanaPubKey field is deprecated, using evm_address as fallback
     const user = await prisma.user.findUnique({
-      where: { evmAddress: solanaPubKey },
+      where: { evm_address: solanaPubKey },
     });
 
     if (!user || !user.signInNonce) {

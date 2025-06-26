@@ -1,27 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// Define types for our queries to avoid 'any'
+type NftBidWithDetails = Prisma.nft_bidsGetPayload<{
+  include: {
+    land_listings: {
+      select: {
+        id: true,
+        nft_title: true,
+        collection_id: true,
+        nft_image_file_ref: true
+      }
+    }
+  }
+}>;
+
+type ReceivedBidWithDetails = Prisma.nft_bidsGetPayload<{
+  include: {
+    users: { // bidder
+      select: {
+        id: true,
+        username: true,
+        evm_address: true
+      }
+    },
+    land_listings: {
+      select: {
+        id: true,
+        nft_title: true,
+        collection_id: true,
+        nft_image_file_ref: true
+      }
+    }
+  }
+}>;
+
+type BidTransactionWithDetails = Prisma.nft_transactionsGetPayload<{
+  include: {
+    land_listings: {
+      select: {
+        id: true,
+        nft_title: true,
+        collection_id: true,
+        nft_image_file_ref: true
+      }
+    }
+  }
+}>;
+
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userAddress = searchParams.get('userAddress');
+    const user_address = searchParams.get('user_address');
 
-    if (!userAddress) {
+    if (!user_address) {
       return NextResponse.json(
-        { success: false, error: 'User address is required' },
+        { success: false, error: 'user_address is required' },
         { status: 400 }
       );
     }
 
-    console.log(`Fetching bid history for user: ${userAddress}`);
+    console.log(`Fetching bid history for user: ${user_address}`);
 
     // Find the user by EVM address
-    const user = await prisma.user.findFirst({
+    const user = await prisma.users.findFirst({
       where: {
-        evmAddress: {
-          equals: userAddress,
+        evm_address: {
+          equals: user_address,
           mode: 'insensitive'
         }
       }
@@ -35,95 +82,95 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all bids made by the user (both active and historical)
-    const userBids = await prisma.nftBid.findMany({
+    const userBids: NftBidWithDetails[] = await prisma.nft_bids.findMany({
       where: {
-        bidderUserId: user.id
+        bidder_user_id: user.id
       },
       include: {
-        landListing: {
+        land_listings: {
           select: {
             id: true,
-            nftTitle: true,
-            collectionId: true,
-            nftImageFileRef: true
+            nft_title: true,
+            collection_id: true,
+            nft_image_file_ref: true
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     });
 
     // Get all transactions where user was involved in bid-related activities
-    const bidTransactions = await prisma.nftTransaction.findMany({
+    const bidTransactions: BidTransactionWithDetails[] = await prisma.nft_transactions.findMany({
       where: {
         OR: [
           {
-            fromAddress: {
-              equals: userAddress,
+            from_address: {
+              equals: user_address,
               mode: 'insensitive'
             },
-            transactionType: {
+            transaction_type: {
               in: ['BID_ACCEPTED', 'BID_PLACED']
             }
           },
           {
-            toAddress: {
-              equals: userAddress,
+            to_address: {
+              equals: user_address,
               mode: 'insensitive'
             },
-            transactionType: {
+            transaction_type: {
               in: ['BID_ACCEPTED', 'BID_PLACED']
             }
           }
         ]
       },
       include: {
-        landListing: {
+        land_listings: {
           select: {
             id: true,
-            nftTitle: true,
-            collectionId: true,
-            nftImageFileRef: true
+            nft_title: true,
+            collection_id: true,
+            nft_image_file_ref: true
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     });
 
     // Get bids received on user's listings
-    const receivedBids = await prisma.nftBid.findMany({
+    const receivedBids: ReceivedBidWithDetails[] = await prisma.nft_bids.findMany({
       where: {
-        landListing: {
-          user: {
-            evmAddress: {
-              equals: userAddress,
+        land_listings: {
+          users: {
+            evm_address: {
+              equals: user_address,
               mode: 'insensitive'
             }
           }
         }
       },
       include: {
-        bidder: {
+        users: { // bidder
           select: {
             id: true,
             username: true,
-            evmAddress: true
+            evm_address: true
           }
         },
-        landListing: {
+        land_listings: {
           select: {
             id: true,
-            nftTitle: true,
-            collectionId: true,
-            nftImageFileRef: true
+            nft_title: true,
+            collection_id: true,
+            nft_image_file_ref: true
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     });
 
@@ -138,27 +185,27 @@ export async function GET(request: NextRequest) {
       if (!processedBids.has(bidKey)) {
         processedBids.add(bidKey);
         
-        let description = `You placed a bid of ${bid.bidAmount} ETH`;
+        let description = `You placed a bid of ${bid.bid_amount} ETH`;
         let type = 'BID_PLACED';
         
         // If bid is accepted, show it as accepted rather than just placed
-        if (bid.bidStatus === 'ACCEPTED') {
-          description = `Your bid of ${bid.bidAmount} ETH was accepted`;
+        if (bid.bid_status === 'ACCEPTED') {
+          description = `Your bid of ${bid.bid_amount} ETH was accepted`;
           type = 'BID_ACCEPTED';
         }
         
         historyItems.push({
           id: bidKey,
           type,
-          status: bid.bidStatus,
-          amount: bid.bidAmount,
-          transactionHash: bid.transactionHash,
-          createdAt: bid.createdAt.toISOString(),
-          updatedAt: bid.updatedAt.toISOString(),
+          status: bid.bid_status,
+          amount: bid.bid_amount,
+          transaction_hash: bid.transaction_hash,
+          created_at: bid.created_at.toISOString(),
+          updated_at: bid.updated_at.toISOString(),
           description,
-          landListing: bid.landListing,
-          isUserAction: true,
-          bidId: bid.id
+          land_listing: bid.land_listings,
+          is_user_action: true,
+          bid_id: bid.id
         });
       }
     });
@@ -169,28 +216,28 @@ export async function GET(request: NextRequest) {
       if (!processedBids.has(bidKey)) {
         processedBids.add(bidKey);
         
-        let description = `${bid.bidder.username || 'Anonymous'} placed a bid of ${bid.bidAmount} ETH on your listing`;
+        let description = `${bid.users.username || 'Anonymous'} placed a bid of ${bid.bid_amount} ETH on your listing`;
         let type = 'BID_RECEIVED';
         
         // If bid is accepted, show it as accepted
-        if (bid.bidStatus === 'ACCEPTED') {
-          description = `You accepted a bid of ${bid.bidAmount} ETH from ${bid.bidder.username || 'Anonymous'}`;
+        if (bid.bid_status === 'ACCEPTED') {
+          description = `You accepted a bid of ${bid.bid_amount} ETH from ${bid.users.username || 'Anonymous'}`;
           type = 'BID_ACCEPTED';
         }
         
         historyItems.push({
           id: bidKey,
           type,
-          status: bid.bidStatus,
-          amount: bid.bidAmount,
-          transactionHash: bid.transactionHash,
-          createdAt: bid.createdAt.toISOString(),
-          updatedAt: bid.updatedAt.toISOString(),
+          status: bid.bid_status,
+          amount: bid.bid_amount,
+          transaction_hash: bid.transaction_hash,
+          created_at: bid.created_at.toISOString(),
+          updated_at: bid.updated_at.toISOString(),
           description,
-          landListing: bid.landListing,
-          isUserAction: false,
-          bidder: bid.bidder,
-          bidId: bid.id
+          land_listing: bid.land_listings,
+          is_user_action: false,
+          bidder: bid.users,
+          bid_id: bid.id
         });
       }
     });
@@ -201,18 +248,18 @@ export async function GET(request: NextRequest) {
       if (!processedTransactions.has(transactionKey)) {
         processedTransactions.add(transactionKey);
         
-        const isUserSender = transaction.fromAddress.toLowerCase() === userAddress.toLowerCase();
-        const isUserReceiver = transaction.toAddress.toLowerCase() === userAddress.toLowerCase();
+        const isUserSender = transaction.from_address.toLowerCase() === user_address.toLowerCase();
+        const isUserReceiver = transaction.to_address.toLowerCase() === user_address.toLowerCase();
         
         let description = '';
         let shouldInclude = true;
         
-        if (transaction.transactionType === 'BID_ACCEPTED') {
+        if (transaction.transaction_type === 'BID_ACCEPTED') {
           // Only include BID_ACCEPTED transactions if they're not already covered by bid status
           const correspondingBid = [...userBids, ...receivedBids].find(bid => 
-            bid.landListingId === transaction.landListingId && 
-            bid.bidAmount === transaction.price &&
-            bid.bidStatus === 'ACCEPTED'
+            bid.land_listing_id === transaction.land_listing_id && 
+            bid.bid_amount === transaction.price &&
+            bid.bid_status === 'ACCEPTED'
           );
           
           if (!correspondingBid) {
@@ -224,12 +271,12 @@ export async function GET(request: NextRequest) {
           } else {
             shouldInclude = false; // Skip as it's already covered by the bid entry
           }
-        } else if (transaction.transactionType === 'BID_PLACED') {
+        } else if (transaction.transaction_type === 'BID_PLACED') {
           // Only include BID_PLACED transactions if they're not already covered by bids
           const correspondingBid = userBids.find(bid => 
-            bid.landListingId === transaction.landListingId && 
-            bid.bidAmount === transaction.price &&
-            bid.transactionHash === transaction.transactionHash
+            bid.land_listing_id === transaction.land_listing_id && 
+            bid.bid_amount === transaction.price &&
+            bid.transaction_hash === transaction.transaction_hash
           );
           
           if (!correspondingBid) {
@@ -242,47 +289,49 @@ export async function GET(request: NextRequest) {
         if (shouldInclude && description) {
           historyItems.push({
             id: transactionKey,
-            type: transaction.transactionType,
+            type: transaction.transaction_type,
             status: 'COMPLETED',
             amount: transaction.price,
-            transactionHash: transaction.transactionHash,
-            createdAt: transaction.createdAt.toISOString(),
-            updatedAt: transaction.createdAt.toISOString(),
+            transaction_hash: transaction.transaction_hash,
+            created_at: transaction.created_at.toISOString(),
+            updated_at: transaction.created_at.toISOString(),
             description,
-            landListing: transaction.landListing,
-            isUserAction: isUserSender,
-            fromAddress: transaction.fromAddress,
-            toAddress: transaction.toAddress
+            land_listing: transaction.land_listings,
+            is_user_action: isUserSender,
+            from_address: transaction.from_address,
+            to_address: transaction.to_address
           });
         }
       }
     });
 
     // Sort all items by creation date (newest first)
-    historyItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    historyItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    console.log(`Found ${historyItems.length} history items for user ${userAddress}`);
+    console.log(`Found ${historyItems.length} history items for user ${user_address}`);
 
     return NextResponse.json({
       success: true,
       history: historyItems,
       summary: {
-        totalBidsPlaced: userBids.length,
-        totalBidsReceived: receivedBids.length,
-        totalTransactions: bidTransactions.length,
-        activeBids: userBids.filter(bid => bid.bidStatus === 'ACTIVE').length,
-        acceptedBids: userBids.filter(bid => bid.bidStatus === 'ACCEPTED').length,
-        withdrawnBids: userBids.filter(bid => bid.bidStatus === 'WITHDRAWN').length
+        total_bids_placed: userBids.length,
+        total_bids_received: receivedBids.length,
+        total_transactions: bidTransactions.length,
+        active_bids: userBids.filter(bid => bid.bid_status === 'ACTIVE').length,
+        accepted_bids: userBids.filter(bid => bid.bid_status === 'ACCEPTED').length,
+        withdrawn_bids: userBids.filter(bid => bid.bid_status === 'WITHDRAWN').length
       }
     });
 
   } catch (error) {
     console.error('Error fetching bid history:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch bid history' },
+      { 
+        success: false, 
+        error: 'Failed to fetch bid history',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
-} 
+}

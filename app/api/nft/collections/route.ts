@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             username: true,
-            evmAddress: true,
+            evm_address: true,
           },
         },
         evmCollectionTokens: {

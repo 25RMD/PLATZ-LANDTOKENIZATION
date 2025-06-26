@@ -13,77 +13,74 @@ export async function GET(request: NextRequest) {
     console.log('[API /api/collections] Fetching collections from database...');
     
     // Get all land listings that have been minted as collections
-    const collections = await prisma.landListing.findMany({
+    const collections = await prisma.land_listings.findMany({
       where: {
         AND: [
-          { collectionId: { not: null } },
+          { collection_id: { not: null } },
           { 
             OR: [
-              { mintStatus: 'COMPLETED' },
-              { mintStatus: 'COMPLETED_COLLECTION' },
-              { mintStatus: 'SUCCESS' } // Legacy status
+              { mint_status: 'COMPLETED' },
+              { mint_status: 'COMPLETED_COLLECTION' },
+              { mint_status: 'SUCCESS' } // Legacy status
             ]
           }
         ]
       },
-      select: {
-        id: true,
-        collectionId: true,
-        mainTokenId: true,
-        nftTitle: true,
-        nftDescription: true,
-        nftImageFileRef: true,
-        nftCollectionSize: true,
-        listingPrice: true,
-        priceCurrency: true,
-        country: true,
-        state: true,
-        localGovernmentArea: true,
-        propertyAreaSqm: true,
-        latitude: true,
-        longitude: true,
-        contractAddress: true,
-        mintTransactionHash: true,
-        mintTimestamp: true,
-        createdAt: true,
-        user: {
+      include: {
+        users: {
           select: {
             id: true,
             username: true,
-            evmAddress: true
+            evm_address: true
+          }
+        },
+        evm_collection_tokens: {
+          select: {
+            token_id: true
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     });
 
     console.log(`[API /api/collections] Found ${collections.length} collections in database`);
 
-    // Transform the data to match the expected format
-    const transformedCollections = collections.map(collection => ({
-      id: collection.id,
-      collectionId: collection.collectionId,
-      mainTokenId: collection.mainTokenId,
-      nftTitle: collection.nftTitle,
-      nftDescription: collection.nftDescription,
-      nftImageFileRef: collection.nftImageFileRef,
-      nftCollectionSize: collection.nftCollectionSize,
-      listingPrice: collection.listingPrice,
-      priceCurrency: collection.priceCurrency,
-      country: collection.country,
-      state: collection.state,
-      localGovernmentArea: collection.localGovernmentArea,
-      propertyAreaSqm: collection.propertyAreaSqm,
-      latitude: collection.latitude,
-      longitude: collection.longitude,
-      contractAddress: collection.contractAddress,
-      mintTransactionHash: collection.mintTransactionHash,
-      mintTimestamp: collection.mintTimestamp,
-      createdAt: collection.createdAt,
-      user: collection.user
-    }));
+    // Transform the data to match the expected format with hybrid token counting
+    const transformedCollections = collections.map(collection => {
+      // Calculate actual collection size from minted tokens
+      const actualTokenCount = collection.evm_collection_tokens.length;
+      const dbCollectionSize = collection.nft_collection_size || 0;
+      
+      // Hybrid approach: use actual count if tokens exist, otherwise use database field
+      const hybridCollectionSize = actualTokenCount > 0 ? actualTokenCount : dbCollectionSize;
+      
+      console.log(`[API /api/collections] Collection ${collection.collection_id}: DB size=${dbCollectionSize}, Actual tokens=${actualTokenCount}, Using=${hybridCollectionSize}`);
+      
+      return {
+        id: collection.id,
+        collectionId: collection.collection_id,
+        mainTokenId: collection.main_token_id,
+        nftTitle: collection.nft_title,
+        nftDescription: collection.nft_description,
+        nftImageFileRef: collection.nft_image_file_ref,
+        nftCollectionSize: hybridCollectionSize,
+        listingPrice: collection.listing_price,
+        priceCurrency: collection.price_currency,
+        country: collection.country,
+        state: collection.state,
+        localGovernmentArea: collection.local_government_area,
+        propertyAreaSqm: collection.property_area_sqm,
+        latitude: collection.latitude,
+        longitude: collection.longitude,
+        contractAddress: collection.contract_address,
+        mintTransactionHash: collection.mint_transaction_hash,
+        mintTimestamp: collection.mint_timestamp,
+        createdAt: collection.created_at,
+        user: collection.users // Match the Prisma relation name
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -121,12 +118,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch user to check verification status
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: userId },
-      select: { kycVerified: true },
+      select: { kyc_verified: true },
     });
 
-    if (!user?.kycVerified) {
+    if (!user?.kyc_verified) {
       console.warn(`User ${userId} attempted to create collection but is not verified.`);
       return NextResponse.json({ message: 'User verification required to create listings.' }, { status: 403 }); // Forbidden
     }
@@ -188,23 +185,37 @@ export async function POST(request: NextRequest) {
        return NextResponse.json({ message: 'Invalid number format for items or floor price' }, { status: 400 });
     }
 
-    const propertyData = {
+    const data = {
       name: name,
       items: items,
       floorPrice: floorPrice,
       image: imageUrl,
       category: category,
-      userId: userId, // <<< ADD THIS LINE
-      // Add any other required fields for your Property model
-      // volume and verified will use default values from schema
-      // id, createdAt, updatedAt are handled by Prisma/database
     };
 
-    console.log("API POST /api/collections: Attempting to create property in DB:", propertyData); // <<< Use propertyData in log
+    // Create property in database with all required fields
+    const propertyData = {
+      id: crypto.randomUUID(), // Generate a UUID for the property
+      name: data.name,
+      items: 0, // Default value for required field
+      floor_price: data.floorPrice,
+      image: data.image,
+      category: data.category,
+      user_id: userId,
+      created_at: new Date(),
+      updated_at: new Date(),
+      volume: 0, // Default value for required field
+      verified: false, // Default value for required field
+      // Connect to user using the correct relation name from schema
+      user: {
+        connect: { id: userId }
+      }
+    };
 
-    // --- Use the correct model name 'Property' --- 
-    const newProperty = await prisma.property.create({ 
-      data: propertyData, // <<< Use propertyData here
+    console.log("API POST /api/collections: Attempting to create property in DB:", propertyData);
+
+    const newProperty = await prisma.properties.create({ 
+      data: propertyData,
     });
     
     console.log('--- API POST /api/collections: New Collection Added (Database) ---');

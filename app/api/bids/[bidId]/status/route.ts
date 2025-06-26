@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import { trackBidEvent } from '@/lib/priceTracking';
-import { createPublicClient, createWalletClient, http, parseEther } from 'viem';
+import { randomUUID } from 'crypto';
+import { createPublicClient, createWalletClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
@@ -13,8 +14,6 @@ import {
   syncOwnershipWithBlockchain 
 } from '@/lib/bidValidation';
 
-const prisma = new PrismaClient();
-
 // Schema for validation
 const paramsSchema = z.object({
   bidId: z.string().min(1)
@@ -22,7 +21,7 @@ const paramsSchema = z.object({
 
 const updateBidSchema = z.object({
   status: z.enum(['ACCEPTED', 'REJECTED']),
-  userAddress: z.string().min(1) // Address of the user accepting/rejecting the bid
+  user_address: z.string().min(1) // Address of the user accepting/rejecting the bid
 });
 
 export async function PATCH(
@@ -38,16 +37,16 @@ export async function PATCH(
     const validatedData = updateBidSchema.parse(body);
 
     // Find the bid with token information
-    const bid = await prisma.nftBid.findUnique({
+    const bid = await prisma.nft_bids.findUnique({
       where: { id: bidId },
       include: {
-        landListing: {
+        land_listings: {
           include: {
-            user: true,
-            evmCollectionTokens: true // Get all tokens, we'll filter for the specific one later
+            users: true,
+            evm_collection_tokens: true // Get all tokens, we'll filter for the specific one later
           }
         },
-        bidder: true
+        users: true
       }
     });
 
@@ -59,7 +58,7 @@ export async function PATCH(
     }
 
     // Enhanced validation using the new validation system (with fallback tolerance)
-    const validationResult = await validateBidAcceptance(bidId, validatedData.userAddress);
+    const validationResult = await validateBidAcceptance(bidId, validatedData.user_address);
     
     if (!validationResult.isValid) {
       console.warn(`[BID_STATUS] Validation failed (${validationResult.source}): ${validationResult.error}`);
@@ -68,23 +67,25 @@ export async function PATCH(
       if (validationResult.source === 'fallback' || validationResult.source === 'database') {
         console.log(`[BID_STATUS] Allowing bid acceptance despite validation failure due to connectivity issues`);
         // Continue with acceptance but log the issue
-        try {
-          await prisma.auditLog.create({
-            data: {
-              eventType: 'BID_ACCEPTANCE_VALIDATION_BYPASS',
-              userAddress: validatedData.userAddress,
-              bidId: bidId,
-              details: {
-                validationError: validationResult.error,
-                validationSource: validationResult.source,
-                bypassReason: 'blockchain_connectivity_issues',
-                timestamp: new Date().toISOString()
-              }
-            }
-          });
-        } catch (auditError) {
-          console.warn('[BID_STATUS] Failed to create audit log:', auditError);
-        }
+        // TODO: Create an `audit_logs` model in `schema.prisma` to store validation bypass events.
+        // try {
+        //   await prisma.audit_logs.create({
+        //     data: {
+        //       id: randomUUID(),
+        //       event_type: 'BID_ACCEPTANCE_VALIDATION_BYPASS',
+        //       user_address: validatedData.user_address,
+        //       bid_id: bidId,
+        //       details: {
+        //         validationError: validationResult.error,
+        //         validationSource: validationResult.source,
+        //         bypassReason: 'blockchain_connectivity_issues',
+        //         timestamp: new Date().toISOString()
+        //       }
+        //     }
+        //   });
+        // } catch (auditError) {
+        //   console.warn('[BID_STATUS] Failed to create audit log:', auditError);
+        // }
       } else {
         return NextResponse.json(
           { success: false, message: validationResult.error },
@@ -94,13 +95,13 @@ export async function PATCH(
     }
 
     // Check for duplicate sales to prevent multiple acceptances
-    const duplicateCheck = await checkForDuplicateSale(bid.landListingId, bid.tokenId);
+    const duplicateCheck = await checkForDuplicateSale(bid.land_listing_id, bid.token_id);
     if (duplicateCheck.isDuplicate) {
       return NextResponse.json(
         { 
           success: false, 
           message: `Token was already sold recently at ${duplicateCheck.lastSaleDate?.toISOString()}`,
-          transactionHash: duplicateCheck.transactionHash
+          transaction_hash: duplicateCheck.transactionHash
         },
         { status: 409 }
       );
@@ -114,40 +115,40 @@ export async function PATCH(
     });
 
     // Find the specific token that was bid on (if it exists in database)
-    const targetToken = await prisma.evmCollectionToken.findFirst({
+    const targetToken = await prisma.evm_collection_tokens.findFirst({
       where: {
-        landListingId: bid.landListingId,
-        tokenId: bid.tokenId
+        land_listing_id: bid.land_listing_id,
+        token_id: bid.token_id
       }
     });
 
     // If rejecting, just update the status
     if (validatedData.status === 'REJECTED') {
-      const updatedBid = await prisma.nftBid.update({
+      const updatedBid = await prisma.nft_bids.update({
         where: { id: bidId },
         data: {
-          bidStatus: 'REJECTED',
-          updatedAt: new Date()
+          bid_status: 'REJECTED',
+          updated_at: new Date()
         },
         include: {
-          bidder: {
+          users: {
             select: {
               id: true,
               username: true,
-              evmAddress: true
+              evm_address: true
             }
           },
-          landListing: {
+          land_listings: {
             select: {
               id: true,
-              nftTitle: true,
-              collectionId: true
+              nft_title: true,
+              collection_id: true
             }
           }
         }
       });
 
-      await trackBidEvent(bid.landListingId, bidId, bid.bidAmount, 'BID_REJECTED');
+      await trackBidEvent(bid.land_listing_id, bidId, bid.bid_amount, 'BID_REJECTED');
 
       return NextResponse.json({
         success: true,
@@ -184,14 +185,14 @@ export async function PATCH(
         // Authorization and token verification already done above
 
         // Call the smart contract to accept the bid
-        console.log(`[BID_ACCEPTANCE] Accepting bid for token ${bid.tokenId} from ${bid.bidder.evmAddress} to ${validatedData.userAddress}`);
+        console.log(`[BID_ACCEPTANCE] Accepting bid for token ${bid.token_id} from ${bid.users.evm_address} to ${validatedData.user_address}`);
         
         // Get gas estimate first
         const gasEstimate = await publicClient.estimateContractGas({
           address: LAND_MARKETPLACE_ADDRESS,
           abi: LandMarketplaceABI,
           functionName: 'acceptBid',
-          args: [PLATZ_LAND_NFT_ADDRESS, BigInt(bid.tokenId)],
+          args: [PLATZ_LAND_NFT_ADDRESS, BigInt(bid.token_id)],
           account: account.address
         });
 
@@ -199,7 +200,7 @@ export async function PATCH(
           address: LAND_MARKETPLACE_ADDRESS,
           abi: LandMarketplaceABI,
           functionName: 'acceptBid',
-          args: [PLATZ_LAND_NFT_ADDRESS, BigInt(bid.tokenId)],
+          args: [PLATZ_LAND_NFT_ADDRESS, BigInt(bid.token_id)],
           gas: gasEstimate
         });
 
@@ -215,7 +216,7 @@ export async function PATCH(
         console.log(`[BID_ACCEPTANCE] NFT transfer successful. Transaction: ${transactionHash}`);
 
         // Sync database ownership with blockchain reality
-        const syncResult = await syncOwnershipWithBlockchain(bid.landListingId, bid.tokenId);
+        const syncResult = await syncOwnershipWithBlockchain(bid.land_listing_id, bid.token_id);
         if (syncResult.success) {
           console.log(`[BID_ACCEPTANCE] Successfully synced ownership to ${syncResult.newOwner}`);
         } else {
@@ -224,46 +225,46 @@ export async function PATCH(
         }
 
         // Update bid status
-        const updatedBid = await prisma.nftBid.update({
+        const updatedBid = await prisma.nft_bids.update({
           where: { id: bidId },
           data: {
-            bidStatus: 'ACCEPTED',
-            updatedAt: new Date()
+            bid_status: 'ACCEPTED',
+            updated_at: new Date()
           },
           include: {
-            bidder: {
+            users: {
               select: {
                 id: true,
                 username: true,
-                evmAddress: true
+                evm_address: true
               }
             },
-            landListing: {
+            land_listings: {
               select: {
                 id: true,
-                nftTitle: true,
-                collectionId: true
+                nft_title: true,
+                collection_id: true
               }
             }
           }
         });
 
         // Track the bid acceptance event for price analytics
-        await trackBidEvent(bid.landListingId, bidId, bid.bidAmount, 'BID_ACCEPTED');
+        await trackBidEvent(bid.land_listing_id, bidId, bid.bid_amount, 'BID_ACCEPTED');
         
         // Also track as a sale event for comprehensive analytics
         const { trackSaleEvent } = await import('@/lib/priceTracking');
         try {
-          const transactionRecord = await prisma.nftTransaction.findFirst({
+          const transactionRecord = await prisma.nft_transactions.findFirst({
             where: {
-              landListingId: bid.landListingId,
-              tokenId: bid.tokenId,
-              transactionHash: transactionHash
+              land_listing_id: bid.land_listing_id,
+              token_id: bid.token_id,
+              transaction_hash: transactionHash
             }
           });
           
           if (transactionRecord) {
-            await trackSaleEvent(bid.landListingId, transactionRecord.id, bid.bidAmount);
+            await trackSaleEvent(bid.land_listing_id, transactionRecord.id, bid.bid_amount);
           }
         } catch (trackingError) {
           console.error('Failed to track sale event:', trackingError);
@@ -271,29 +272,30 @@ export async function PATCH(
         }
 
         // Mark all other active bids for this token as OUTBID
-        await prisma.nftBid.updateMany({
+        await prisma.nft_bids.updateMany({
           where: {
-            landListingId: bid.landListingId,
-            tokenId: bid.tokenId,
+            land_listing_id: bid.land_listing_id,
+            token_id: bid.token_id,
             id: { not: bidId },
-            bidStatus: 'ACTIVE'
+            bid_status: 'ACTIVE'
           },
           data: {
-            bidStatus: 'OUTBID'
+            bid_status: 'OUTBID'
           }
         });
 
         // Create a transaction record for the accepted bid
         try {
-          await prisma.nftTransaction.create({
+          await prisma.nft_transactions.create({
             data: {
-              landListingId: bid.landListingId,
-              tokenId: bid.tokenId,
-              fromAddress: validatedData.userAddress, // Current owner (seller)
-              toAddress: bid.bidder.evmAddress || '',
-              price: bid.bidAmount,
-              transactionHash: transactionHash,
-              transactionType: 'BID_ACCEPTED'
+              id: randomUUID(),
+              land_listing_id: bid.land_listing_id,
+              token_id: bid.token_id,
+              from_address: validatedData.user_address, // Current owner (seller)
+              to_address: bid.users.evm_address || '',
+              price: bid.bid_amount,
+              transaction_hash: transactionHash,
+              transaction_type: 'BID_ACCEPTED'
             }
           });
         } catch (transactionError) {
@@ -304,7 +306,7 @@ export async function PATCH(
         return NextResponse.json({
           success: true,
           bid: updatedBid,
-          transactionHash: transactionHash,
+          transaction_hash: transactionHash,
           message: 'Bid accepted successfully. NFT ownership transferred to bidder.'
         });
 
@@ -340,7 +342,5 @@ export async function PATCH(
       { success: false, message: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 

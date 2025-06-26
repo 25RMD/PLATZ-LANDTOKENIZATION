@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import prisma from '@/lib/db'; // Using @/lib/db based on profile/route.ts
+import prisma from '@/lib/prisma';
 import { generateNonce } from '@/lib/authUtils';
 import { isAddress } from 'ethers';
 
@@ -15,17 +15,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { address } = body;
+    const { evm_address } = body;
 
-    if (!address || typeof address !== 'string' || !isAddress(address)) {
+    if (!evm_address || typeof evm_address !== 'string' || !isAddress(evm_address)) {
       return NextResponse.json({ message: 'Invalid or missing EVM address' }, { status: 400 });
     }
 
-    const normalizedAddress = address.toLowerCase();
+    const normalizedAddress = evm_address.toLowerCase();
 
     // Critical Check: Ensure the input address is not already linked to another user account.
-    const existingUserWithAddress = await prisma.user.findUnique({
-      where: { evmAddress: normalizedAddress },
+    const existingUserWithAddress = await prisma.users.findUnique({
+      where: { evm_address: normalizedAddress },
     });
 
     if (existingUserWithAddress && existingUserWithAddress.id !== authenticatedUserId) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Retrieve the authenticated user
-    const authenticatedUser = await prisma.user.findUnique({
+    const authenticatedUser = await prisma.users.findUnique({
       where: { id: authenticatedUserId },
     });
 
@@ -48,14 +48,16 @@ export async function POST(request: NextRequest) {
     const nonce = generateNonce();
 
     // Update this authenticated user's signInNonce in the database.
-    await prisma.user.update({
+    await prisma.users.update({
       where: { id: authenticatedUserId },
-      data: { signInNonce: nonce },
+      data: { sign_in_nonce: nonce },
     });
 
-    console.log(`Generated signInNonce for user ${authenticatedUserId} to link EVM address ${normalizedAddress}: ${nonce}`);
+    const challengeMessage = `Please sign this message to link your EVM wallet to your profile.\nNonce: ${nonce}`;
 
-    return NextResponse.json({ nonce }, { status: 200 });
+    console.log(`Generated challenge for user ${authenticatedUserId} to link EVM address ${normalizedAddress}`);
+
+    return NextResponse.json({ challenge: challengeMessage }, { status: 200 });
 
   } catch (error) {
     console.error('Profile EVM Challenge Error:', error);

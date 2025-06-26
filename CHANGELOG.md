@@ -1,4 +1,13 @@
-# Changelog
+### Changed
+- **Restored Explore Functionality**: Reverted explore-related files to commit `41666528f90f81cc5d151570ad48ccce82eba634` to restore stable functionality.
+  - Updated main explore pages: `app/explore/page.tsx` and `app/explore/[id]/page.tsx`
+  - Restored main components: `mainpages/ExploreNFTPage.tsx` and `mainpages/NFTCollectionDetailPage.tsx`
+  - Updated `components/CollectionCard.tsx` with proper navigation handling
+  - Restored context providers: `context/AuthContext.tsx`, `context/CurrencyContext.tsx`, and `context/ExploreStateContext.tsx`
+  - Updated API routes: `/api/collections/route.ts` and `/api/collections/[id]/stats/route.ts`
+  - Restored utility: `lib/utils/currencyConversion.ts`
+
+
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +15,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+- **Comprehensive Explore Functionality Restoration**: Restored all explore and collection detail page functionality to stable state from commit `df66b8fe5a1ca52d6d6692d822719be5f80ba8d3`.
+  - Reverted `app/explore/page.tsx`, `app/explore/[id]/page.tsx` to working versions with enhanced navigation
+  - Restored `mainpages/ExploreNFTPage.tsx` and `mainpages/NFTCollectionDetailPage.tsx` with optimized data fetching logic
+  - Reverted `components/CollectionCard.tsx` with improved UI and navigation handling
+  - Restored `context/ExploreStateContext.tsx` for state management and `hooks/usePreservedNavigation.tsx` for navigation preservation
+  - Restored `lib/ethereum/contractUtils.ts` with updated contract interaction utilities
+  - Restored `context/AuthContext.tsx` and `context/CurrencyContext.tsx` for proper context management
+  - Added `debug-collection-count.js` utility for debugging collection data
+  - Ensured all explore-related functionality matches the stable commit architecture
+- **Standardized Bids API Routes**: Systematically refactored all bids-related API endpoints (`/api/bids/*`) to align with project-wide conventions.
+  - Converted all `camelCase` parameters, Prisma query fields, and JSON response keys to `snake_case` for consistency with the Prisma schema.
+  - Replaced all local Prisma Client instances with the shared client from `@/lib/prisma` to ensure proper connection pooling and prevent resource exhaustion.
+  - Removed all `prisma.$disconnect()` calls from API routes to avoid prematurely closing the shared database connection.
+  - Affected routes include: `/api/bids`, `/api/bids/place`, `/api/bids/history`, `/api/bids/received`, `/api/bids/received/all-received`, `/api/bids/active`, `/api/bids/[bidId]/reject`, and `/api/bids/[bidId]/status`.
+
+### Fixed
+- **Admin Dashboard Visibility**: Corrected a `camelCase` vs. `snake_case` mismatch in the frontend `AuthContext`. The `User` interface and all related logic were updated to use `snake_case` properties (e.g., `is_admin`), ensuring the admin dashboard link now correctly appears for authenticated admin users.
+- **KYC Request Admin API**: Resolved a 500 error on the `/api/admin/kyc-requests` endpoint by correcting Prisma query field names from `snake_case` to the required `camelCase` and aligning the JSON response with frontend expectations.
+- **KYC Request Submission**: Fixed a bug in the `PUT /api/profile` endpoint where KYC update requests were not created correctly. The API now properly creates `kyc_update_requests` records with a `PENDING` status and returns data with `camelCase` keys to ensure consistency with the frontend.
+- **Collection Detail Page Stability**: Fixed a `TypeError` on the NFT collection detail page that occurred when market statistics (e.g., `priceChange24h`) were missing from the fetched data. Added defensive checks to ensure all statistics are valid numbers before rendering, preventing the page from crashing and improving its robustness.
+- **Hydration Mismatch Errors**: Fixed React hydration errors caused by server-client state mismatches
+  - Added mounted checks in Header component to prevent authentication-dependent rendering during hydration
+  - Updated AuthContext to start with consistent initial state (isLoading: false) between server and client
+  - Ensured authentication state is only checked after component mount to prevent SSR/client inconsistencies
+- **Prisma Model Access Errors**: Resolved runtime errors in API routes caused by incorrect Prisma client model accessor usage
+  - Fixed `TypeError: Cannot read properties of undefined (reading 'findUnique')` in `/api/auth/me` route
+  - Fixed `TypeError: Cannot read properties of undefined (reading 'findMany')` in `/api/collections` route
+  - Added runtime aliases in `lib/prisma.ts` to map legacy camelCase model accessors (`prisma.landListing`, `prisma.user`) to correct snake_case accessors (`prisma.land_listings`, `prisma.users`)
+  - Updated field names in API queries to use snake_case format matching Prisma schema (e.g., `collection_id`, `mint_status`, `kyc_verified`)
+  - Regenerated Prisma client to ensure type compatibility with schema changes
+- **Create Page Infinite Loading**: Fixed infinite loading issue on `/create` page when no user is logged in
+  - Resolved dependency loop in AuthContext useEffect that prevented proper authentication state initialization
+  - Fixed Prisma client delegate usage in `/api/auth/me` route (changed from `prisma.users` to `prisma.user`)
+  - Updated field names in frontend collection data mapping to use snake_case format (e.g., `collection_id`, `nft_title`, `evm_address`)
+  - Fixed BigInt conversion error in ExploreNFTPage component by ensuring proper field name mapping from API response
 
 ### Added
 - **Trading and Item Management Features**:
@@ -42,6 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rate Limiting**: Added rate limiting to API routes to prevent abuse
 
 ### Fixed
+- Resolved critical database schema drift and migration history conflicts by manually creating a new baseline migration, restoring data from backup, and aligning the Prisma schema with the PostgreSQL database. This fixed the `ListingStatus` enum mismatch and stabilized the database for future development.
+- Fixed a 500 server error on the `/api/land-listings` POST route caused by incorrect data parsing and schema mismatches. The data handling logic has been completely rewritten to ensure all form fields are safely parsed and align with the Prisma schema, preventing server crashes when creating new land listings.
+- **Wallet Connection**: Implemented a `WalletConnectModal` to fix the non-functional "Connect Wallet" button in the header. The button now correctly prompts users to select from available wallet connectors, resolving previous `wagmi` hook errors.
 - **Bid Button Logic**: Fixed inverted logic where "Place Bid" button was only visible when wallet was disconnected. Now correctly shows bid button when wallet is connected and user doesn't own the token, with a "Connect Wallet to Bid" message when disconnected.
 - **RPC Connection**: Improved reliability of Ethereum RPC connections with better error handling and retry logic
 - **Error Handling**: Added proper error boundaries and improved error messages throughout the application
@@ -262,8 +311,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error handling and loading states on the collection detail page.
 - Redesigned the collection detail page header ([collectionId]/page.tsx) to resemble the OpenSea layout, featuring a banner image, overlapping logo, collection info, and a dedicated stats bar.
 - Updated the loading skeleton for the collection page header to match the new design.
-- Redesigned the Collection page header to closely match OpenSea's layout, including banner, logo, title, stats, and action buttons.
-- Updated the loading skeleton for the Collection page header.
 - Fixed collection page data fetching and rendering.
 - Refactored `CreateLandListingPage.tsx` to use the new section components.
 - Moved `useEffect` cleanup hook for file previews inside `CreateLandListingPage` component scope.
@@ -329,6 +376,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Obsolete `NFTCardSimple` rendering logic for multiple NFTs on the single collection page.
 - Mock NFT data generation in `app/api/collections/[collectionId]/route.ts`.
 
+## [Unreleased]
+
+### Changed
+- **Comprehensive Explore Functionality Restoration**: Restored all explore and collection detail page functionality to stable state from commit `62391592e7b53e99884d1f61694ecf2d5f780fc5`.
+  - Reverted `app/explore/page.tsx`, `app/explore/[id]/page.tsx`, and `app/explore-simple/page.tsx` to working versions
+  - Restored `mainpages/ExploreNFTPage.tsx` and `mainpages/NFTCollectionDetailPage.tsx` with stable data fetching logic
+  - Reverted `components/CollectionCard.tsx` to use proper Next.js Link navigation instead of programmatic navigation
+  - Restored `app/api/collections/route.ts` and `app/api/collections/user-owned/route.ts` with correct API logic
+  - Restored `lib/collectionUtils.ts` and skeleton components for consistent UI behavior
+  - Removed unnecessary API routes that were not part of the stable architecture
+
 ## [0.2.0] - YYYY-MM-DD
 
 ### Added
@@ -355,3 +413,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup.
 - Basic Next.js structure.
 - Prisma schema definition (placeholder).
+
+### Changed
+- **ProtectedRoute Cyber Theme UI**: Updated authentication prompt to match project's minimalistic cyber aesthetic
+  - Replaced generic authentication UI with cyber-themed design using project's color scheme
+  - Added animated background effects with subtle cyber grid patterns and ambient gradients
+  - Implemented minimalistic lock icon with cyber-style border and rounded corners
+  - Updated typography to use `font-mono` with uppercase tracking for cyberpunk feel
+  - Changed button text to cyber-style: "AUTHENTICATE" and "RETURN_HOME"
+  - Added smooth motion animations with staggered entrance effects
+  - Integrated glassmorphism with `backdrop-blur-cyber` and project's border radius system
+  - Maintained black/white color scheme with subtle opacity variations for depth
+
+### Fixed
+- **Collections API Routes**: Fixed critical Prisma field name mismatches in `/api/collections/route.ts` and `/api/collections/user-owned/route.ts` that were causing `PrismaClientValidationError` at runtime.
+  - Corrected field names from `camelCase` to `snake_case` to match the Prisma schema (e.g., `user_id` → `userId`, `collection_id` → `collection_id`)
+  - Fixed Prisma model relationship names (e.g., `user` → `users` for the relationship field)
+  - Updated user-owned collections logic to use database collection size instead of complex blockchain queries for better performance
+  - Ensured proper error handling and fallback logic for blockchain contract interactions
+- **Admin Dashboard Visibility**: Corrected a `camelCase` vs. `snake_case` mismatch in the frontend `AuthContext`. The `User` interface and all related logic were updated to use `snake_case` properties (e.g., `is_admin`), ensuring the admin dashboard link now correctly appears for authenticated admin users.

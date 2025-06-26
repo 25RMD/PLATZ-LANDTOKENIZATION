@@ -21,12 +21,12 @@ export async function GET(req: NextRequest) {
   const statuses = searchParams.getAll('status'); // e.g., ?status=DRAFT&status=PENDING
 
   try {
-    const listings = await prisma.landListing.findMany({
+    const listings = await prisma.land_listings.findMany({
       where: {
         ...(statuses && statuses.length > 0 && { status: { in: statuses } }),
       },
       include: {
-        user: { // Include user details (creator of the listing)
+        users: { // Include user details (creator of the listing)
           select: {
             id: true,
             username: true,
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         // legalDocuments: { select: { documentType: true, documentUrl: true } },
       },
       orderBy: {
-        createdAt: 'desc', // Show newest first
+        created_at: 'desc', // Show newest first
       },
     });
 

@@ -27,24 +27,23 @@ export const SolanaVerifySchema = z.object({
 
 // Schema for Profile Update (only include fields that can be updated)
 export const ProfileUpdateSchema = z.object({
-  fullName: z.string().min(1, { message: "Full name cannot be empty" }).max(100).optional().or(z.literal('').nullable()),
+  full_name: z.string().min(1, { message: "Full name cannot be empty" }).max(100).optional().or(z.literal('').nullable()),
   email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal('').nullable()), // Allow empty or null
   phone: z.string().max(20, {message: "Phone number too long"}).optional().or(z.literal('').nullable()),
-  evmAddress: z.string().length(42).regex(/^0x[a-fA-F0-9]{40}$/, { message: "Invalid EVM address format" }).optional().nullable(),
-  dateOfBirth: z.preprocess((arg) => {
+  evm_address: z.string().length(42).regex(/^0x[a-fA-F0-9]{40}$/, { message: "Invalid EVM address format" }).optional().nullable(),
+  date_of_birth: z.preprocess((arg) => {
      if (arg === "" || arg === null || arg === undefined) return null;
      if (typeof arg === "string" || arg instanceof Date) return new Date(arg);
      return arg;
    }, z.date({ invalid_type_error: "Invalid date format" }).nullable().optional()),
-  addressLine1: z.string().max(255).optional().or(z.literal('').nullable()),
-  addressLine2: z.string().max(255).optional().or(z.literal('').nullable()),
+  address_line1: z.string().max(255).optional().or(z.literal('').nullable()),
+  address_line2: z.string().max(255).optional().or(z.literal('').nullable()),
   city: z.string().max(100).optional().or(z.literal('').nullable()),
-  stateProvince: z.string().max(100).optional().or(z.literal('').nullable()),
-  postalCode: z.string().max(20).optional().or(z.literal('').nullable()),
+  state_province: z.string().max(100).optional().or(z.literal('').nullable()),
+  postal_code: z.string().max(20).optional().or(z.literal('').nullable()),
   country: z.string().max(100).optional().or(z.literal('').nullable()),
-  govIdType: z.string().max(50).optional().or(z.literal('').nullable()),
-  govIdRef: z.string().optional().or(z.literal('').nullable()),
-  sofDocRef: z.string().optional().or(z.literal('').nullable()),
+  gov_id_type: z.string().max(50).optional().or(z.literal('').nullable()),
+  gov_id_ref: z.string().optional().or(z.literal('').nullable()),
 }).partial();
 
 // Helper type for frontend form errors

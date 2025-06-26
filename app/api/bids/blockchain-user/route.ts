@@ -4,46 +4,46 @@ import { getBidsByUser } from '@/lib/blockchain/bidAggregation';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userAddress = searchParams.get('userAddress');
+    const user_address = searchParams.get('user_address');
 
-    if (!userAddress) {
+    if (!user_address) {
       return NextResponse.json(
-        { success: false, error: 'User address is required' },
+        { success: false, error: 'user_address is required' },
         { status: 400 }
       );
     }
 
-    console.log(`[BLOCKCHAIN_USER_BIDS] Fetching blockchain-based user bids for user: ${userAddress}`);
+    console.log(`[BLOCKCHAIN_USER_BIDS] Fetching blockchain-based user bids for user: ${user_address}`);
 
     // Use blockchain-based bid aggregation
-    const userBids = await getBidsByUser(userAddress);
+    const userBids = await getBidsByUser(user_address);
 
     console.log(`[BLOCKCHAIN_USER_BIDS] Found ${userBids.length} bids made by user`);
 
     // Format response for frontend compatibility
     const formattedBids = userBids.map(bid => ({
       id: bid.id,
-      bidAmount: bid.bidAmount,
-      bidStatus: bid.bidStatus,
-      transactionHash: bid.transactionHash,
-      createdAt: bid.createdAt,
-      userRole: bid.userRole,
-      tokenId: bid.tokenId,
-      currentOwner: bid.currentOwner,
+      bid_amount: bid.bidAmount,
+      bid_status: bid.bidStatus,
+      transaction_hash: bid.transactionHash,
+      created_at: bid.createdAt,
+      user_role: bid.userRole,
+      token_id: bid.tokenId,
+      current_owner: bid.currentOwner,
       bidder: bid.bidder,
-      landListing: bid.landListing
+      land_listing: bid.landListing
     }));
 
     // Calculate analytics
     const analytics = {
-      totalBids: formattedBids.length,
-      activeBids: formattedBids.filter(bid => bid.bidStatus === 'ACTIVE').length,
-      acceptedBids: formattedBids.filter(bid => bid.bidStatus === 'ACCEPTED').length,
-      withdrawnBids: formattedBids.filter(bid => bid.bidStatus === 'WITHDRAWN').length,
-      outbidCount: formattedBids.filter(bid => bid.bidStatus === 'OUTBID').length,
-      totalBidAmount: formattedBids.reduce((sum, bid) => sum + bid.bidAmount, 0),
-      averageBidAmount: formattedBids.length > 0 ? formattedBids.reduce((sum, bid) => sum + bid.bidAmount, 0) / formattedBids.length : 0,
-      successRate: formattedBids.length > 0 ? (formattedBids.filter(bid => bid.bidStatus === 'ACCEPTED').length / formattedBids.length) * 100 : 0
+      total_bids: formattedBids.length,
+      active_bids: formattedBids.filter(bid => bid.bid_status === 'ACTIVE').length,
+      accepted_bids: formattedBids.filter(bid => bid.bid_status === 'ACCEPTED').length,
+      withdrawn_bids: formattedBids.filter(bid => bid.bid_status === 'WITHDRAWN').length,
+      outbid_count: formattedBids.filter(bid => bid.bid_status === 'OUTBID').length,
+      total_bid_amount: formattedBids.reduce((sum, bid) => sum + bid.bid_amount, 0),
+      average_bid_amount: formattedBids.length > 0 ? formattedBids.reduce((sum, bid) => sum + bid.bid_amount, 0) / formattedBids.length : 0,
+      success_rate: formattedBids.length > 0 ? (formattedBids.filter(bid => bid.bid_status === 'ACCEPTED').length / formattedBids.length) * 100 : 0
     };
 
     return NextResponse.json({
@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
       bids: formattedBids,
       analytics,
       metadata: {
-        totalUserBids: formattedBids.length,
-        userAddress,
-        dataSource: 'blockchain',
+        total_user_bids: formattedBids.length,
+        user_address,
+        data_source: 'blockchain',
         note: 'Token ownership verified via blockchain data'
       }
     });

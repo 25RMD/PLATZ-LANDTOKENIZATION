@@ -27,7 +27,7 @@ export async function DELETE(request: Request) {
 
     try {
         // 2. Find the KycUpdateRequest record
-        const updateRequest = await prisma.kycUpdateRequest.findUnique({
+        const updateRequest = await prisma.kyc_update_requests.findUnique({
             where: { id: updateRequestId },
             select: { id: true, status: true, userId: true } // Select needed fields
         });
@@ -45,7 +45,7 @@ export async function DELETE(request: Request) {
         }
 
         // 3. Update the status of the KycUpdateRequest to REJECTED
-        const rejectedRequest = await prisma.kycUpdateRequest.update({
+        const rejectedRequest = await prisma.kyc_update_requests.update({
             where: { id: updateRequestId },
             data: {
                 status: 'REJECTED',

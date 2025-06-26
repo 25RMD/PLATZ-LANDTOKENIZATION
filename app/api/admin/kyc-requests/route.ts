@@ -34,51 +34,50 @@ export async function GET(request: NextRequest) {
 
     console.log('Fetching PENDING KYC update requests...');
     
-    // Simplified query with minimal fields to avoid any issues
-    const pendingRequests = await prisma.kycUpdateRequest.findMany({
+    // Corrected query using camelCase fields as defined in the Prisma schema
+    const pendingRequests = await prisma.kyc_update_requests.findMany({
       where: {
         status: 'PENDING',
       },
       select: {
         id: true,
-        userId: true,
+        userId: true, // Corrected from user_id
         status: true,
         changes: true,
-        createdAt: true,
-        adminNotes: true,
-        user: {
+        createdAt: true, // Corrected from created_at
+        adminNotes: true, // Corrected from admin_notes
+        users: {
           select: {
             username: true,
             email: true,
-            fullName: true,
-            kycVerified: true,
-          }
-        }
+            full_name: true, // Assuming full_name is correct, will adjust if needed
+            kyc_verified: true, // Assuming kyc_verified is correct
+          },
+        },
       },
       orderBy: {
-        createdAt: 'asc',
+        createdAt: 'asc', // Corrected from created_at
       },
     });
 
     console.log(`Found ${pendingRequests.length} pending KYC requests`);
 
-    // Transform the data with minimal processing
+    // Transform data to use camelCase keys expected by the frontend
     const transformedRequests = pendingRequests.map(req => {
-        // Create safe copies of nested objects to avoid reference issues
-        const user = req.user || {};
-        
-        return {
-            updateRequestId: req.id,
-            userId: req.userId,
-            status: req.status,
-            changes: req.changes,
-            adminNotes: req.adminNotes,
-            submittedAt: req.createdAt,
-            username: (user as any).username || null,
-            email: (user as any).email || null,
-            fullName: (user as any).fullName || null,
-            kycVerified: (user as any).kycVerified || false,
-        };
+      const user = req.users || {};
+      return {
+        updateRequestId: req.id,
+        userId: req.userId,
+        status: req.status,
+        changes: req.changes,
+        adminNotes: req.adminNotes,
+        submittedAt: req.createdAt,
+        // Flatten user details into the response with camelCase keys
+        username: user.username || null,
+        email: user.email || null,
+        fullName: (user as any).full_name || null,
+        kycVerified: (user as any).kyc_verified || false,
+      };
     });
 
     return NextResponse.json(transformedRequests);

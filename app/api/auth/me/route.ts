@@ -17,21 +17,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch user from DB
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: userId },
       // Select only the necessary fields to return
       select: {
         id: true,
         username: true,
         email: true,
-        // solanaPubKey: true, // Field does not exist on User model
-        evmAddress: true,
-        fullName: true,
+        evm_address: true,
+        full_name: true,
         // Add other non-sensitive profile fields you want to return
-        isAdmin: true,
-        kycVerified: true,
-        createdAt: true,
-        updatedAt: true,
+        is_admin: true,
+        kyc_verified: true,
+        created_at: true,
+        updated_at: true,
       },
     });
 

@@ -22,8 +22,8 @@ import { type LegalDocumentsFormData, type LegalDocumentsFileFieldNames } from '
 import { type RegistryParcelFormData, type RegistryParcelFileFieldNames } from '@/components/create-listing/RegistryParcelSection';
 import { type GeospatialFormData, type GeospatialFileFieldNames } from '@/components/create-listing/GeospatialSection';
 import { type OwnerKycFormData, type OwnerKycFileFieldNames } from '@/components/create-listing/OwnerKycSection';
-import { type ChainOfTitleFormData, type ChainOfTitleFileFieldNames } from '@/components/create-listing/ChainOfTitleSection';
-import { type AdditionalInfoFormData, type AdditionalInfoFileFieldNames } from '@/components/create-listing/AdditionalInfoSection';
+import { type ChainOfTitleFileFieldNames } from '@/components/create-listing/ChainOfTitleSection';
+import { type AdditionalInfoFileFieldNames } from '@/components/create-listing/AdditionalInfoSection';
 
 import { FormDataInterface } from '../types/createListing'; // Import FormDataInterface
 
@@ -97,7 +97,6 @@ const initialFormData: FormDataInterface = { // Explicitly type initialFormData
   listingPrice: "",
   priceCurrency: "ETH",
   nftCollectionSize: 10, // Default, display as read-only
-  status: "DRAFT", // Default status
   additionalNotes: "", // Default additional notes
 };
 
@@ -130,7 +129,6 @@ const CreateListingContent = () => {
           preview.forEach(URL.revokeObjectURL);
         }
       });
-      // console.log("Revoked preview URLs on unmount"); // Optional: for debugging
     };
   }, [filePreviews]); // Dependency array includes filePreviews to ensure cleanup targets the correct URLs
 
@@ -240,18 +238,7 @@ const CreateListingContent = () => {
     // --- Manual Validation for Required Fields (Development: Only NFT fields are critical) ---
     let isValid = true;
     
-    // Comment out or remove checks for non-NFT fields for development
-    /*
-    if (!formData.titleDeedFile) {
-      setTitleDeedError(() => "Title Deed document is required.");
-      isValid = false;
-    }
 
-    if (!formData.idDocumentFile) {
-      setIdDocumentError(() => "ID Document is required.");
-      isValid = false;
-    }
-    */
 
     // Add checks for essential NFT fields
     if (!formData.nftTitle) {
@@ -299,14 +286,10 @@ const CreateListingContent = () => {
         }
     });
 
-    console.log("Submitting FormData:"); // For debugging
-    for (let pair of dataToSubmit.entries()) { // More detailed FormData logging
-       console.log(pair[0]+ ', ', pair[1]); 
-    }
+
 
     try {
-      // TODO: Update API endpoint for land listings
-      const response = await fetch('/api/land-listings', { // <-- IMPORTANT: Use the correct endpoint
+      const response = await fetch('/api/land-listings', {
         method: 'POST',
         body: dataToSubmit,
         // Headers might not be needed if backend handles FormData correctly

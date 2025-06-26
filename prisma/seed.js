@@ -30,17 +30,20 @@ async function main() {
   // Use the locally defined hashPassword function
   const hashedPassword = await hashPassword(adminPassword);
 
-  const adminUser = await prisma.user.upsert({
+  const adminUser = await prisma.users.upsert({
     where: { username: adminUsername }, // Unique identifier to find the user
     update: {                     // Fields to update if user exists (optional, but good practice)
-        passwordHash: hashedPassword,
-        isAdmin: true,
+        password_hash: hashedPassword,
+        is_admin: true,
+        updated_at: new Date(),
     },
     create: {                     // Fields to set if user is created
         username: adminUsername,
-        passwordHash: hashedPassword,
-        isAdmin: true,
+        password_hash: hashedPassword,
+        is_admin: true,
         email: `${adminUsername}@example.com`, // Add a placeholder email or leave null if optional
+        id: 'cl-admin-seed-user-000000000001',
+        updated_at: new Date(),
     },
   });
 

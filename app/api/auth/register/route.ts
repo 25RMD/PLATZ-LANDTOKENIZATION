@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { hashPassword } from '@/lib/authUtils';
+import { randomUUID } from 'crypto';
 import { RegisterSchema } from '@/lib/schemas'; // Import schema
 
 export async function POST(request: Request) {
@@ -35,11 +36,11 @@ export async function POST(request: Request) {
     // Check if user already exists (by username or email if provided)
     const orConditions = [
       { username: username },
-      // Only check email if it's provided
       ...(email ? [{ email: email }] : []),
     ];
 
-    const existingUser = await prisma.user.findFirst({
+    // Use the correct model name `users` as defined in schema.prisma
+    const existingUser = await prisma.users.findFirst({
       where: {
         OR: orConditions,
       },
@@ -58,18 +59,18 @@ export async function POST(request: Request) {
 
     console.log(`[API /register] Attempting to create user: ${username}`);
     // Create the new user
-    const newUser = await prisma.user.create({
+    const newUser = await prisma.users.create({
       data: {
+        id: randomUUID(),
         username: username,
-        email: email || null, // Ensure email is null if empty string was validated
-        passwordHash: hashedPassword,
-        // Initialize other fields if necessary
+        email: email || null,
+        password_hash: hashedPassword,
       },
     });
     console.log(`[API /register] User creation successful: ${username}`);
 
     // Don't return password hash
-    const { passwordHash, ...userWithoutPassword } = newUser;
+    const { password_hash, ...userWithoutPassword } = newUser;
 
     console.log(`User registered: ${username}`);
     return NextResponse.json({ message: 'User registered successfully', user: userWithoutPassword }, { status: 201 });

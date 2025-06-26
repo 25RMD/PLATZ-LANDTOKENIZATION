@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/db';
 import { generateNonce } from '@/lib/authUtils';
 import { isAddress } from 'ethers';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: Request) {
   try {
@@ -18,14 +19,14 @@ export async function POST(request: Request) {
     const nonce = generateNonce();
 
     // Upsert user: find by evmAddress or create if not exists, then update/set nonce
-    const user = await prisma.user.upsert({
-      where: { evmAddress: normalizedAddress },
-      update: { signInNonce: nonce },
+    const user = await prisma.users.upsert({
+      where: { evm_address: normalizedAddress },
+      update: { sign_in_nonce: nonce },
       create: {
-        evmAddress: normalizedAddress,
-        signInNonce: nonce,
-        // Add any other mandatory fields for user creation if applicable
-        // e.g., if your schema requires a username or email, handle that here or adjust schema
+        id: randomUUID(),
+        evm_address: normalizedAddress,
+        sign_in_nonce: nonce,
+        auth_type: 'evm', // Explicitly set auth_type for new EVM users
       },
     });
 

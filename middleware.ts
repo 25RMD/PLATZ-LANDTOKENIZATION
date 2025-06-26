@@ -9,6 +9,7 @@ const AUTH_COOKIE_NAME = 'auth-token';
 const protectedApiRoutes = [
   '/api/auth/me',
   '/api/profile',
+  '/api/my-listings',
   '/api/admin', // Protect all admin routes
   '/api/watchlist', // Protect watchlist routes
   // Add other API routes that require login (non-admin)
@@ -30,7 +31,7 @@ const adminApiRoutes = [
 ];
 
 // --- Uncomment and define protected/admin pages --- 
-const protectedPages = ['/profile', '/admin/dashboard', '/watchlist']; // Added /watchlist to protected pages
+const protectedPages = ['/profile', '/admin/dashboard', '/watchlist', '/my-listings']; // Added /my-listings
 const adminPages = ['/admin/dashboard'];
 // --- End page definitions --- 
 
@@ -51,7 +52,30 @@ export async function middleware(request: NextRequest) {
   // --- Use page definitions --- 
   const isProtectedPage = protectedPages.some(page => pathname.startsWith(page));
   const isAdminPage = adminPages.some(page => pathname.startsWith(page));
-  // --- End using page definitions --- 
+  // --- End using page definitions ---
+
+  // --- Page Protection Logic ---
+  if (isProtectedPage) {
+    if (!token) {
+      console.log(`Middleware: Redirecting to /login from protected page ${pathname} (no token)`);
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    const decoded = await verifyJwt(token);
+    if (!decoded || !decoded.userId) {
+      console.log(`Middleware: Redirecting to /login from protected page ${pathname} (invalid token)`);
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.set(AUTH_COOKIE_NAME, '', { maxAge: -1, path: '/' }); // Clear invalid cookie
+      return response;
+    }
+
+    // Check admin role for admin pages
+    if (isAdminPage && !decoded.isAdmin) {
+      console.log(`Middleware: Redirecting to / (not authorized for admin page ${pathname})`);
+      return NextResponse.redirect(new URL('/', request.url)); // Redirect non-admins from admin pages
+    }
+  }
+  // --- End Page Protection Logic --- 
   
   // Check if this is a method-protected route
   const methodProtectedRoute = methodProtectedApiRoutes.find(route => pathname.startsWith(route.path));

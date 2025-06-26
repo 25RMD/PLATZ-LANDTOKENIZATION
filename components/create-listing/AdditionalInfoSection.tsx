@@ -201,7 +201,7 @@ const AdditionalInfoSection: React.FC<AdditionalInfoProps> = ({
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
             <label htmlFor="zoningComplianceFile" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">
-              Zoning Compliance Document
+              Zoning Compliance Upload
             </label>
         <FileInputField
           id="zoningComplianceFile"

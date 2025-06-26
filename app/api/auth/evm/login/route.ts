@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/db';
 import { createJwt, generateNonce } from '@/lib/authUtils'; // Assuming generateNonce isn't needed here but createJwt is
 import { isAddress, verifyMessage } from 'ethers';
 
@@ -22,19 +22,19 @@ export async function POST(request: Request) {
 
     const normalizedAddress = address.toLowerCase();
 
-    const user = await prisma.user.findUnique({
-      where: { evmAddress: normalizedAddress },
+    const user = await prisma.users.findUnique({
+      where: { evm_address: normalizedAddress },
     });
 
     if (!user) {
       return NextResponse.json({ message: 'User not found. Please request a challenge first.' }, { status: 401 });
     }
 
-    if (!user.signInNonce) {
+    if (!user.sign_in_nonce) {
       return NextResponse.json({ message: 'No active challenge found for this user. Please request a new challenge.' }, { status: 401 });
     }
 
-    const expectedMessage = getChallengeMessage(user.signInNonce);
+    const expectedMessage = getChallengeMessage(user.sign_in_nonce);
     let recoveredAddress;
     try {
       recoveredAddress = verifyMessage(expectedMessage, signature);
@@ -49,16 +49,16 @@ export async function POST(request: Request) {
     }
 
     // Signature is valid, clear the nonce and issue JWT
-    await prisma.user.update({
+    await prisma.users.update({
       where: { id: user.id },
-      data: { signInNonce: null }, // Clear the nonce after successful use
+      data: { sign_in_nonce: null }, // Clear the nonce after successful use
     });
 
-    const token = await createJwt({ userId: user.id, isAdmin: user.isAdmin });
+    const token = await createJwt({ userId: user.id, isAdmin: user.is_admin });
 
     // Return user info (excluding sensitive data) and token
     // Consider what user information is appropriate to return here
-    const { passwordHash, signInNonce, ...userProfile } = user;
+    const { password_hash, sign_in_nonce, ...userProfile } = user;
     
     const response = NextResponse.json({ 
       message: 'Login successful',

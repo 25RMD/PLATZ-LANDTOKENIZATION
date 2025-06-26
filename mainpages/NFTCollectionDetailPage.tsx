@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { motion } from 'framer-motion';
-import { FiArrowLeft, FiExternalLink, FiInfo, FiMap, FiShoppingCart, FiTrendingUp, FiTrendingDown, FiTool, FiDollarSign } from 'react-icons/fi';
+import { FiArrowLeft, FiExternalLink, FiInfo, FiMap, FiShoppingCart, FiTrendingUp, FiTrendingDown, FiTool, FiDollarSign, FiRefreshCw } from 'react-icons/fi';
 import Link from 'next/link';
 import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 import NFTTokenGrid from '@/components/nft/NFTTokenGrid';
@@ -89,10 +89,10 @@ interface PriceStatistics {
 }
 
 interface NFTCollectionDetailPageProps {
-  collectionId: string;
+  id: string; // Changed from collectionId to id
 }
 
-const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ collectionId }) => {
+const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ id }) => { // Changed from collectionId to id
   const { address: connectedEvmAddress, isConnected: isEvmWalletConnected } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -125,6 +125,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
   const [showBidModal, setShowBidModal] = useState<boolean>(false);
   const [selectedBidTokenId, setSelectedBidTokenId] = useState<string | null>(null);
   const [selectedBidTokenName, setSelectedBidTokenName] = useState<string>('');
+  const [selectedBidTokenPrice, setSelectedBidTokenPrice] = useState<number>(0);
   const [currentHighestBid, setCurrentHighestBid] = useState<number>(0);
 
   // State for batch purchase modal
@@ -136,33 +137,98 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
   // Image preloading hook
   const { preload, preloadSingle } = useImagePreloading();
 
-  // Fetch collection data on mount
-  useEffect(() => {
-    fetchCollectionData();
-    fetchPriceStatistics();
-  }, [collectionId]);
+  // Helper function to format collection names by removing "Collection: " prefix
+  const formatCollectionName = (name?: string): string => {
+    if (!name) return 'Untitled Listing';
+    
+    // Remove "Collection: " or "collection: " prefix (case insensitive)
+    const lowerName = name.toLowerCase();
+    if (lowerName.startsWith('collection: ')) {
+      return name.substring('collection: '.length).trim();
+    }
+    
+    return name;
+  };
 
-  // Check ownership when collection loads or wallet connection changes
+  // Effect to fetch collection data on mount
+  useEffect(() => {
+    if (publicClient && isClient) {
+    fetchCollectionData();
+    }
+  }, [publicClient, isClient, id]); // Changed from collectionId to id
+
+  // Effect to fetch price statistics when collection is loaded
+  useEffect(() => {
+    if (collection) {
+    fetchPriceStatistics();
+      checkUserOwnership();
+      
+      // Force a fresh blockchain ownership check after a short delay to ensure we have the latest data
+      setTimeout(async () => {
+        await refreshOwnershipFromBlockchain();
+      }, 1000); // Reduced to 1-second delay for better responsiveness
+    }
+  }, [collection]);
+
+  // Effect to check ownership when wallet connection changes
   useEffect(() => {
     if (collection) {
       checkUserOwnership();
     }
-  }, [collection, isEvmWalletConnected, connectedEvmAddress]);
+  }, [connectedEvmAddress, isEvmWalletConnected, collection]);
 
-  // Set up periodic refresh for price statistics to ensure real-time updates
+  // Effect for periodic refresh of ownership data (to catch external transfers/bid acceptances)
   useEffect(() => {
-    if (!collection) return;
+    if (!collection || !isClient) return;
 
-    // Refresh stats every 30 seconds for real-time updates
-    const statsInterval = setInterval(fetchPriceStatistics, 30000);
+    // Use more frequent refreshes when wallet is connected since user is actively interacting
+    const refreshInterval = isEvmWalletConnected ? 15000 : 30000; // 15s when connected, 30s when not
+    
+    const intervalId = setInterval(async () => {
+      // Only do aggressive blockchain refresh if wallet is connected
+      if (isEvmWalletConnected) {
+        await refreshOwnershipFromBlockchain();
+      } else {
+        // Just check ownership based on loaded collection data
+        checkUserOwnership();
+      }
+    }, refreshInterval);
 
-    // Cleanup interval on component unmount
-    return () => clearInterval(statsInterval);
+    return () => clearInterval(intervalId);
+  }, [collection, isClient, isEvmWalletConnected]);
+
+  // Timeout effect to prevent infinite skeleton loading
+  useEffect(() => {
+    if (collection && collection.evmCollectionTokens.length > 0) {
+      // Set a timeout to ensure all metadata entries are resolved
+      const timeoutId = setTimeout(() => {
+        setTokenMetadataCache(prev => {
+          const updated = { ...prev };
+          let hasUpdates = false;
+          
+          // Check for any undefined entries and set them to null
+          collection.evmCollectionTokens.forEach(token => {
+            if (updated[token.tokenId] === undefined) {
+              updated[token.tokenId] = null;
+              hasUpdates = true;
+              console.warn(`[NFTCollectionDetailPage] Timeout: Setting metadata cache for token ${token.tokenId} to null to prevent infinite skeleton loading`);
+            }
+          });
+          
+          return hasUpdates ? updated : prev;
+        });
+      }, 10000); // 10 second timeout
+      
+      return () => clearTimeout(timeoutId);
+    }
   }, [collection]);
 
   // Function to fetch metadata from IPFS or other storage
   const fetchMetadata = async (uri: string, isOptional: boolean = false) => {
     try {
+      // DEBUG: Log original URI
+      console.log(`[DEBUG] fetchMetadata called with URI: ${uri}, isOptional: ${isOptional}`);
+      
       // Handle different URI formats for backward compatibility
       let url = uri.startsWith('ipfs://') 
         ? uri.replace('ipfs://', 'https://gateway.ipfs.io/ipfs/') 
@@ -180,23 +246,28 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
             // Use our API static route instead
             if (typeof window !== 'undefined') {
               url = `${window.location.protocol}//${window.location.host}/api/static/${pathMatch[1]}`;
-              console.log(`[NFTCollectionDetailPage] Rewrote ngrok URL from ${uri} to ${url}`);
+              console.log(`[DEBUG] Rewritten ngrok URL from ${uri} to ${url}`);
             } else {
               // Server-side or when window is not available
               url = `http://localhost:3000/api/static/${pathMatch[1]}`;
-              console.log(`[NFTCollectionDetailPage] Rewrote ngrok URL (server-side) from ${uri} to ${url}`);
+              console.log(`[DEBUG] Rewritten ngrok URL (server-side) from ${uri} to ${url}`);
             }
           }
         } catch (e: any) {
-          console.error(`[NFTCollectionDetailPage] Error rewriting ngrok URL ${url}:`, e.message);
+          console.error(`[DEBUG] Error rewriting ngrok URL ${url}:`, e.message);
           // Keep original URL if rewrite fails
         }
       }
       
       // If it's a localhost URL with /uploads/, convert to API route
       if (url.includes('localhost') && url.includes('/uploads/')) {
+        const oldUrl = url;
         url = url.replace('/uploads/', '/api/static/');
+        console.log(`[DEBUG] Rewritten localhost URL from ${oldUrl} to ${url}`);
       }
+      
+      // DEBUG: Log final URL before fetch
+      console.log(`[DEBUG] Final URL for fetch: ${url}`);
       
       // Try the main URL first
       let response = await fetch(url, {
@@ -206,18 +277,27 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         },
       });
       
+      // DEBUG: Log response status
+      console.log(`[DEBUG] Fetch response for ${url}: status ${response.status}, ok: ${response.ok}`);
+      
       if (!response.ok) {
         if (isOptional) {
+          console.log(`[DEBUG] Optional metadata fetch failed for ${url}, returning null`);
           return null;
         }
         const responseText = await response.text();
-        console.error(`[NFTCollectionDetailPage] Failed to fetch metadata from ${url}: ${response.status} ${response.statusText} - ${responseText}`);
+        console.error(`[DEBUG] Failed to fetch metadata from ${url}: ${response.status} ${response.statusText} - ${responseText}`);
         throw new Error(`HTTP ${response.status}: ${response.statusText} - ${responseText}`);
       }
       
       const jsonData = await response.json();
+      console.log(`[DEBUG] Successfully fetched metadata for ${url}:`, { 
+        hasImage: !!jsonData.image, 
+        imageUrl: jsonData.image 
+      });
       return jsonData;
     } catch (error) {
+      console.error(`[DEBUG] Exception in fetchMetadata for ${uri}:`, error);
       if (isOptional) {
         return null;
       }
@@ -230,7 +310,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
   const fetchPriceStatistics = async () => {
     setStatsLoading(true);
     try {
-      const response = await fetch(`/api/collections/${collectionId}/stats`);
+      const response = await fetch(`/api/collections/${id}/stats`);
       if (response.ok) {
         const data = await response.json();
         setPriceStats(data.stats);
@@ -255,26 +335,31 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
     }
 
     try {
-      console.log(`[NFTCollectionDetailPage] Checking ownership using blockchain data for collection ${collection.collectionId}`);
-      
       // Use the blockchain data that's already loaded in the collection
       // This is more accurate than the database since tokens are read directly from smart contract
       const ownedTokenIds = new Set<string>();
       
-      collection.evmCollectionTokens.forEach(token => {
-        if (token.ownerAddress && 
-            token.ownerAddress.toLowerCase() === connectedEvmAddress.toLowerCase()) {
-          ownedTokenIds.add(token.tokenId);
+      collection.evmCollectionTokens.forEach((token, index) => {
+        // Check direct ownership
+        const isDirectlyOwned = token.ownerAddress && 
+          token.ownerAddress.toLowerCase() === connectedEvmAddress.toLowerCase();
+        
+        // Check if token is owned by marketplace but listed by the connected user
+        // This happens when the user lists their tokens for sale
+        const isListedByUser = token.ownerAddress && 
+          token.ownerAddress.toLowerCase() === LAND_MARKETPLACE_ADDRESS.toLowerCase() &&
+          token.isListed &&
+          // For collection listings, the user who minted the collection is the seller
+          collection.evmOwnerAddress &&
+          collection.evmOwnerAddress.toLowerCase() === connectedEvmAddress.toLowerCase();
+        
+        if (isDirectlyOwned || isListedByUser) {
+          // Ensure tokenId is stored as string for consistent Set operations
+          ownedTokenIds.add(String(token.tokenId));
         }
       });
       
       setOwnedTokenIds(ownedTokenIds);
-      console.log(`[NFTCollectionDetailPage] User owns ${ownedTokenIds.size} tokens in collection ${collection.collectionId}:`, Array.from(ownedTokenIds));
-      
-      if (ownedTokenIds.size > 0) {
-        const ownershipPercentage = (ownedTokenIds.size / collection.evmCollectionTokens.length) * 100;
-        console.log(`[NFTCollectionDetailPage] Ownership percentage: ${ownershipPercentage.toFixed(1)}%`);
-      }
       
     } catch (error) {
       console.error('Error checking token ownership:', error);
@@ -284,31 +369,94 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
 
   // Function to fetch collection data
   const fetchCollectionData = async () => {
+    // Basic validation
+    if (!id) {
+      console.error("fetchCollectionData called with invalid ID:", id);
+      setError("Invalid collection ID specified.");
+      setLoading(false);
+      return;
+    }
+
+    console.log(`[NFTCollectionDetailPage] Fetching data for collection ID: ${id}`);
     setLoading(true);
     setError(null);
 
     try {
       if (!publicClient) {
-        throw new Error("Web3 client not available");
+        throw new Error("Web3 client not available. Please make sure your wallet is connected.");
       }
       
-      // Parse the collection ID
-      const parsedCollectionId = BigInt(collectionId);
+      // Step 1: Fetch initial listing data from API by UUID
+      const listingResponse = await fetch(`/api/nft/collections/${id}`);
+      if (!listingResponse.ok) {
+        const errJson = await listingResponse.json().catch(() => ({}));
+        throw new Error(errJson?.message || `Failed to load listing data (status ${listingResponse.status})`);
+      }
+      const listingJson = await listingResponse.json();
+      const listing = listingJson.data;
+
+      if (!listing || !listing.collectionId) {
+        throw new Error('Listing data missing on-chain collectionId');
+      }
+
+      // Parse the on-chain numeric collectionId
+      let parsedCollectionId: bigint;
+      try {
+        parsedCollectionId = BigInt(listing.collectionId);
+      } catch (e) {
+        throw new Error(`Invalid on-chain collectionId: ${listing.collectionId}`);
+      }
+
+      // Use metadataUri from DB if provided (for legacy support)
+      let collectionURIFromDB: string | undefined = listing.metadataUri;
+      
+      console.log(`[NFTCollectionDetailPage] Fetching collection data for ID: ${parsedCollectionId}`);
       
       // Get collection data from the NFT contract
-      const collectionData = await publicClient.readContract({
-        address: PLATZ_LAND_NFT_ADDRESS,
-        abi: PlatzLandNFTABI,
-        functionName: 'getCollection',
-        args: [parsedCollectionId]
-      });
+      let collectionData;
+      try {
+        collectionData = await publicClient.readContract({
+          address: PLATZ_LAND_NFT_ADDRESS,
+          abi: PlatzLandNFTABI,
+          functionName: 'getCollection',
+          args: [parsedCollectionId]
+        });
+      } catch (error) {
+        console.error('[NFTCollectionDetailPage] Error reading from contract:', error);
+        throw new Error(`Failed to fetch collection data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      console.log('[NFTCollectionDetailPage] Raw collection data:', collectionData);
 
       if (!collectionData) {
-        throw new Error("Collection not found");
+        throw new Error("Listing not found");
       }
       
-      // Destructure collection data
-      const [startTokenId, totalSupply, mainTokenId, baseURI, collectionURI, creator] = collectionData as [bigint, bigint, bigint, string, string, string];
+      // Ensure we have all expected fields
+      if (!Array.isArray(collectionData) || collectionData.length < 6) {
+        throw new Error(`Invalid collection data format. Expected array of length 6, got: ${JSON.stringify(collectionData)}`);
+      }
+      
+      // Destructure collection data with proper type checking
+      const [startTokenId, totalSupply, mainTokenId, baseURI, collectionURI, creator] = collectionData;
+      
+      // Validate required fields
+      if (typeof startTokenId === 'undefined' || typeof totalSupply === 'undefined' || typeof mainTokenId === 'undefined') {
+        throw new Error(`Missing required collection data fields: ${JSON.stringify({
+          startTokenId: typeof startTokenId,
+          totalSupply: typeof totalSupply,
+          mainTokenId: typeof mainTokenId
+        })}`);
+      }
+      
+      console.log('[NFTCollectionDetailPage] Parsed collection data:', {
+        startTokenId: startTokenId?.toString(),
+        totalSupply: totalSupply?.toString(),
+        mainTokenId: mainTokenId?.toString(),
+        baseURI: baseURI || 'N/A',
+        collectionURI: collectionURI || 'N/A',
+        creator: creator || 'N/A'
+      });
       
       // Check if collection is listed in the marketplace
       console.log(`[NFTCollectionDetailPage] Attempting to fetch marketplace listing for collectionId: ${parsedCollectionId}, Marketplace Address: ${LAND_MARKETPLACE_ADDRESS}`);
@@ -368,16 +516,21 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
             console.error("[NFTCollectionDetailPage] Revert Reason:", error.reason); // Common field for revert reasons
           }
         setLoading(false); // Corrected typo
-        setError(`Failed to get marketplace details for collection ${collectionId}. The collection might not be listed, or an on-chain error occurred.`);
+        setError(`Failed to get marketplace details for listing ${id}. The listing might not be listed, or an on-chain error occurred.`);
         // Re-throw the original error to see it in the browser console for full diagnosis
         throw error; 
       }
       
-      // Fetch collection metadata
-      const metadata = await fetchMetadata(collectionURI);
-      if (!metadata) {
-        throw new Error("Failed to fetch collection metadata");
-      }
+      // Fetch collection metadata (optional). Some legacy collections may not have a collectionURI.
+      const metadata = await fetchMetadata(collectionURIFromDB || collectionURI, true /* optional */);
+      
+      // Provide sensible fallbacks when metadata is missing so the page can still render.
+      const fallbackMetadata = metadata || {
+        name: `Listing #${parsedCollectionId}`,
+        description: 'No description provided',
+        image: listing.nftImageFileRef || '',
+        properties: {},
+      };
       
       // Create token array for the collection
       const collectionTokens = [];
@@ -446,6 +599,16 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         // getListing returns an object: { seller, price, paymentToken, isActive }
         const isTokenListed = listingData ? listingData.isActive : false;
         
+        // Get individual token listing price or fall back to collection base price
+        let tokenListingPrice = 0;
+        if (isTokenListed && listingData && listingData.price) {
+          // Use individual token's listing price (converted from wei to ETH)
+          tokenListingPrice = Number(formatEther(listingData.price));
+        } else if (isActive && typeof basePrice !== 'undefined') {
+          // Fall back to collection base price for non-individually listed tokens
+          tokenListingPrice = Number(formatEther(basePrice));
+        }
+        
         // Check token owner
         let ownerAddress;
         try {
@@ -456,8 +619,10 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
             args: [tokenId]
           }) as string;
         } catch (error) {
-          // If ownerOf reverts, the token might be owned by the marketplace contract
-          ownerAddress = LAND_MARKETPLACE_ADDRESS;
+          // If ownerOf reverts, we can't be sure of the owner.
+          // Set it to a placeholder. The refreshOwnershipFromBlockchain function will correct it later.
+          ownerAddress = '0x0000000000000000000000000000000000000000'; // Address zero
+          console.warn(`[NFTCollectionDetailPage] ownerOf failed for token ${tokenId}, setting to address zero as placeholder:`, error);
         }
         
         // Build token URI from baseURI
@@ -501,29 +666,29 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           tokenURI: tokenURI,
           ownerAddress: ownerAddress,
           isListed: isTokenListed,
-          listingPrice: isActive && typeof basePrice !== 'undefined' ? Number(formatEther(basePrice)) : 0, // Use basePrice for collection listing
+          listingPrice: tokenListingPrice,
         });
       }
       
       // Transform to our application's collection format
       const transformedCollection: NFTCollection = {
         id: parsedCollectionId.toString(),
-        nftTitle: metadata.name || `Collection #${parsedCollectionId}`,
-        nftDescription: metadata.description || 'No description provided',
+        nftTitle: fallbackMetadata.name,
+        nftDescription: fallbackMetadata.description,
         listingPrice: isActive && typeof basePrice !== 'undefined' ? Number(formatEther(basePrice)) : 0,
         priceCurrency: 'ETH',
-        nftImageFileRef: metadata.image || '',
+        nftImageFileRef: fallbackMetadata.image || '',
         nftCollectionSize: Number(totalSupply),
-        country: metadata.properties?.country || '',
-        state: metadata.properties?.state || '',
-        localGovernmentArea: metadata.properties?.localGovernmentArea || '',
-        propertyAreaSqm: metadata.properties?.propertyAreaSqm || 0,
-        latitude: metadata.properties?.latitude || '',
-        longitude: metadata.properties?.longitude || '',
+        country: fallbackMetadata.properties?.country || '',
+        state: fallbackMetadata.properties?.state || '',
+        localGovernmentArea: fallbackMetadata.properties?.localGovernmentArea || '',
+        propertyAreaSqm: fallbackMetadata.properties?.propertyAreaSqm || 0,
+        latitude: fallbackMetadata.properties?.latitude || '',
+        longitude: fallbackMetadata.properties?.longitude || '',
         contractAddress: PLATZ_LAND_NFT_ADDRESS,
         collectionId: parsedCollectionId.toString(),
         mainTokenId: mainTokenId.toString(),
-        metadataUri: collectionURI,
+        metadataUri: collectionURIFromDB || collectionURI,
         evmOwnerAddress: creator,
         isListedForSale: isActive,
         listingPriceEth: isActive && typeof basePrice !== 'undefined' ? parseFloat(formatEther(basePrice)) : 0,
@@ -557,24 +722,63 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           const isOptional = (isMainToken && isLegacyCollection) || isOptionalToken;
           
           fetchMetadata(token.tokenURI, isOptional).then(metadata => {
-            if (metadata) {
+            // DEBUG: Log metadata fetch results
+            console.log(`[DEBUG] Metadata fetch for token ${token.tokenId}:`, {
+              tokenURI: token.tokenURI,
+              success: !!metadata,
+              hasImage: !!(metadata?.image),
+              imageUrl: metadata?.image,
+              isOptional
+            });
+            
+            // Always update the cache, even if metadata is null for optional tokens
+            // This prevents main tokens from getting stuck in loading state for legacy collections
               setTokenMetadataCache(prev => ({
                 ...prev,
-                [token.tokenId]: metadata
-              }));
-              
-              // Add image URL to preload list
-              if (metadata.image) {
-                imageUrls.push(metadata.image);
-              }
+              [token.tokenId]: metadata || null
+            }));
+            
+            // Add image URL to preload list only if metadata exists
+            let imageUrl = tokenMetadataCache[token.tokenId]?.image || '';
+            if (!imageUrl && isMainToken && transformedCollection.nftImageFileRef) {
+              imageUrl = transformedCollection.nftImageFileRef;
+            }
+            
+            // Provide fallback for child tokens when metadata fails to load
+            if (!imageUrl && !isMainToken && transformedCollection.nftImageFileRef) {
+              // Use collection main image as fallback for child tokens
+              imageUrl = transformedCollection.nftImageFileRef;
+            }
+            
+            if (imageUrl) {
+              imageUrls.push(imageUrl);
             }
           }).catch(error => {
+            // DEBUG: Log metadata fetch errors
+            console.error(`[DEBUG] Metadata fetch error for token ${token.tokenId}:`, {
+              tokenURI: token.tokenURI,
+              error: error.message,
+              isOptional
+            });
+            
+            // Also update cache on error to prevent infinite loading
+            setTokenMetadataCache(prev => ({
+              ...prev,
+              [token.tokenId]: null
+            }));
+            
             if (isOptional) {
               console.warn(`[NFTCollectionDetailPage] Failed to fetch optional metadata for token ${token.tokenId}:`, error);
             } else {
               console.error(`[NFTCollectionDetailPage] Failed to fetch required metadata for token ${token.tokenId}:`, error);
             }
           });
+        } else {
+          // If no tokenURI, immediately set cache to null to prevent skeleton loading
+          setTokenMetadataCache(prev => ({
+            ...prev,
+            [token.tokenId]: null
+          }));
         }
       }
       
@@ -596,7 +800,18 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       
     } catch (err: any) {
       console.error('Error fetching collection:', err);
-      setError(err.message || 'An error occurred while fetching the collection');
+      
+      // Check if this is a "Collection does not exist" error from the new contract
+      // viem errors can have the message in different properties: message, shortMessage, reason, or details
+      const errorMessage = err.message || err.shortMessage || err.reason || err.details || '';
+      const isCollectionNotFound = errorMessage.includes('Collection does not exist') || 
+                                   (err.name && err.name.includes('ContractFunctionExecutionError') && errorMessage.includes('Collection does not exist'));
+      
+      if (isCollectionNotFound) {
+        setError(`This collection (ID: ${id}) was created on our previous smart contract and is no longer accessible on-chain. Collections created after our recent contract upgrade will work properly. We apologize for the inconvenience.`);
+      } else {
+        setError(errorMessage || 'An error occurred while fetching the listing');
+      }
     } finally {
       setLoading(false);
     }
@@ -633,6 +848,10 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
       return;
     }
 
+    // Find the token to get its listing price
+    const selectedToken = collection?.evmCollectionTokens.find(token => token.tokenId === tokenId);
+    const tokenListingPrice = selectedToken?.listingPrice || 0;
+
     try {
       // Get current highest bid for this token
       const bidsResponse = await fetch(`/api/bids?collectionId=${collection?.collectionId}&status=ACTIVE`);
@@ -649,14 +868,104 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
 
     setSelectedBidTokenId(tokenId);
     setSelectedBidTokenName(tokenName);
+    setSelectedBidTokenPrice(tokenListingPrice);
     setShowBidModal(true);
   };
 
   // Function to handle successful bid placement
   const handleBidPlaced = async () => {
-    // Refresh collection data and price statistics
+    // Refresh collection data and price statistics immediately
     await fetchCollectionData();
     await fetchPriceStatistics();
+    
+    // Force aggressive blockchain ownership check after a brief delay to ensure blockchain state is updated
+    setTimeout(async () => {
+      await refreshOwnershipFromBlockchain();
+    }, 3000); // Increased delay to ensure blockchain state is fully propagated
+  };
+
+  // Function to manually refresh all data (for user-triggered refresh)
+  const handleManualRefresh = async () => {
+    setLoading(true);
+    try {
+      await fetchCollectionData();
+      await fetchPriceStatistics();
+      
+      // Force a direct blockchain ownership check after data refresh
+      await refreshOwnershipFromBlockchain();
+    } catch (error) {
+      console.error('Error during manual refresh:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to aggressively refresh ownership directly from blockchain
+  const refreshOwnershipFromBlockchain = async () => {
+    if (!isEvmWalletConnected || !connectedEvmAddress || !collection || !publicClient) {
+      setOwnedTokenIds(new Set());
+      return;
+    }
+
+    try {
+      const ownedTokenIds = new Set<string>();
+      
+      // Query each token's ownership directly from blockchain
+      for (const token of collection.evmCollectionTokens) {
+        try {
+          const currentOwner = await publicClient.readContract({
+            address: PLATZ_LAND_NFT_ADDRESS,
+            abi: PlatzLandNFTABI,
+            functionName: 'ownerOf',
+            args: [BigInt(token.tokenId)]
+          }) as string;
+          
+          let userOwnsToken = false;
+          
+          // SCENARIO 1: User directly owns the token (most common after purchase)
+          if (currentOwner.toLowerCase() === connectedEvmAddress.toLowerCase()) {
+            userOwnsToken = true;
+          }
+          
+          // SCENARIO 2: Token is held by marketplace contract
+          else if (currentOwner.toLowerCase() === LAND_MARKETPLACE_ADDRESS.toLowerCase()) {
+            // Check if the token is actively listed by this user
+            try {
+              const listingData = await publicClient.readContract({
+                address: LAND_MARKETPLACE_ADDRESS,
+                abi: LandMarketplaceABI,
+                functionName: 'getListing',
+                args: [PLATZ_LAND_NFT_ADDRESS, BigInt(token.tokenId)]
+              });
+              
+              // getListing returns { seller, price, paymentToken, isActive }
+              if (listingData && listingData.isActive && listingData.seller) {
+                const seller = listingData.seller as string;
+                if (seller.toLowerCase() === connectedEvmAddress.toLowerCase()) {
+                  userOwnsToken = true;
+                }
+              }
+            } catch (listingError) {
+              // Silently handle listing errors
+            }
+          }
+          
+          if (userOwnsToken) {
+            ownedTokenIds.add(String(token.tokenId));
+          }
+          
+        } catch (error) {
+          // Silently handle token ownership errors
+        }
+      }
+      
+      console.log(`[NFTCollectionDetailPage] User owns ${ownedTokenIds.size} tokens:`, Array.from(ownedTokenIds));
+      setOwnedTokenIds(ownedTokenIds);
+      
+    } catch (error) {
+      console.error('[NFTCollectionDetailPage] Error refreshing ownership from blockchain:', error);
+      setOwnedTokenIds(new Set());
+    }
   };
 
   // Function to confirm purchase
@@ -744,6 +1053,11 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         // Refresh collection data to show updated ownership
         await fetchCollectionData();
         await fetchPriceStatistics();
+        
+        // Force aggressive blockchain ownership check after a brief delay to ensure blockchain state is updated
+        setTimeout(async () => {
+          await refreshOwnershipFromBlockchain();
+        }, 3000); // Increased delay to ensure blockchain state is fully propagated
       } else {
         throw new Error('Transaction failed');
       }
@@ -766,17 +1080,48 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
 
   // Render error state
   if (error) {
+    const isMigrationError = error.includes('previous smart contract');
+    
     return (
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-red-800 dark:text-red-200 mb-2">Error</h2>
-          <p className="text-red-700 dark:text-red-300">{error}</p>
+        <div className={`${isMigrationError ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'} border rounded-lg p-6 text-center`}>
+          <h2 className={`text-xl font-semibold ${isMigrationError ? 'text-blue-800 dark:text-blue-200' : 'text-red-800 dark:text-red-200'} mb-2`}>
+            {isMigrationError ? 'Contract Migration Notice' : 'Error'}
+          </h2>
+          <p className={`${isMigrationError ? 'text-blue-700 dark:text-blue-300' : 'text-red-700 dark:text-red-300'} mb-4`}>
+            {error}
+          </p>
+          
+          {isMigrationError && (
+            <div className="mb-4 p-4 bg-blue-100 dark:bg-blue-800/30 rounded-lg">
+              <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">What happened?</h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                We recently upgraded our smart contracts to fix collection counting issues. 
+                Old collections remain in our database but are no longer accessible on the blockchain.
+              </p>
+              <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">What's next?</h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                New collections created after the upgrade will work correctly and show proper item counts.
+              </p>
+            </div>
+          )}
+          
+          <div className="flex gap-3 justify-center">
+            <Link
+              href="/explore"
+              className={`px-4 py-2 ${isMigrationError ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'} text-white rounded-lg transition-colors`}
+            >
+              Browse Available Collections
+            </Link>
+            {!isMigrationError && (
           <button
             onClick={fetchCollectionData}
-            className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
           >
             Retry
           </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -787,8 +1132,8 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
     return (
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Collection Not Found</h2>
-          <p className="text-yellow-700 dark:text-yellow-300">The NFT collection you're looking for doesn't exist or has been removed.</p>
+          <h2 className="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Listing Not Found</h2>
+          <p className="text-yellow-700 dark:text-yellow-300">The NFT listing you're looking for doesn't exist or has been removed.</p>
           <Link
             href="/explore"
             className="mt-4 inline-block px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg"
@@ -851,7 +1196,6 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Cyber scan line effect */}
         <motion.div
           className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-white to-transparent opacity-30"
           animate={{
@@ -868,13 +1212,13 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           <div className="md:w-1/3 h-64 md:h-auto bg-black/5 dark:bg-white/5 flex-shrink-0 rounded-tl-cyber-lg md:rounded-bl-cyber-lg md:rounded-tr-none rounded-tr-cyber-lg">
             <NFTImage
               src={collection.nftImageFileRef || ''}
-              alt={collection.nftTitle || 'Collection Image'}
+              alt={formatCollectionName(collection.nftTitle) || 'Listing Image'}
               className="w-full h-full"
               collectionId={collection.id}
               isMainToken={true}
               priority={true}
               dimensions={{ aspectRatio: '4/3' }}
-              fallback="https://placehold.co/400x300/gray/white?text=Collection+Image"
+              fallback="https://placehold.co/400x300/gray/white?text=Listing+Image"
             />
           </div>
           <div className="p-6 flex-1">
@@ -894,7 +1238,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                   }}
                   transition={{ duration: 3, repeat: Infinity }}
                 >
-                  {collection.nftTitle || 'Untitled Collection'}
+                  {formatCollectionName(collection.nftTitle)}
                 </motion.h1>
                 <motion.p 
                   className="text-text-light/70 dark:text-text-dark/70 mb-4 font-mono"
@@ -945,7 +1289,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               </div>
             </div>
 
-            {/* Price Statistics Section */}
+            {/* Market Statistics Section */}
             {priceStats && !statsLoading && (
               <motion.div 
                 className="bg-black/5 dark:bg-white/5 rounded-cyber p-4 mb-6 border border-white/10"
@@ -990,6 +1334,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               </motion.div>
             )}
 
+            {/* Collection Information Grid */}
             <motion.div 
               className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6"
               initial={{ opacity: 0 }}
@@ -1009,7 +1354,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 </p>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }}>
-                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Collection Size</p>
+                <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Listing Size</p>
                 <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
                   {collection.nftCollectionSize} NFTs
                 </p>
@@ -1037,13 +1382,13 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               </motion.div>
             </motion.div>
 
+            {/* Action Buttons */}
             <motion.div 
               className="flex flex-col sm:flex-row gap-3"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
             >
-              {/* Show bidding button for all collections since they're all open for bids */}
               <motion.button
                 onClick={() => setShowBidModal(true)}
                 className="px-6 py-3 bg-cyber-accent hover:bg-cyber-accent/80 text-black rounded-cyber flex items-center justify-center font-mono uppercase tracking-wider transition-all duration-300"
@@ -1053,7 +1398,6 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 <FiDollarSign className="mr-2" /> PLACE BID
               </motion.button>
               
-                {/* Show batch purchase button if there are listed tokens for sale */}
                 {collection.evmCollectionTokens.some(token => token.isListed) && (
                 <motion.button
                     onClick={() => setShowBatchPurchaseModal(true)}
@@ -1064,12 +1408,25 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                   <FiShoppingCart className="mr-2" /> BUY MULTIPLE
                 </motion.button>
                 )}
+              
+              <motion.button
+                onClick={handleManualRefresh}
+                disabled={loading}
+                className="px-4 py-3 bg-black hover:bg-gray-900 disabled:bg-gray-600 text-white rounded-cyber flex items-center justify-center font-mono uppercase tracking-wider transition-all duration-300 border border-white/20"
+                whileHover={{ scale: loading ? 1 : 1.05, boxShadow: loading ? "none" : "0 0 20px rgba(255, 255, 255, 0.3)" }}
+                whileTap={{ scale: loading ? 1 : 0.95 }}
+                title="Refresh ownership data from blockchain"
+                animate={loading ? { rotate: 360 } : {}}
+                transition={loading ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
+              >
+                <FiRefreshCw className={`${loading ? 'animate-spin' : ''}`} size={16} />
+              </motion.button>
             </motion.div>
               </div>
           </div>
       </motion.div>
 
-      {/* Tabs */}
+      {/* Tabs Navigation */}
       <motion.div 
         className="mb-6 border-b border-white/20"
         initial={{ opacity: 0, y: 10 }}
@@ -1077,62 +1434,28 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         transition={{ delay: 0.4 }}
       >
         <nav className="flex space-x-8">
+          {[
+            { key: 'tokens', label: `NFT TOKENS (${collection.nftCollectionSize})` },
+            { key: 'details', label: 'PROPERTY DETAILS' },
+            { key: 'metadata', label: 'METADATA' },
+            { key: 'activity', label: 'ACTIVITY' }
+          ].map((tab) => (
           <motion.button
-            onClick={() => setActiveTab('tokens')}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as 'tokens' | 'details' | 'metadata' | 'activity')}
             className={`py-4 px-1 border-b-2 font-medium text-sm font-mono uppercase tracking-wider transition-all duration-300 ${
-              activeTab === 'tokens'
+                activeTab === tab.key
                 ? 'border-white text-white'
                 : 'border-transparent text-text-light/60 dark:text-text-dark/60 hover:text-white'
             }`}
             whileHover={{ scale: 1.05 }}
-            style={activeTab === 'tokens' ? {
+              style={activeTab === tab.key ? {
               textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
             } : {}}
           >
-            NFT TOKENS ({collection.nftCollectionSize})
+              {tab.label}
           </motion.button>
-          <motion.button
-            onClick={() => setActiveTab('details')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm font-mono uppercase tracking-wider transition-all duration-300 ${
-              activeTab === 'details'
-                ? 'border-white text-white'
-                : 'border-transparent text-text-light/60 dark:text-text-dark/60 hover:text-white'
-            }`}
-            whileHover={{ scale: 1.05 }}
-            style={activeTab === 'details' ? {
-              textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
-            } : {}}
-          >
-            PROPERTY DETAILS
-          </motion.button>
-          <motion.button
-            onClick={() => setActiveTab('metadata')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm font-mono uppercase tracking-wider transition-all duration-300 ${
-              activeTab === 'metadata'
-                ? 'border-white text-white'
-                : 'border-transparent text-text-light/60 dark:text-text-dark/60 hover:text-white'
-            }`}
-            whileHover={{ scale: 1.05 }}
-            style={activeTab === 'metadata' ? {
-              textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
-            } : {}}
-          >
-            METADATA
-          </motion.button>
-          <motion.button
-            onClick={() => setActiveTab('activity')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm font-mono uppercase tracking-wider transition-all duration-300 ${
-              activeTab === 'activity'
-                ? 'border-white text-white'
-                : 'border-transparent text-text-light/60 dark:text-text-dark/60 hover:text-white'
-            }`}
-            whileHover={{ scale: 1.05 }}
-            style={activeTab === 'activity' ? {
-              textShadow: "0 0 15px rgba(255, 255, 255, 0.8)",
-            } : {}}
-          >
-            ACTIVITY
-          </motion.button>
+          ))}
         </nav>
       </motion.div>
 
@@ -1143,7 +1466,6 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
-        {/* Cyber background pattern for tab content */}
         <motion.div
           className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none"
           animate={{
@@ -1159,6 +1481,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           }}
         />
         
+        {/* Tokens Tab */}
         {activeTab === 'tokens' && (
           <div className="relative z-10">
             <motion.h2 
@@ -1167,7 +1490,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
               }}
             >
-              COLLECTION TOKENS
+              LISTING TOKENS
             </motion.h2>
             <motion.p 
               className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
@@ -1175,41 +1498,51 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              This collection contains {collection.nftCollectionSize} NFT tokens representing ownership shares in the property.
+              This listing contains {collection.nftCollectionSize} NFT tokens representing ownership shares in the property.
             </motion.p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {(() => {
-                // Sort tokens: non-owned first, then owned at the bottom
                 const sortedTokens = [...collection.evmCollectionTokens].sort((a, b) => {
                   const aIsOwned = ownedTokenIds.has(a.tokenId);
                   const bIsOwned = ownedTokenIds.has(b.tokenId);
                   
-                  // Non-owned tokens first (return -1 if a is not owned but b is owned)
                   if (!aIsOwned && bIsOwned) return -1;
                   if (aIsOwned && !bIsOwned) return 1;
                   
-                  // Within same ownership status, maintain original order (by tokenId)
                   return parseInt(a.tokenId) - parseInt(b.tokenId);
                 });
 
                 return sortedTokens.map((token, index) => {
-                  // Get token metadata from cache
                   const tokenMetadata = tokenMetadataCache[token.tokenId];
                   const originalIndex = collection.evmCollectionTokens.findIndex(t => t.tokenId === token.tokenId);
                   const isMainToken = originalIndex === 0;
-                  const isOwnedByUser = ownedTokenIds.has(token.tokenId);
+                  const isOwnedByUser = ownedTokenIds.has(String(token.tokenId));
                   
-                  // Determine image source
+                  // Generate plot-based name using original index (so plot numbers stay consistent)
+                  const plotNumber = originalIndex + 1;
+                  const plotName = `Plot ${plotNumber}`;
+                  
                   let imageUrl = tokenMetadata?.image || '';
                   if (!imageUrl && isMainToken && collection.nftImageFileRef) {
-                    // For main token without metadata, use collection image as fallback
                     imageUrl = collection.nftImageFileRef;
                   }
                   
-                  // Check if metadata is still loading
-                  const isMetadataLoading = !tokenMetadata && isMainToken;
+                  // Provide fallback for child tokens when metadata fails to load
+                  if (!imageUrl && !isMainToken && collection.nftImageFileRef) {
+                    // Use collection main image as fallback for child tokens
+                    imageUrl = collection.nftImageFileRef;
+                  }
                   
-                  // Show skeleton while metadata is loading for main token
+                  // DEBUG: Log image URL issues
+                  if (plotNumber <= 3 || !imageUrl) {
+                    // Debug logging removed for cleaner console output
+                  }
+                  
+                  const isMetadataLoading = isMainToken && 
+                    tokenMetadata === undefined && 
+                    collection && 
+                    collection.evmCollectionTokens.length > 0;
+                  
                   if (isMetadataLoading) {
                     return (
                       <NFTTokenCardSkeleton
@@ -1267,12 +1600,12 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                         )}
                         <NFTImage
                           src={imageUrl}
-                          alt={tokenMetadata?.name || `Token #${token.tokenId}`}
+                          alt={plotName}
                           className={`w-full h-full transition-all duration-500 ${isOwnedByUser ? 'opacity-80' : 'hover:scale-110'}`}
                           tokenId={token.tokenId}
                           collectionId={collection.id}
                           isMainToken={isMainToken}
-                          lazy={!isMainToken} // Don't lazy load main token
+                          lazy={!isMainToken}
                           priority={isMainToken}
                           dimensions={{ aspectRatio: '1/1' }}
                           fallback="https://placehold.co/300x300/gray/white?text=No+Image"
@@ -1290,7 +1623,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                               textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
                             } : {}}
                           >
-                            {tokenMetadata?.name || `Token #${token.tokenId}`}
+                            {plotName}
                           </motion.p>
                           {token.listingPrice > 0 && !isOwnedByUser && (
                             <motion.p 
@@ -1314,7 +1647,6 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                           }
                         </p>
                         <div className="mt-2 space-y-1">
-                          {/* Show different actions based on ownership */}
                                                   {isOwnedByUser ? (
                           <div className="text-center py-2">
                               <motion.p 
@@ -1337,10 +1669,9 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                                   <FiShoppingCart className="mr-1" size={12} /> BUY NOW
                                 </motion.button>
                               )}
-                              {/* Allow bidding when wallet is connected and user doesn't own the token */}
                               {isEvmWalletConnected && (
                                 <motion.button
-                                  onClick={() => handleBidOnToken(token.tokenId, tokenMetadata?.name || `Token #${token.tokenId}`)}
+                                  onClick={() => handleBidOnToken(token.tokenId, plotName)}
                                   className="w-full px-3 py-1 bg-white hover:bg-white/80 text-black text-sm rounded-cyber flex items-center justify-center font-mono uppercase tracking-wider transition-all duration-300"
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
@@ -1348,7 +1679,6 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                                   <FiTool className="mr-1" size={12} /> PLACE BID
                                 </motion.button>
                               )}
-                              {/* Show connect wallet message when wallet is not connected */}
                               {!isEvmWalletConnected && (
                                 <button
                                   disabled
@@ -1369,220 +1699,16 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           </div>
         )}
 
+        {/* Other tabs content would go here */}
         {activeTab === 'details' && (
           <div className="relative z-10">
-            <motion.h2 
-              className="text-xl font-semibold text-text-light dark:text-text-dark mb-4 font-mono uppercase tracking-wider"
-              style={{
-                textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
-              }}
-            >
-              PROPERTY DETAILS
-            </motion.h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <motion.h3 
-                  className="text-lg font-medium text-text-light dark:text-text-dark mb-3 font-mono uppercase tracking-wider"
-                  style={{
-                    textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
-                  }}
-                >
-                  LOCATION INFORMATION
-                </motion.h3>
-                <div className="space-y-4">
-                  <motion.div whileHover={{ scale: 1.02 }}>
-                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Country</p>
-                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
-                      {collection.country || 'Not specified'}
-                    </p>
-                  </motion.div>
-                  <motion.div whileHover={{ scale: 1.02 }}>
-                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">State/Province</p>
-                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
-                      {collection.state || 'Not specified'}
-                    </p>
-                  </motion.div>
-                  <motion.div whileHover={{ scale: 1.02 }}>
-                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Local Government Area</p>
-                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
-                      {collection.localGovernmentArea || 'Not specified'}
-                    </p>
-                  </motion.div>
-                  {collection.latitude && collection.longitude && (
-                    <motion.div whileHover={{ scale: 1.02 }}>
-                      <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Coordinates</p>
-                      <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
-                        {collection.latitude}, {collection.longitude}
-                      </p>
-                    </motion.div>
-        )}
-                </div>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                <motion.h3 
-                  className="text-lg font-medium text-text-light dark:text-text-dark mb-3 font-mono uppercase tracking-wider"
-                  style={{
-                    textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
-                  }}
-                >
-                  PROPERTY SPECIFICATIONS
-                </motion.h3>
-                <div className="space-y-4">
-                  <motion.div whileHover={{ scale: 1.02 }}>
-                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Area</p>
-                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
-                      {collection.propertyAreaSqm ? `${collection.propertyAreaSqm} sqm` : 'Not specified'}
-                    </p>
-                  </motion.div>
-                  <motion.div whileHover={{ scale: 1.02 }}>
-                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Collection Size</p>
-                    <p className="text-base font-medium text-text-light dark:text-text-dark font-mono">
-                      {collection.nftCollectionSize} NFTs
-                    </p>
-                  </motion.div>
-                  <motion.div whileHover={{ scale: 1.02 }}>
-                    <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono uppercase tracking-wider">Blockchain Information</p>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm text-text-light dark:text-text-dark font-mono">
-                        <span className="font-medium">Collection ID:</span> {collection.collectionId}
-                      </p>
-                      <p className="text-sm text-text-light dark:text-text-dark font-mono">
-                        <span className="font-medium">Main Token ID:</span> {collection.mainTokenId}
-                      </p>
-                      <motion.a
-                        href={`https://sepolia.etherscan.io/token/${collection.contractAddress}?a=${collection.mainTokenId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-white hover:text-cyber-accent transition-colors flex items-center font-mono"
-                        whileHover={{ scale: 1.05 }}
-                        style={{
-                          textShadow: "0 0 10px rgba(255, 255, 255, 0.5)",
-                        }}
-                      >
-                        VIEW ON ETHERSCAN <FiExternalLink className="ml-1" size={12} />
-                      </motion.a>
-                    </div>
-                  </motion.div>
-                  </div>
-              </motion.div>
-            </div>
-            
-            {/* Map Placeholder */}
-            <motion.div 
-              className="mt-8 bg-gray-100 dark:bg-zinc-800 rounded-lg h-96 flex items-center justify-center border border-white/20"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <div className="text-center">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                >
-                <FiMap className="mx-auto text-gray-400 dark:text-gray-600 mb-2" size={48} />
-                </motion.div>
-                <motion.p 
-                  className="text-gray-600 dark:text-gray-400 font-mono uppercase tracking-wider"
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  INTERACTIVE MAP COMING SOON
-                </motion.p>
-              </div>
-            </motion.div>
+            <NFTPropertyDetails collection={collection} />
           </div>
         )}
 
         {activeTab === 'metadata' && (
           <div className="relative z-10">
-            <motion.h2 
-              className="text-xl font-semibold text-text-light dark:text-text-dark mb-4 font-mono uppercase tracking-wider"
-              style={{
-                textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
-              }}
-            >
-              COLLECTION METADATA
-            </motion.h2>
-            <motion.p 
-              className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              View the blockchain metadata for this NFT collection.
-            </motion.p>
-            <motion.div 
-              className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 overflow-x-auto border border-white/10"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-mono">
-                {JSON.stringify({
-                  id: collection.id,
-                  nftTitle: collection.nftTitle,
-                  nftDescription: collection.nftDescription,
-                  contractAddress: collection.contractAddress,
-                  collectionId: collection.collectionId,
-                  mainTokenId: collection.mainTokenId,
-                  metadataUri: collection.metadataUri,
-                  tokenCount: collection.nftCollectionSize,
-                  isListedForSale: collection.isListedForSale,
-                  listingPriceEth: collection.listingPriceEth,
-                  properties: {
-                    country: collection.country,
-                    state: collection.state,
-                    localGovernmentArea: collection.localGovernmentArea,
-                    propertyAreaSqm: collection.propertyAreaSqm,
-                    latitude: collection.latitude,
-                    longitude: collection.longitude,
-                  }
-                }, null, 2)}
-              </pre>
-            </motion.div>
-            
-            <motion.h3 
-              className="text-lg font-medium text-text-light dark:text-text-dark mt-8 mb-4 font-mono uppercase tracking-wider"
-              style={{
-                textShadow: "0 0 10px rgba(255, 255, 255, 0.4)",
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              TOKEN URIS
-            </motion.h3>
-            <motion.div 
-              className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 overflow-x-auto border border-white/10"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <div className="grid grid-cols-1 gap-4">
-                {collection.evmCollectionTokens.map((token, index) => (
-                  <motion.div 
-                    key={token.tokenId} 
-                    className="border-b border-gray-200 dark:border-zinc-700 pb-4 last:border-0 last:pb-0"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
-                  >
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1 font-mono">Token #{token.tokenId}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 break-all font-mono">
-                      {token.tokenURI || 'No URI available'}
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
+            <NFTMetadataSection collection={collection} />
           </div>
         )}
 
@@ -1594,7 +1720,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 textShadow: "0 0 15px rgba(255, 255, 255, 0.5)",
               }}
             >
-              COLLECTION ACTIVITY
+              LISTING ACTIVITY
             </motion.h2>
             <motion.p 
               className="text-text-light/70 dark:text-text-dark/70 mb-6 font-mono"
@@ -1602,7 +1728,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              Recent transactions and activities for this NFT collection.
+              Recent transactions and activities for this NFT listing.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1628,15 +1754,15 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Confirm Purchase</h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 {purchaseType === 'collection' 
-                  ? `You are about to purchase the entire Collection #${collection.id}.`
-                  : `You are about to purchase Token #${selectedTokenId} from Collection #${collection.id}.`
+                  ? `You are about to purchase the entire Listing #${collection.id}.`
+                  : `You are about to purchase Token #${selectedTokenId} from Listing #${collection.id}.`
                 }
               </p>
               <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 mb-6">
                 <div className="flex justify-between mb-2">
                   <span className="text-gray-600 dark:text-gray-400">Item:</span>
                   <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {purchaseType === 'collection' ? 'Entire Collection' : `Token #${selectedTokenId}`}
+                    {purchaseType === 'collection' ? 'Entire Listing' : `Token #${selectedTokenId}`}
                   </span>
                 </div>
                 <div className="flex justify-between mb-2">
@@ -1681,12 +1807,14 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
             setShowBidModal(false);
             setSelectedBidTokenId(null);
             setSelectedBidTokenName('');
+            setSelectedBidTokenPrice(0);
           }}
           onBidPlaced={handleBidPlaced}
           tokenId={selectedBidTokenId}
           tokenName={selectedBidTokenName}
           currentHighestBid={currentHighestBid}
           floorPrice={priceStats?.floorPrice || 0}
+          tokenListingPrice={selectedBidTokenPrice}
           collectionId={collection.collectionId}
         />
       )}
@@ -1702,13 +1830,22 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
           }}
           availableTokens={collection.evmCollectionTokens
             .filter(token => token.isListed)
-            .map(token => ({
+            .map((token, index) => {
+              const originalIndex = collection.evmCollectionTokens.findIndex(t => t.tokenId === token.tokenId);
+              const plotNumber = originalIndex + 1;
+              const plotName = `Plot ${plotNumber}`;
+              
+              return {
               tokenId: token.tokenId,
               tokenURI: token.tokenURI,
               listingPrice: token.listingPrice,
-              metadata: tokenMetadataCache[token.tokenId]
-            }))}
-          collectionName={collection.nftTitle}
+                metadata: {
+                  ...tokenMetadataCache[token.tokenId],
+                  name: plotName
+                }
+              };
+            })}
+          collectionName={formatCollectionName(collection.nftTitle)}
           collectionId={collection.collectionId}
         />
       )}

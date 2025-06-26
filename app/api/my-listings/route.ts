@@ -16,99 +16,58 @@ import { verifyJwtToken } from '@/lib/auth/jwt';
 export async function GET(request: NextRequest) {
   console.log("API GET /api/my-listings: Starting request...");
   try {
-    // Get authentication from auth-token cookie
-    const authToken = request.cookies.get('auth-token')?.value;
-    console.log("API GET /api/my-listings: Auth token present:", !!authToken);
-    let userId: string | null = null;
-    
-    if (authToken) {
-      try {
-        const payload = await verifyJwtToken(authToken);
-        if (payload && payload.userId) {
-          userId = payload.userId;
-          console.log("Authenticated user ID from token:", userId);
-        }
-      } catch (error) {
-        console.warn("Error verifying auth-token:", error);
-        // Continue to check for user ID in headers instead of returning error
-      }
-    }
-    
-    // If no valid auth token, check for user ID in headers (for development)
+    // 1. Get user ID from the 'x-user-id' header
+    const userId = request.headers.get('x-user-id');
     if (!userId) {
-      userId = request.headers.get('x-user-id');
-      if (userId) {
-        console.log("Using user ID from headers:", userId);
-      }
+      console.log("API GET /api/my-listings: 'x-user-id' header missing.");
+      return NextResponse.json({ success: false, message: 'Authentication required' }, { status: 401 });
     }
-    
-    // For development, if still no user ID, use a default one
-    if (!userId) {
-      console.warn("No authentication found, using default user ID for development");
-      // Try to find an admin user
-      const adminUser = await prisma.user.findFirst({ where: { isAdmin: true } });
-      if (adminUser) {
-        userId = adminUser.id;
-        console.log("Using admin user ID:", userId);
-      } else {
-        // If no admin user, try to find any user
-        const anyUser = await prisma.user.findFirst();
-        if (anyUser) {
-          userId = anyUser.id;
-          console.log("Using existing user ID:", userId);
-        } else {
-          // If no users exist, return an error
-          return NextResponse.json(
-            { success: false, message: 'No valid users found in the system' },
-            { status: 500 }
-          );
-        }
-      }
-    }
+    console.log(`API GET /api/my-listings: Authenticated user ID: ${userId}`);
 
-    console.log("API GET /api/my-listings: Fetching listings for user ID:", userId);
-    
-    // For development purposes, let's check if we're in development mode
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    console.log(`API GET /api/my-listings: Running in ${isDevelopment ? 'development' : 'production'} mode`);
-    
-    // In development mode, we'll fetch all listings regardless of user ID
-    // In production, we'll only fetch listings for the authenticated user
-    const listings = await prisma.landListing.findMany({
-      where: isDevelopment 
-        ? {} // In development, fetch all listings
-        : { userId: userId ? userId : undefined }, // In production, only fetch user's listings
+    // 2. Fetch the user's profile to get their wallet address
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { evm_address: true },
+    });
+
+    if (!user || !user.evm_address) {
+      console.log(`API GET /api/my-listings: No user found or no EVM address linked for user ID: ${userId}`);
+      return NextResponse.json({ success: true, listings: [] }); // Return empty array if no wallet linked
+    }
+    console.log(`API GET /api/my-listings: User's EVM address: ${user.evm_address}`);
+
+    // 3. Fetch listings where the creatorAddress matches the user's EVM address
+    const listings = await prisma.land_listings.findMany({
+      where: {
+        creator_address: {
+          equals: user.evm_address,
+          mode: 'insensitive',
+        },
+      },
       select: {
         id: true,
-        nftTitle: true,
-        parcelNumber: true,
+        nft_title: true,
+        parcel_number: true,
         status: true,
-        mintStatus: true,
-        listingPrice: true,
-        priceCurrency: true,
-        createdAt: true,
-        updatedAt: true,
-        userId: true, // Include userId for debugging
+        mint_status: true,
+        listing_price: true,
+        price_currency: true,
+        created_at: true,
+        updated_at: true,
+        user_id: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        created_at: 'desc',
       },
     });
 
-    console.log("API GET /api/my-listings: Found listings count:", listings.length);
-    if (listings.length === 0) {
-      // For debugging, let's check if there are any listings at all in the database
-      const allListings = await prisma.landListing.findMany({
-        select: { id: true, userId: true },
-        take: 5, // Just get a few for debugging
-      });
-      console.log("API GET /api/my-listings: Sample of all listings in DB:", allListings);
-    }
+    console.log(`API GET /api/my-listings: Found ${listings.length} listings for wallet ${user.evm_address}`);
 
     return NextResponse.json({
       success: true,
       listings,
     });
+
   } catch (error) {
     console.error('Error fetching listings:', error);
     return NextResponse.json(

@@ -70,27 +70,80 @@ const ExploreNFTPage: React.FC = () => {
       const data = await response.json();
       console.log('✅ API Response:', data);
       
+      // Helper function to generate meaningful collection names
+      const generateCollectionName = (col: any): string => {
+        let name = '';
+        
+        // Only check actual title fields, not description
+        if (col.nftTitle && col.nftTitle.trim()) {
+          name = col.nftTitle.trim();
+        } else if (col.listingTitle && col.listingTitle.trim()) {
+          name = col.listingTitle.trim();
+        } else {
+          // Only if NO title fields are provided, show this
+          return 'No name supplied';
+        }
+        
+        // Remove " Collection" suffix if it exists (case insensitive)
+        if (name.toLowerCase().endsWith(' collection')) {
+          name = name.slice(0, -11); // Remove " Collection" (11 characters)
+        }
+        
+        return name;
+      };
+      
       if (data.collections && Array.isArray(data.collections)) {
         // Transform API data to CollectionDetail format for display
-        const transformedCollections: CollectionDetail[] = data.collections.map((col: any) => ({
-          collectionId: BigInt(col.collectionId),
-          name: col.nftTitle || `Collection #${col.collectionId}`,
-          description: col.nftDescription || 'No description available',
-          image: col.nftImageFileRef || '',
-          creator: col.evmOwnerAddress || '0x0000000000000000000000000000000000000000',
-          isListed: col.isListedForSale || false,
-          price: col.listingPriceEth ? BigInt(Math.floor(col.listingPriceEth * 1e18)) : 0n,
-          totalSupply: BigInt(col.nftCollectionSize || 1),
-          baseURI: col.metadataUri || '',
-          collectionURI: col.metadataUri || '',
-          country: col.country || '',
-          state: col.state || '',
-          area: col.propertyAreaSqm || 0,
-          latitude: col.latitude || '',
-          longitude: col.longitude || ''
-        }));
+        const transformedCollections: CollectionDetail[] = data.collections.map((col: any) => {
+          // Fix image URL construction
+          let imageUrl = '';
+          if (col.nftImageFileRef) {
+            // If it's already a full URL or path starting with /, use as is
+            if (col.nftImageFileRef.startsWith('http') || col.nftImageFileRef.startsWith('/')) {
+              imageUrl = col.nftImageFileRef;
+            } else {
+              // Add uploads prefix for both regular files and collection-specific paths
+              imageUrl = `/uploads/${col.nftImageFileRef}`;
+            }
+          } else {
+            // No image available - let CollectionCard handle the placeholder
+            imageUrl = '';
+          }
+          
+          console.log(`Collection ${col.collectionId}: nftImageFileRef="${col.nftImageFileRef}" -> imageUrl="${imageUrl}"`);
+          
+          return {
+            id: col.id,
+            collectionId: BigInt(col.collectionId),
+            name: generateCollectionName(col),
+            description: col.nftDescription || 'No description available',
+            image: imageUrl,
+            creator: col.user?.evmAddress || col.evmOwnerAddress || '0x0000000000000000000000000000000000000000',
+            isListed: col.isListedForSale || (col.listingPrice && col.listingPrice > 0) || false,
+            price: col.listingPrice ? BigInt(Math.floor(col.listingPrice * 1e18)) : 0n,
+            totalSupply: BigInt(col.nftCollectionSize || 1),
+            baseURI: col.metadataUri || '',
+            collectionURI: col.metadataUri || '',
+            country: col.country || '',
+            state: col.state || '',
+            area: col.propertyAreaSqm || 0,
+            latitude: col.latitude || '',
+            longitude: col.longitude || ''
+          };
+        });
         
         console.log(`✅ Transformed ${transformedCollections.length} collections for display`);
+        
+        // Debug: Log first few collections to verify transformation
+        if (transformedCollections.length > 0) {
+          console.log('📊 First few transformed collections:', transformedCollections.slice(0, 3).map(col => ({
+            id: col.id,
+            name: col.name,
+            image: col.image,
+            isListed: col.isListed,
+            price: col.price.toString()
+          })));
+        }
         
         updateState({ 
           onChainCollections: transformedCollections,
@@ -121,7 +174,7 @@ const ExploreNFTPage: React.FC = () => {
     } else {
       console.log('✅ Using cached explore state');
     }
-  }, [loadCollections, hasState, state.lastUpdated]);
+  }, [loadCollections, hasState]);
 
   // Helper functions to update specific parts of state
   const setPage = useCallback((newPage: number) => {
@@ -183,7 +236,7 @@ const ExploreNFTPage: React.FC = () => {
           }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          LOADING COLLECTIONS
+          LOADING LISTINGS
         </motion.h2>
         
         <motion.p 
@@ -191,7 +244,7 @@ const ExploreNFTPage: React.FC = () => {
           animate={{ opacity: [0.7, 1, 0.7] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         >
-          Fetching NFT collection data...
+          Fetching NFT listing data...
         </motion.p>
       </motion.div>
     );
@@ -304,7 +357,7 @@ const ExploreNFTPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          NO COLLECTIONS DETECTED
+          NO LISTINGS DETECTED
         </motion.h2>
         
         <motion.p 
@@ -313,7 +366,7 @@ const ExploreNFTPage: React.FC = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          No NFT collections found. Create the first collection to begin.
+          No NFT listings found. Create the first listing to begin.
         </motion.p>
         
         <Link href="/create-land-listing" passHref>
@@ -325,7 +378,7 @@ const ExploreNFTPage: React.FC = () => {
             transition={{ delay: 0.6 }}
           >
             <AnimatedButton className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-8 py-4 text-lg font-mono uppercase tracking-wider border border-black/30 dark:border-white/30 rounded-cyber">
-              + CREATE NEW COLLECTION
+              + CREATE NEW LISTING
           </AnimatedButton>
           </motion.div>
         </Link>
@@ -379,7 +432,7 @@ const ExploreNFTPage: React.FC = () => {
               }}
               transition={{ duration: 3, repeat: Infinity }}
             >
-              EXPLORE COLLECTIONS
+              EXPLORE LISTINGS
             </motion.h1>
             
             <motion.div 
@@ -392,7 +445,7 @@ const ExploreNFTPage: React.FC = () => {
                 animate={{ opacity: [0.7, 1, 0.7] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                {onChainCollections.length} COLLECTIONS FOUND
+                {onChainCollections.length} LISTINGS FOUND
               </motion.span>
               <motion.div
                 animate={{ rotate: 360 }}
@@ -420,7 +473,7 @@ const ExploreNFTPage: React.FC = () => {
               whileHover={{ scale: 1.05, borderColor: "rgba(0, 0, 0, 0.4)" }}
             >
               <div className="text-2xl font-bold font-mono text-black dark:text-white">{onChainCollections.length}</div>
-              <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider">COLLECTIONS</div>
+              <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider">LISTINGS</div>
             </motion.div>
           </motion.div>
         </motion.div>
@@ -428,13 +481,14 @@ const ExploreNFTPage: React.FC = () => {
         {/* Collections Grid with enhanced animations */}
         <motion.div 
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10"
+          style={{ gridAutoRows: '1fr' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
         >
           {onChainCollections.map((collection: CollectionDetail, index: number) => (
           <motion.div
-            key={collection.collectionId.toString()}
+            key={collection.id}
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ 
@@ -442,7 +496,7 @@ const ExploreNFTPage: React.FC = () => {
                 delay: index * 0.1,
                 ease: "easeOut"
               }}
-            className="w-full" 
+            className="w-full h-full" 
           >
             <CollectionCard collection={collection} />
           </motion.div>

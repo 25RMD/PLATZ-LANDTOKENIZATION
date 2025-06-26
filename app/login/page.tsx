@@ -66,58 +66,51 @@ const LoginPage = () => {
 
     // Validation passed
     const loadingToastId = toast.loading("Logging in...");
-    const success = await login(validationResult.data.username, validationResult.data.password);
+    const loginSuccess = await login(validationResult.data.username, validationResult.data.password);
     toast.dismiss(loadingToastId);
-    if (!success) {
-      console.error("Login failed (toast displayed by context)");
+    
+    if (loginSuccess) {
+      // The `login` function updates the context, but the change might not be reflected immediately.
+      // We'll fetch the user data again to ensure we have the latest `isAdmin` status.
+      const freshUser = await fetchCurrentUser();
+      if (freshUser) {
+        if (freshUser.isAdmin) {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/profile');
+        }
+      } else {
+        // Fallback to profile page if user data somehow isn't available
+        router.push('/profile');
+      }
+    } else {
+      // Error toast is handled by the context, but we can log it.
+      console.error("Login failed.");
     }
   };
 
   const handleWalletLogin = async () => {
     if (!isConnected || !address) {
       toast.error('Please connect your EVM wallet first using the button below.');
-      console.error('EVM Wallet not connected for login attempt');
       return;
     }
-    
-    console.log("Starting EVM wallet login process...");
+
     const loadingToastId = toast.loading("Requesting signature...");
     
     try {
       const success = await connectAndLoginEvmWallet();
       toast.dismiss(loadingToastId);
       
-      if (success) {
-        console.log("EVM Wallet login successful, refreshing authentication state...");
-        
-        // Wait for state to update properly
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Force a fresh authentication state fetch
-        const refreshedUser = await fetchCurrentUser();
-        
-        if (refreshedUser) {
-          console.log("Authentication state refreshed, setting redirect flag...");
-          setHasRedirected(true);
-          
-          // Use a more reliable redirect mechanism
-          if (refreshedUser.isAdmin) {
-            console.log("EVM Wallet login: Detected admin, redirecting to /admin/dashboard");
-            window.location.href = '/admin/dashboard';
-          } else {
-            console.log("EVM Wallet login: Detected regular user, redirecting to /profile");
-            window.location.href = '/profile';
-          }
-        } else {
-          console.error("Failed to refresh user data after EVM wallet login");
-          toast.error("Login successful but failed to load user data. Please refresh the page.");
-        }
-      } else {
-        console.error("EVM Wallet sign-in failed (toast displayed by context)");
+      if (!success) {
+        // The error toast is already handled by the AuthContext, 
+        // but we can log it here for debugging.
+        console.error("EVM Wallet sign-in failed. See context for error details.");
       }
+      // On success, the useEffect hook will handle the redirect automatically.
     } catch (error) {
-    toast.dismiss(loadingToastId);
-      console.error("Error during EVM wallet login:", error);
+      toast.dismiss(loadingToastId);
+      console.error("An unexpected error occurred during EVM wallet login:", error);
+      // The context likely handles this error toast as well, but a fallback can be added if needed.
     }
   };
 
@@ -152,7 +145,7 @@ const LoginPage = () => {
                 textShadow: "0 0 20px rgba(0, 0, 0, 0.3)",
               }}
             >
-              ACCESS TERMINAL
+              LOGIN
             </motion.h1>
 
       {/* Username/Password Form */}

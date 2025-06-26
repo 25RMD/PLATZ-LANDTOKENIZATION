@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+
+// Manually define the enum type to match the Prisma schema. This is a workaround
+// for a TypeScript lint error where the generated type is not being found.
+type ListingStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'PENDING';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +20,14 @@ const getString = (formData: any, key: string): string | null => {
 const getFile = (formData: any, key: string): File | null => {
   const value = formData.get(key);
   return value instanceof File ? value : null;
+};
+
+// Helper function to safely get a float value from FormData
+const getFloat = (formData: any, key: string): number | null => {
+  const value = getString(formData, key);
+  if (value === null || value.trim() === '') return null;
+  const num = parseFloat(value);
+  return isNaN(num) ? null : num;
 };
 
 // Helper function to save a file to the uploads directory and return a unique filename
@@ -140,22 +152,22 @@ export async function POST(req: NextRequest) {
         const imageBuffer = Buffer.from(await nftImageFile.arrayBuffer());
 
         // Fetch the user's Ethereum address
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        console.log("Found user:", user ? { id: user.id, evmAddress: user.evmAddress } : "User not found");
+        const user = await prisma.users.findUnique({ where: { id: userId } });
+        console.log("Found user:", user ? { id: user.id, evm_address: user.evm_address } : "User not found");
         
         // For development, we'll allow minting without a valid Ethereum address
         // In production, this should be enforced
         if (!user) {
           console.warn('User not found, proceeding without user data');
-        } else if (!user.evmAddress) {
+        } else if (!user.evm_address) {
           console.warn('User has no Ethereum address, proceeding without it');
-        } else if (!isValidPublicKey(user.evmAddress)) {
+        } else if (!isValidPublicKey(user.evm_address)) {
           console.warn('Invalid Ethereum address format, proceeding anyway');
         }
         
         // Store the Ethereum address if it exists and is valid
-        if (user?.evmAddress && isValidPublicKey(user.evmAddress)) {
-          ownerEthAddressForDb = user.evmAddress;
+        if (user?.evm_address && isValidPublicKey(user.evm_address)) {
+          ownerEthAddressForDb = user.evm_address;
         }
 
         const mintResult = await mintNft(
@@ -183,73 +195,69 @@ export async function POST(req: NextRequest) {
     // --- Prepare data for Prisma ---
     // Create a base data object without the user relation
     const baseData: Omit<Prisma.LandListingCreateInput, 'user'> = {
-      // Land Details
-      parcelNumber: (formData as any).get('parcelNumber') as string | null,
-      latitude: (formData as any).get('latitude') ? parseFloat((formData as any).get('latitude')!) : null,
-      longitude: (formData as any).get('longitude') ? parseFloat((formData as any).get('longitude')!) : null,
+      // Land & Property Details
+      parcelNumber: getString(formData, 'parcelNumber'),
+      latitude: getFloat(formData, 'latitude'),
+      longitude: getFloat(formData, 'longitude'),
+      propertyAddress: getString(formData, 'propertyAddress'),
+      city: getString(formData, 'city'),
+      state: getString(formData, 'state'),
+      country: getString(formData, 'country'),
+      zipCode: getString(formData, 'zipCode'),
+      propertyType: getString(formData, 'propertyType'),
+      propertyAreaSqm: getFloat(formData, 'propertyAreaSqm'),
+      legalDescription: getString(formData, 'legalDescription'),
+      propertyValuation: getString(formData, 'propertyValuation'),
+      zoningClassification: getString(formData, 'zoningClassification'),
+      localGovernmentArea: getString(formData, 'localGovernmentArea'),
+      propertyDescription: getString(formData, 'propertyDescription'),
 
       // Title Information
       titleDeedFileRef: savedFiles.titleDeedFileRef || null,
-      deedNumber: (formData as any).get('deedNumber') as string | null,
-      deedType: (formData as any).get('deedType') as string | null,
-      grantorName: (formData as any).get('grantorName') as string | null,
-      granteeName: (formData as any).get('granteeName') as string | null,
-      deedDate: (formData as any).get('deedDate') ? new Date(((formData as any).get('deedDate') as string)!) : null,
+      deedNumber: getString(formData, 'deedNumber'),
+      deedType: getString(formData, 'deedType'),
+      grantorName: getString(formData, 'grantorName'),
+      granteeName: getString(formData, 'granteeName'),
+      deedDate: getString(formData, 'deedDate') ? new Date(getString(formData, 'deedDate')!) : null,
 
       // Title Certificate
       titleCertFileRef: savedFiles.titleCertFileRef || null,
-      certNumber: (formData as any).get('certNumber') as string | null,
-      certIssueDate: (formData as any).get('certIssueDate') ? new Date(((formData as any).get('certIssueDate') as string)!) : null,
+      certNumber: getString(formData, 'certNumber'),
+      certIssueDate: getString(formData, 'certIssueDate') ? new Date(getString(formData, 'certIssueDate')!) : null,
 
-      // Property Details
-      propertyAddress: (formData as any).get('propertyAddress') as string | null,
-      city: (formData as any).get('city') as string | null,
-      state: (formData as any).get('state') as string | null,
-      country: (formData as any).get('country') as string | null,
-      zipCode: (formData as any).get('zipCode') as string | null,
-      propertyType: (formData as any).get('propertyType') as string | null,
-      propertyAreaSqm: (formData as any).get('propertyAreaSqm') ? parseFloat(((formData as any).get('propertyAreaSqm') as string)!) : null,
-      legalDescription: (formData as any).get('legalDescription') as string | null,
-      
-      // Store nftDescription directly in its own field or a suitable existing field
-      // Assuming you have a field like 'nftDescription' in your Prisma model
-      nftDescription: nftDescriptionFromForm, 
-      // If you were using propertyDescription for other structured data, adjust accordingly
-      // For now, let's assume propertyDescription might hold other notes or can be simplified
-      propertyDescription: JSON.stringify({
-        notes: ((formData as any).get('additionalNotes') as string | null) || '',
-        evmOwnerAddress: ownerEthAddressForDb
-      }),
-      
+      // Listing & NFT Details
       listingTitle: nftTitle,
       nftTitle: nftTitle,
+      nftDescription: nftDescription,
       nftImageIrysUri: nftImageUrlArweave,
       nftImageFileRef: savedFiles.nftImageFileRef,
       listingPrice: (formData as any).get('listingPrice') ? parseFloat(((formData as any).get('listingPrice') as string)!) : null,
       priceCurrency: ((formData as any).get('priceCurrency') as string | null) || 'ETH',
-      
-      mintStatus: 'NOT_STARTED',
-      mintTransactionHash: nftMintAddress, 
-      nftMetadataIrysUri: nftMetadataUri,
 
-      status: ((formData as any).get('status') as string | null) || 'DRAFT',
+      // Additional details
+      propertyAddress: (formData as any).get('propertyAddress') as string,
+
+      // File References & Minting Data from server-side processing
+      nftMetadataIrysUri: nftMetadataUri,
+      mintTransactionHash: nftMintAddress,
+      mintStatus: 'NOT_STARTED',
     };
 
     // Try to find a valid user to connect to the listing, or create one if needed
-    let userToConnect = await prisma.user.findUnique({ where: { id: userId } });
+    let userToConnect = await prisma.users.findUnique({ where: { id: userId } });
     
     if (!userToConnect) {
       console.log("User not found with ID:", userId);
       
       // Try to find a user by username 'admin' (from seed.js)
-      userToConnect = await prisma.user.findUnique({ where: { username: "admin" } });
+      userToConnect = await prisma.users.findUnique({ where: { username: "admin" } });
       
       if (!userToConnect) {
         console.log("No admin user found, creating a test user...");
         
         // Create a test user with a random ID
         try {
-          userToConnect = await prisma.user.create({
+          userToConnect = await prisma.users.create({
             data: {
               username: "testuser_" + Date.now(),
               email: `test_${Date.now()}@example.com`,

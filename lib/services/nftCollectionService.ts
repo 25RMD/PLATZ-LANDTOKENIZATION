@@ -20,45 +20,25 @@ export async function getCollectionById(id: string) {
       where: {
         id: id, // Query by CUID string 'id'
       },
-      select: {
-        id: true,
-        nftTitle: true,
-        nftDescription: true,
-        listingPrice: true, 
-        priceCurrency: true,
-        nftImageFileRef: true,
-        nftCollectionSize: true,
-        country: true,
-        state: true,
-        localGovernmentArea: true,
-        propertyAreaSqm: true,
-        latitude: true,
-        longitude: true,
-        contractAddress: true,
-        collectionId: true,      // Prisma BigInt type (selected for response, not for query filter here)
-        mainTokenId: true,       // Prisma BigInt type (selected for response, not for query filter here)
-
-        mintTransactionHash: true,
-        mintTimestamp: true,
-        createdAt: true,
-        user: {
+      include: {
+        users: {
           select: {
             id: true,
             username: true,
-            evmAddress: true,
+            evm_address: true,
           },
         },
-        evmCollectionTokens: {
+        evm_collection_tokens: {
           select: {
-            tokenId: true,         // Prisma BigInt type
-            tokenURI: true,
-            ownerAddress: true,
-            isListed: true,
-            listingPrice: true,    // Prisma Decimal type
+            token_id: true,         // Prisma Int
+            token_uri: true,
+            owner_address: true,
+            is_listed: true,
+            listing_price: true,    // Prisma Float / Decimal depending on schema
           },
           orderBy: {
-            tokenId: 'asc'
-          }
+            token_id: 'asc',
+          },
         },
       },
     });
@@ -71,25 +51,56 @@ export async function getCollectionById(id: string) {
       };
     }
 
-    // Define a type for the token object based on selection
-    type EvmCollectionToken = {
-      tokenId: bigint | null;
-      tokenURI: string | null;
-      ownerAddress: string | null;
-      isListed: boolean | null;
-      listingPrice: import('@prisma/client').Prisma.Decimal | null; 
+    // Helper types for raw data returned from Prisma
+    type RawToken = {
+      token_id: number;
+      token_uri: string | null;
+      owner_address: string | null;
+      is_listed: boolean | null;
+      listing_price: number | import('@prisma/client').Prisma.Decimal | null;
     };
 
-    // Convert BigInt fields to strings and Decimal to numbers for JSON serialization
+    // Transform Prisma (snake_case) response into camelCase structure expected by the frontend
     const serializableCollection = {
-      ...collection,
-      listingPrice: collection.listingPrice ? (collection.listingPrice as any as import('@prisma/client').Prisma.Decimal).toNumber() : null,
-      collectionId: collection.collectionId?.toString(),
-      mainTokenId: collection.mainTokenId?.toString(),
-      evmCollectionTokens: (collection as any).evmCollectionTokens.map((token: EvmCollectionToken) => ({
-        ...token,
-        tokenId: token.tokenId?.toString(),
-        listingPrice: token.listingPrice ? (token.listingPrice as any as import('@prisma/client').Prisma.Decimal).toNumber() : null, 
+      id: collection.id,
+      nftTitle: collection.nft_title,
+      nftDescription: collection.nft_description,
+      listingPrice: collection.listing_price != null && typeof (collection.listing_price as any).toNumber === 'function'
+        ? (collection.listing_price as any as import('@prisma/client').Prisma.Decimal).toNumber()
+        : collection.listing_price,
+      priceCurrency: collection.price_currency,
+      nftImageFileRef: collection.nft_image_file_ref,
+      nftCollectionSize: collection.nft_collection_size,
+      country: collection.country,
+      state: collection.state,
+      localGovernmentArea: collection.local_government_area,
+      propertyAreaSqm: collection.property_area_sqm,
+      latitude: collection.latitude,
+      longitude: collection.longitude,
+      contractAddress: collection.contract_address,
+      collectionId: collection.collection_id ? String(collection.collection_id) : null,
+      mainTokenId: collection.main_token_id ? String(collection.main_token_id) : null,
+      metadataUri: collection.collection_metadata_url,
+      mintTransactionHash: collection.mint_transaction_hash,
+      mintTimestamp: collection.mint_timestamp,
+      createdAt: collection.created_at,
+
+      // Map nested user (note: evm_address is snake_case in DB)
+      user: (collection as any).users ? {
+        id: (collection as any).users.id,
+        username: (collection as any).users.username,
+        evmAddress: (collection as any).users.evm_address,
+      } : null,
+
+      // Convert tokens array
+      evmCollectionTokens: (collection.evm_collection_tokens as RawToken[]).map(token => ({
+        tokenId: String(token.token_id),
+        tokenURI: token.token_uri,
+        ownerAddress: token.owner_address,
+        isListed: token.is_listed,
+        listingPrice: token.listing_price != null && typeof (token.listing_price as any).toNumber === 'function'
+          ? (token.listing_price as any as import('@prisma/client').Prisma.Decimal).toNumber()
+          : token.listing_price,
       })),
     };
 

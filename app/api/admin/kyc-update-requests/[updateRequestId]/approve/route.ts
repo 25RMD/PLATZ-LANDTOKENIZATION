@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         // Use a transaction to ensure both User and KycUpdateRequest are updated reliably
         const result = await prisma.$transaction(async (tx) => {
             // 2. Find the KycUpdateRequest record and lock it for the transaction
-            const updateRequest = await tx.kycUpdateRequest.findUnique({
+            const updateRequest = await tx.kyc_update_requests.findUnique({
                 where: { id: updateRequestId },
                 select: { id: true, status: true, userId: true, changes: true } // Select needed fields, including changes
             });
@@ -51,17 +51,17 @@ export async function POST(request: Request) {
                 throw new Error('Invalid changes data in the update request.');
             }
 
-            const updatedUser = await tx.user.update({
+            const updatedUser = await tx.users.update({
                 where: { id: updateRequest.userId },
                 data: {
                     ...changesToApply, // Spread the changes from the request
-                    kycVerified: true, // Explicitly set verification status to true
+                    kyc_verified: true, // Explicitly set verification status to true
                 },
-                select: { id: true, kycVerified: true } // Select confirmation data
+                select: { id: true, kyc_verified: true } // Select confirmation data
             });
 
             // 4. Update the status of the KycUpdateRequest to APPROVED
-            const approvedRequest = await tx.kycUpdateRequest.update({
+            const approvedRequest = await tx.kyc_update_requests.update({
                 where: { id: updateRequestId },
                 data: {
                     status: 'APPROVED',

@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
+import WalletConnectModal from './WalletConnectModal';
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -56,6 +57,7 @@ const Header = () => {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
@@ -161,7 +163,7 @@ const Header = () => {
             </div>
           ) : (
             <AnimatedButton 
-              onClick={() => connect()} 
+              onClick={() => setIsWalletModalOpen(true)} 
               className="flex items-center space-x-2 text-sm whitespace-nowrap border border-black/20 dark:border-white/20 rounded-md px-3 xl:px-4 py-2 font-medium hover:bg-black/5 dark:hover:bg-white/5 transition"
             >
               <FaWallet />
@@ -171,7 +173,10 @@ const Header = () => {
           )}
 
           {/* Show loading placeholder ONLY if loading AND not already authenticated */}
-          {authLoading && !isAuthenticated ? (
+          {!mounted ? (
+            // Show neutral state during hydration
+            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-700 flex-shrink-0"></div>
+          ) : authLoading && !isAuthenticated ? (
             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-700 animate-pulse flex-shrink-0"></div>
           ) : isAuthenticated ? (
             <div className="relative flex-shrink-0" ref={accountMenuRef}>
@@ -208,7 +213,7 @@ const Header = () => {
                         </p>
                       </div>
                       <div className="py-1">
-                        {isAdmin ? (
+                        {isAdmin && (
                           <Link
                             href="/admin/dashboard"
                             className="block w-full text-left px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
@@ -217,9 +222,8 @@ const Header = () => {
                           >
                             Admin Dashboard
                           </Link>
-                        ) : (
-                          <>
-                        {[
+                        )}
+                        {!isAdmin && [
                           { name: 'Profile', href: '/profile' },
                           { name: 'My Listings', href: '/my-listings' },
                           { name: 'Watchlist', href: '/watchlist' },
@@ -235,8 +239,6 @@ const Header = () => {
                             {item.name}
                           </Link>
                         ))}
-                          </>
-                        )}
                       </div>
                       <div className="border-t border-gray-200 dark:border-zinc-700 py-1">
                         <button
@@ -265,6 +267,13 @@ const Header = () => {
             </div>
           )}
         </div>
+
+        {/* Wallet Connect Modal */}
+        <WalletConnectModal 
+          isOpen={isWalletModalOpen} 
+          onClose={() => setIsWalletModalOpen(false)} 
+          connectors={connectors}
+        />
 
         {/* Mobile Menu Button */}
         <button
@@ -348,7 +357,7 @@ const Header = () => {
                     ) : (
                       <AnimatedButton 
                         onClick={() => {
-                          connect();
+                          setIsWalletModalOpen(true);
                           setMobileMenuOpen(false);
                         }} 
                         className="w-full flex items-center justify-center space-x-2 py-3"
@@ -360,7 +369,10 @@ const Header = () => {
                   </div>
 
                   {/* User Account Section */}
-                  {authLoading && !isAuthenticated ? (
+                  {!mounted ? (
+                    // Show neutral state during hydration
+                    <div className="h-12 bg-gray-200 dark:bg-zinc-700 rounded-md"></div>
+                  ) : authLoading && !isAuthenticated ? (
                     <div className="h-12 bg-gray-200 dark:bg-zinc-700 rounded-md animate-pulse"></div>
                   ) : isAuthenticated ? (
                     <div className="space-y-2">
@@ -383,7 +395,7 @@ const Header = () => {
 
                       {/* Profile Menu Items */}
                       <div className="space-y-1">
-                        {isAdmin ? (
+                        {isAdmin && (
                           <Link
                             href="/admin/dashboard"
                             className="block w-full text-left px-3 py-2 rounded-md text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
@@ -391,25 +403,22 @@ const Header = () => {
                           >
                             Admin Dashboard
                           </Link>
-                        ) : (
-                          <>
-                            {[
-                              { name: 'Profile', href: '/profile' },
-                              { name: 'My Listings', href: '/my-listings' },
-                              { name: 'Watchlist', href: '/watchlist' },
-                              { name: 'Orders', href: '/orders' },
-                            ].map((item) => (
-                              <Link
-                                key={item.name}
-                                href={item.href}
-                                className="block w-full text-left px-3 py-2 rounded-md text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                                onClick={() => setMobileMenuOpen(false)}
-                              >
-                                {item.name}
-                              </Link>
-                            ))}
-                          </>
                         )}
+                        {!isAdmin && [
+                          { name: 'Profile', href: '/profile' },
+                          { name: 'My Listings', href: '/my-listings' },
+                          { name: 'Watchlist', href: '/watchlist' },
+                          { name: 'Orders', href: '/orders' },
+                        ].map((item) => (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            className="block w-full text-left px-3 py-2 rounded-md text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            {item.name}
+                          </Link>
+                        ))}
                         
                         {/* Sign Out Button */}
                         <button

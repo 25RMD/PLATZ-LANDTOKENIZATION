@@ -76,7 +76,7 @@ const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({ params }) =
       />
       
       <div className="relative z-10">
-        <NFTCollectionDetailPage collectionId={resolvedParams.id} />
+        <NFTCollectionDetailPage id={resolvedParams.id} />
     </div>
     </motion.div>
   );

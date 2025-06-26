@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import prisma from '@/lib/db';
+import prisma from '@/lib/prisma';
 import { isAddress, verifyMessage } from 'ethers';
 
 export async function POST(request: NextRequest) {
@@ -14,18 +14,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { address, signature } = body;
+    const { evm_address, signature, challenge } = body;
 
-    if (!address || typeof address !== 'string' || !isAddress(address)) {
+    if (!evm_address || typeof evm_address !== 'string' || !isAddress(evm_address)) {
       return NextResponse.json({ message: 'Invalid or missing EVM address' }, { status: 400 });
     }
     if (!signature || typeof signature !== 'string') {
       return NextResponse.json({ message: 'Invalid or missing signature' }, { status: 400 });
     }
+    if (!challenge || typeof challenge !== 'string') {
+        return NextResponse.json({ message: 'Invalid or missing challenge' }, { status: 400 });
+    }
 
-    const normalizedAddress = address.toLowerCase();
+    const normalizedAddress = evm_address.toLowerCase();
 
-    const authenticatedUser = await prisma.user.findUnique({
+    const authenticatedUser = await prisma.users.findUnique({
       where: { id: authenticatedUserId },
     });
 
@@ -33,11 +36,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Authenticated user not found' }, { status: 404 });
     }
 
-    if (!authenticatedUser.signInNonce) {
+    if (!authenticatedUser.sign_in_nonce) {
       return NextResponse.json({ message: 'No active challenge found. Please request a challenge first.' }, { status: 401 });
     }
 
-    const expectedMessage = `Please sign this message to link your EVM wallet to your profile.\nNonce: ${authenticatedUser.signInNonce}`;
+    const expectedMessage = `Please sign this message to link your EVM wallet to your profile.\nNonce: ${authenticatedUser.sign_in_nonce}`;
+
+    if (challenge !== expectedMessage) {
+        return NextResponse.json({ message: 'Challenge mismatch.' }, { status: 401 });
+    }
+
     let recoveredAddress = '';
 
     try {
@@ -53,8 +61,8 @@ export async function POST(request: NextRequest) {
 
     // Critical Check (Race Condition): Re-query to ensure the input address has not been linked to another user 
     // since the challenge was issued.
-    const userWithThisAddress = await prisma.user.findUnique({
-        where: { evmAddress: normalizedAddress }
+    const userWithThisAddress = await prisma.users.findUnique({
+        where: { evm_address: normalizedAddress }
     });
 
     if (userWithThisAddress && userWithThisAddress.id !== authenticatedUserId) {
@@ -66,19 +74,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Link the wallet
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.users.update({
       where: { id: authenticatedUserId },
       data: {
-        evmAddress: normalizedAddress,
-        signInNonce: null, // Clear the nonce
+        evm_address: normalizedAddress,
+        sign_in_nonce: null, // Clear the nonce
       },
       // Select the fields you want to return (excluding sensitive ones like passwordHash)
       select: {
         id: true,
         username: true,
         email: true,
-        evmAddress: true,
-        kycVerified: true,
+        evm_address: true,
+        kyc_verified: true,
         // Add other fields as needed for the profile context
       }
     });

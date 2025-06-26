@@ -53,7 +53,7 @@ export async function PATCH(request: Request) {
 
   try {
     // Check if the listing exists
-    const existingListing = await prisma.landListing.findUnique({
+    const existingListing = await prisma.land_listings.findUnique({
       where: { id: listingid },
     });
 
@@ -62,7 +62,7 @@ export async function PATCH(request: Request) {
     }
 
     // Update the listing status
-    const updatedListing = await prisma.landListing.update({
+    const updatedListing = await prisma.land_listings.update({
       where: { id: listingid },
       data: { status: newStatus },
     });

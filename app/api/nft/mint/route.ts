@@ -461,7 +461,7 @@ async function generateLandNFTMetadata(landListingId: string): Promise<any> {
     platz_data: {
       listing_id: landListing.id,
       owner_id: landListing.userId,
-      owner_evm_address: landListing.user?.evmAddress || "N/A",
+      owner_evm_address: landListing.user?.evm_address || "N/A",
       created_at: landListing.createdAt.toISOString(),
     }
   };
@@ -515,7 +515,7 @@ export async function GET(request: NextRequest) {
         nftImageFileRef: true,
         listingPrice: true,
         priceCurrency: true,
-        user: { select: { id: true, username: true, evmAddress: true } },
+        user: { select: { id: true, username: true, evm_address: true } },
       },
     });
 

@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import { validateBidPlacement } from '@/lib/bidValidation';
-
-const prisma = new PrismaClient();
 
 // Schema for validation
 const placeBidSchema = z.object({
-  landListingId: z.string().min(1),
-  tokenId: z.number().int().min(0),
-  bidAmount: z.number().positive(),
-  bidderAddress: z.string().min(1),
-  transactionHash: z.string().min(1)
+  land_listing_id: z.string().min(1),
+  token_id: z.number().int().min(0),
+  bid_amount: z.number().positive(),
+  bidder_address: z.string().min(1),
+  transaction_hash: z.string().min(1)
 });
 
 export async function POST(request: NextRequest) {
@@ -19,13 +17,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = placeBidSchema.parse(body);
 
-    console.log(`[BID_PLACEMENT] Validating bid placement for token ${validatedData.tokenId}`);
+    console.log(`[BID_PLACEMENT] Validating bid placement for token ${validatedData.token_id}`);
 
     // Validate the bid placement using our enhanced validation system
     const validationResult = await validateBidPlacement(
-      validatedData.landListingId,
-      validatedData.tokenId,
-      validatedData.bidderAddress
+      validatedData.land_listing_id,
+      validatedData.token_id,
+      validatedData.bidder_address
     );
 
     if (!validationResult.isValid) {
@@ -37,10 +35,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the bidder user
-    const bidder = await prisma.user.findFirst({
+    const bidder = await prisma.users.findFirst({
       where: {
-        evmAddress: {
-          equals: validatedData.bidderAddress,
+        evm_address: {
+          equals: validatedData.bidder_address,
           mode: 'insensitive'
         }
       }
@@ -54,97 +52,97 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for existing active bid from this user on this token
-    const existingBid = await prisma.nftBid.findFirst({
+    const existingBid = await prisma.nft_bids.findFirst({
       where: {
-        landListingId: validatedData.landListingId,
-        tokenId: validatedData.tokenId,
-        bidderUserId: bidder.id,
-        bidStatus: 'ACTIVE'
+        land_listing_id: validatedData.land_listing_id,
+        token_id: validatedData.token_id,
+        bidder_user_id: bidder.id,
+        bid_status: 'ACTIVE'
       }
     });
 
     if (existingBid) {
       // Update existing bid instead of creating a new one
-      const updatedBid = await prisma.nftBid.update({
+      const updatedBid = await prisma.nft_bids.update({
         where: { id: existingBid.id },
         data: {
-          bidAmount: validatedData.bidAmount,
-          transactionHash: validatedData.transactionHash,
-          updatedAt: new Date()
+          bid_amount: validatedData.bid_amount,
+          transaction_hash: validatedData.transaction_hash,
+          updated_at: new Date()
         },
         include: {
-          bidder: {
+          users: { // Corresponds to 'bidder'
             select: {
               id: true,
               username: true,
-              evmAddress: true
+              evm_address: true
             }
           },
-          landListing: {
+          land_listings: { // Corresponds to 'landListing'
             select: {
               id: true,
-              nftTitle: true,
-              collectionId: true
+              nft_title: true,
+              collection_id: true
             }
           }
         }
       });
 
-      console.log(`[BID_PLACEMENT] Updated existing bid ${existingBid.id} with new amount ${validatedData.bidAmount} ETH`);
+      console.log(`[BID_PLACEMENT] Updated existing bid ${existingBid.id} with new amount ${validatedData.bid_amount} ETH`);
 
       return NextResponse.json({
         success: true,
         bid: updatedBid,
         message: 'Bid updated successfully',
-        isUpdate: true
+        is_update: true
       });
     }
 
     // Create new bid
-    const newBid = await prisma.nftBid.create({
+    const newBid = await prisma.nft_bids.create({
       data: {
-        landListingId: validatedData.landListingId,
-        tokenId: validatedData.tokenId,
-        bidderUserId: bidder.id,
-        bidAmount: validatedData.bidAmount,
-        bidStatus: 'ACTIVE',
-        transactionHash: validatedData.transactionHash
+        land_listing_id: validatedData.land_listing_id,
+        token_id: validatedData.token_id,
+        bidder_user_id: bidder.id,
+        bid_amount: validatedData.bid_amount,
+        bid_status: 'ACTIVE',
+        transaction_hash: validatedData.transaction_hash
       },
       include: {
-        bidder: {
+        users: { // Corresponds to 'bidder'
           select: {
             id: true,
             username: true,
-            evmAddress: true
+            evm_address: true
           }
         },
-        landListing: {
+        land_listings: { // Corresponds to 'landListing'
           select: {
             id: true,
-            nftTitle: true,
-            collectionId: true
+            nft_title: true,
+            collection_id: true
           }
         }
       }
     });
 
-    console.log(`[BID_PLACEMENT] Created new bid ${newBid.id} for ${validatedData.bidAmount} ETH on token ${validatedData.tokenId}`);
+    console.log(`[BID_PLACEMENT] Created new bid ${newBid.id} for ${validatedData.bid_amount} ETH on token ${validatedData.token_id}`);
 
     // Mark any lower bids from other users as OUTBID
-    await prisma.nftBid.updateMany({
+    await prisma.nft_bids.updateMany({
       where: {
-        landListingId: validatedData.landListingId,
-        tokenId: validatedData.tokenId,
-        bidAmount: {
-          lt: validatedData.bidAmount
+        land_listing_id: validatedData.land_listing_id,
+        token_id: validatedData.token_id,
+        bid_amount: {
+          lt: validatedData.bid_amount
         },
-        bidStatus: 'ACTIVE',
+        bid_status: 'ACTIVE',
         id: {
           not: newBid.id
         }
       },
       data: {
-        bidStatus: 'OUTBID'
+        bid_status: 'OUTBID'
       }
     });
 
@@ -152,7 +150,7 @@ export async function POST(request: NextRequest) {
       success: true,
       bid: newBid,
       message: 'Bid placed successfully',
-      currentOwner: validationResult.currentOwner
+      current_owner: validationResult.currentOwner
     });
 
   } catch (error) {
@@ -169,7 +167,5 @@ export async function POST(request: NextRequest) {
       { success: false, message: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 

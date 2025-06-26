@@ -2,7 +2,7 @@
 // Handles POST requests for user login (username/password).
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import prisma from '@/lib/prisma';
 import { comparePassword, createJwt } from '@/lib/authUtils';
 import { serialize } from 'cookie'; // Import serialize function
 import { LoginSchema } from '@/lib/schemas'; // Import schema
@@ -29,21 +29,21 @@ export async function POST(request: Request) {
     console.log("[API /login] Attempting to find user:", username);
 
     // Find user by username (or email, if you allow login via email)
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { username: username },
     });
 
-    console.log("[API /login] User found:", user ? { id: user.id, username: user.username, isAdmin: user.isAdmin, hasPasswordHash: !!user.passwordHash } : null);
+    console.log("[API /login] User found:", user ? { id: user.id, username: user.username, is_admin: user.is_admin, hasPasswordHash: !!user.password_hash } : null);
 
     // Check if user exists and has a password hash
-    if (!user || !user.passwordHash) {
+    if (!user || !user.password_hash) {
       console.warn("[API /login] Login failed: User not found or no password hash.");
       return NextResponse.json({ message: 'Invalid username or password' }, { status: 401 }); // Unauthorized
     }
 
     console.log("[API /login] Comparing password for user:", user.username);
     // Compare the provided password with the stored hash
-    const passwordMatch = await comparePassword(password, user.passwordHash);
+    const passwordMatch = await comparePassword(password, user.password_hash);
     console.log("[API /login] Password match result:", passwordMatch);
 
     if (!passwordMatch) {
@@ -51,9 +51,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Invalid username or password' }, { status: 401 }); // Unauthorized
     }
 
-    console.log(`[API /login] Password matched. Creating JWT for user: ${user.username}, isAdmin: ${user.isAdmin}`);
+    console.log(`[API /login] Password matched. Creating JWT for user: ${user.username}, is_admin: ${user.is_admin}`);
     // Passwords match - Create JWT
-    const token = await createJwt({ userId: user.id, isAdmin: user.isAdmin });
+    const token = await createJwt({ userId: user.id, isAdmin: user.is_admin });
     console.log(`[API /login] JWT created. Token length: ${token.length}`);
 
     // Serialize the cookie
@@ -66,9 +66,9 @@ export async function POST(request: Request) {
     });
 
     // Don't return sensitive info
-    const { passwordHash, signInNonce, ...userResponse } = user;
+    const { password_hash, sign_in_nonce, ...userResponse } = user;
 
-    console.log(`User logged in: ${username} (Admin: ${user.isAdmin})`);
+    console.log(`User logged in: ${username} (Admin: ${user.is_admin})`);
 
     // Return success response with the Set-Cookie header
     return NextResponse.json(

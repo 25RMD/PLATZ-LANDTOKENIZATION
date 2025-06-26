@@ -24,42 +24,42 @@ export interface BidValidationResult {
 /**
  * Get token owner from database (fast, reliable) - prioritizes individual token ownership
  */
-async function getDatabaseTokenOwner(tokenId: number): Promise<string | null> {
+async function getDatabaseTokenOwner(token_id: number): Promise<string | null> {
   try {
     // First check evmCollectionTokens table for individual token ownership
-    const token = await prisma.evmCollectionToken.findFirst({
-      where: { tokenId },
-      select: { ownerAddress: true }
+    const token = await prisma.evm_collection_tokens.findFirst({
+      where: { token_id },
+      select: { owner_address: true }
     });
 
-    if (token?.ownerAddress) {
-      console.log(`[BID_VALIDATION] Found individual token owner for token ${tokenId}: ${token.ownerAddress}`);
-      return token.ownerAddress;
+    if (token?.owner_address) {
+      console.log(`[BID_VALIDATION] Found individual token owner for token ${token_id}: ${token.owner_address}`);
+      return token.owner_address;
     }
 
     // Fallback: check land listing ownership (collection-level)
-    const listing = await prisma.landListing.findFirst({
+    const listing = await prisma.land_listings.findFirst({
       where: {
-        evmCollectionTokens: {
-          some: { tokenId }
+        evm_collection_tokens: {
+          some: { token_id }
         }
       },
       include: {
-        user: {
-          select: { evmAddress: true }
+        users: {
+          select: { evm_address: true }
         }
       }
     });
 
-    if (listing?.user?.evmAddress) {
-      console.log(`[BID_VALIDATION] Found collection owner for token ${tokenId}: ${listing.user.evmAddress}`);
-      return listing.user.evmAddress;
+    if (listing?.users?.evm_address) {
+      console.log(`[BID_VALIDATION] Found collection owner for token ${token_id}: ${listing.users.evm_address}`);
+      return listing.users.evm_address;
     }
 
-    console.warn(`[BID_VALIDATION] No owner found for token ${tokenId} in database`);
+    console.warn(`[BID_VALIDATION] No owner found for token ${token_id} in database`);
     return null;
   } catch (error) {
-    console.error(`[BID_VALIDATION] Database owner lookup failed for token ${tokenId}:`, error);
+    console.error(`[BID_VALIDATION] Database owner lookup failed for token ${token_id}:`, error);
     return null;
   }
 }
@@ -67,7 +67,7 @@ async function getDatabaseTokenOwner(tokenId: number): Promise<string | null> {
 /**
  * Get token owner from blockchain with timeout handling
  */
-async function getBlockchainTokenOwner(tokenId: number): Promise<string | null> {
+async function getBlockchainTokenOwner(token_id: number): Promise<string | null> {
   try {
     const owner = await Promise.race([
       publicClient.readContract({
@@ -80,7 +80,7 @@ async function getBlockchainTokenOwner(tokenId: number): Promise<string | null> 
           "type": "function"
         }],
         functionName: 'ownerOf',
-        args: [BigInt(tokenId)]
+        args: [BigInt(token_id)]
       }),
       new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Blockchain timeout')), 5000)
@@ -89,7 +89,7 @@ async function getBlockchainTokenOwner(tokenId: number): Promise<string | null> 
 
     return owner;
   } catch (error) {
-    console.warn(`[BID_VALIDATION] Blockchain owner lookup failed for token ${tokenId}:`, error);
+    console.warn(`[BID_VALIDATION] Blockchain owner lookup failed for token ${token_id}:`, error);
     return null;
   }
 }
@@ -98,26 +98,26 @@ async function getBlockchainTokenOwner(tokenId: number): Promise<string | null> 
  * Validates if a bid can be placed on a token (individual token ownership based)
  */
 export async function validateBidPlacement(
-  landListingId: string,
-  tokenId: number,
+  land_listing_id: string,
+  token_id: number,
   bidderAddress: string
 ): Promise<BidValidationResult> {
   try {
-    console.log(`[BID_VALIDATION] Validating bid placement for token ${tokenId} by ${bidderAddress}`);
+    console.log(`[BID_VALIDATION] Validating bid placement for token ${token_id} by ${bidderAddress}`);
     
     // 1. Get the land listing with current owner information
-    const landListing = await prisma.landListing.findUnique({
-      where: { id: landListingId },
+    const landListing = await prisma.land_listings.findUnique({
+      where: { id: land_listing_id },
       include: {
-        user: {
+        users: {
           select: {
-            evmAddress: true,
+            evm_address: true,
             username: true
           }
         },
-        evmCollectionTokens: {
+        evm_collection_tokens: {
           where: {
-            tokenId: tokenId
+            token_id: token_id
           }
         }
       }
@@ -132,25 +132,25 @@ export async function validateBidPlacement(
     }
 
     // 2. Get current token owner (prioritize individual token ownership)
-    let currentOwner = await getDatabaseTokenOwner(tokenId);
+    let currentOwner = await getDatabaseTokenOwner(token_id);
     let source: 'database' | 'blockchain' | 'fallback' = 'database';
 
     if (!currentOwner) {
-      console.log(`[BID_VALIDATION] No database owner for token ${tokenId}, trying blockchain...`);
-      currentOwner = await getBlockchainTokenOwner(tokenId);
+      console.log(`[BID_VALIDATION] No database owner for token ${token_id}, trying blockchain...`);
+      currentOwner = await getBlockchainTokenOwner(token_id);
       source = 'blockchain';
     }
 
     if (!currentOwner) {
       // Final fallback: use listing owner (collection-level)
-      currentOwner = landListing.user?.evmAddress || null;
+      currentOwner = landListing.users?.evm_address || null;
       source = 'fallback';
-      console.warn(`[BID_VALIDATION] Using collection owner as fallback for token ${tokenId}: ${currentOwner}`);
+      console.warn(`[BID_VALIDATION] Using collection owner as fallback for token ${token_id}: ${currentOwner}`);
       
       if (!currentOwner) {
         return {
           isValid: false,
-          error: `Token ${tokenId} owner could not be determined`,
+          error: `Token ${token_id} owner could not be determined`,
           tokenExists: false,
           source
         };
@@ -159,7 +159,7 @@ export async function validateBidPlacement(
 
     // 3. Prevent self-bidding (case-insensitive comparison)
     if (currentOwner.toLowerCase() === bidderAddress.toLowerCase()) {
-      console.log(`[BID_VALIDATION] Self-bidding detected: ${bidderAddress} trying to bid on their own token ${tokenId}`);
+      console.log(`[BID_VALIDATION] Self-bidding detected: ${bidderAddress} trying to bid on their own token ${token_id}`);
       return {
         isValid: false,
         error: 'You cannot bid on a token you already own',
@@ -170,29 +170,29 @@ export async function validateBidPlacement(
 
     // 4. If we got blockchain data and it differs from database, sync the individual token ownership
     if (source === 'blockchain') {
-      const tokenRecord = landListing.evmCollectionTokens.find(t => t.tokenId === tokenId);
-      if (tokenRecord && tokenRecord.ownerAddress?.toLowerCase() !== currentOwner.toLowerCase()) {
-        console.warn(`[BID_VALIDATION] Individual token ownership mismatch for token ${tokenId}:`);
-        console.warn(`  Database token owner: ${tokenRecord.ownerAddress}`);
+      const tokenRecord = landListing.evm_collection_tokens.find(t => t.token_id === token_id);
+      if (tokenRecord && tokenRecord.owner_address?.toLowerCase() !== currentOwner.toLowerCase()) {
+        console.warn(`[BID_VALIDATION] Individual token ownership mismatch for token ${token_id}:`);
+        console.warn(`  Database token owner: ${tokenRecord.owner_address}`);
         console.warn(`  Blockchain token owner: ${currentOwner}`);
         
         // Auto-heal individual token ownership
         try {
-          await prisma.evmCollectionToken.updateMany({
+          await prisma.evm_collection_tokens.updateMany({
             where: { 
-              tokenId: tokenId,
-              landListingId: landListing.id
+              token_id: token_id,
+              land_listing_id: land_listing_id
             },
-            data: { ownerAddress: currentOwner }
+            data: { owner_address: currentOwner }
           });
-          console.log(`[BID_VALIDATION] Auto-healed individual token ownership for token ${tokenId}`);
+          console.log(`[BID_VALIDATION] Auto-healed individual token ownership for token ${token_id}`);
         } catch (healError) {
           console.error(`[BID_VALIDATION] Failed to auto-heal token ownership:`, healError);
         }
       }
     }
 
-    console.log(`[BID_VALIDATION] Bid validation successful for token ${tokenId}. Owner: ${currentOwner}, Bidder: ${bidderAddress}`);
+    console.log(`[BID_VALIDATION] Bid validation successful for token ${token_id}. Owner: ${currentOwner}, Bidder: ${bidderAddress}`);
     return {
       isValid: true,
       currentOwner,
@@ -221,26 +221,26 @@ export async function validateBidAcceptance(
     console.log(`[BID_VALIDATION] Validating bid acceptance for bid ${bidId} by ${accepterAddress}`);
     
     // 1. Get the bid with all related information
-    const bid = await prisma.nftBid.findUnique({
+    const bid = await prisma.nft_bids.findUnique({
       where: { id: bidId },
       include: {
-        bidder: {
+        users: {
           select: {
-            evmAddress: true,
+            evm_address: true,
             username: true
           }
         },
-        landListing: {
+        land_listings: {
           include: {
-            user: {
+            users: {
               select: {
-                evmAddress: true,
+                evm_address: true,
                 username: true
               }
             },
-            evmCollectionTokens: {
+            evm_collection_tokens: {
               where: {
-                tokenId: { equals: 0 } // Will be updated below
+                token_id: { equals: 0 } // Will be updated below
               }
             }
           }
@@ -256,34 +256,34 @@ export async function validateBidAcceptance(
       };
     }
 
-    if (bid.bidStatus !== 'ACTIVE') {
+    if (bid.bid_status !== 'ACTIVE') {
       return {
         isValid: false,
-        error: `Bid is not active (current status: ${bid.bidStatus})`,
+        error: `Bid is not active (current status: ${bid.bid_status})`,
         source: 'database'
       };
     }
 
     // 2. Get current token owner (prioritize individual token ownership)
-    let currentOwner = await getDatabaseTokenOwner(bid.tokenId);
+    let currentOwner = await getDatabaseTokenOwner(bid.token_id);
     let source: 'database' | 'blockchain' | 'fallback' = 'database';
 
     if (!currentOwner) {
-      console.log(`[BID_VALIDATION] No database owner for token ${bid.tokenId}, trying blockchain...`);
-      currentOwner = await getBlockchainTokenOwner(bid.tokenId);
+      console.log(`[BID_VALIDATION] No database owner for token ${bid.token_id}, trying blockchain...`);
+      currentOwner = await getBlockchainTokenOwner(bid.token_id);
       source = 'blockchain';
     }
 
     if (!currentOwner) {
       // Final fallback: use listing owner (collection-level)
-      currentOwner = bid.landListing.user?.evmAddress || null;
+      currentOwner = bid.land_listings.users?.evm_address || null;
       source = 'fallback';
-      console.warn(`[BID_VALIDATION] Using collection owner as fallback for token ${bid.tokenId}: ${currentOwner}`);
+      console.warn(`[BID_VALIDATION] Using collection owner as fallback for token ${bid.token_id}: ${currentOwner}`);
       
       if (!currentOwner) {
         return {
           isValid: false,
-          error: `Token ${bid.tokenId} owner could not be determined`,
+          error: `Token ${bid.token_id} owner could not be determined`,
           tokenExists: false,
           source
         };
@@ -296,14 +296,14 @@ export async function validateBidAcceptance(
       
       return {
         isValid: false,
-        error: `Only the current token owner can accept bids. You need to own token #${bid.tokenId} to accept this bid.`,
+        error: `Only the current token owner can accept bids. You need to own token #${bid.token_id} to accept this bid.`,
         currentOwner,
         source
       };
     }
 
     // 4. Prevent accepting your own bid (self-bidding check)
-    if (bid.bidder.evmAddress?.toLowerCase() === currentOwner.toLowerCase()) {
+    if (bid.users.evm_address?.toLowerCase() === currentOwner.toLowerCase()) {
       console.log(`[BID_VALIDATION] Self-bid acceptance detected: ${currentOwner} trying to accept their own bid`);
       return {
         isValid: false,
@@ -313,7 +313,7 @@ export async function validateBidAcceptance(
       };
     }
 
-    console.log(`[BID_VALIDATION] Bid acceptance validation successful for token ${bid.tokenId}. Owner: ${currentOwner}, Bidder: ${bid.bidder.evmAddress}`);
+    console.log(`[BID_VALIDATION] Bid acceptance validation successful for token ${bid.token_id}. Owner: ${currentOwner}, Bidder: ${bid.users.evm_address}`);
     return {
       isValid: true,
       currentOwner,
@@ -335,19 +335,19 @@ export async function validateBidAcceptance(
  * Prevents duplicate bid acceptances by checking if token was already sold
  */
 export async function checkForDuplicateSale(
-  landListingId: string,
-  tokenId: number
+  land_listing_id: string,
+  token_id: number
 ): Promise<{ isDuplicate: boolean; lastSaleDate?: Date; transactionHash?: string }> {
   try {
     // Check for recent accepted bids on this token
-    const recentAcceptedBid = await prisma.nftBid.findFirst({
+    const recentAcceptedBid = await prisma.nft_bids.findFirst({
       where: {
-        landListingId,
-        tokenId,
-        bidStatus: 'ACCEPTED'
+        land_listing_id,
+        token_id,
+        bid_status: 'ACCEPTED'
       },
       orderBy: {
-        updatedAt: 'desc'
+        updated_at: 'desc'
       }
     });
 
@@ -356,11 +356,11 @@ export async function checkForDuplicateSale(
       const oneHourAgo = new Date();
       oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
-      if (recentAcceptedBid.updatedAt > oneHourAgo) {
+      if (recentAcceptedBid.updated_at > oneHourAgo) {
         return {
           isDuplicate: true,
-          lastSaleDate: recentAcceptedBid.updatedAt,
-          transactionHash: recentAcceptedBid.transactionHash
+          lastSaleDate: recentAcceptedBid.updated_at,
+          transactionHash: recentAcceptedBid.transaction_hash || undefined
         };
       }
     }
@@ -377,13 +377,13 @@ export async function checkForDuplicateSale(
  * Sync individual token ownership with blockchain and update database
  */
 export async function syncOwnershipWithBlockchain(
-  landListingId: string,
-  tokenId: number
+  land_listing_id: string,
+  token_id: number
 ): Promise<{ success: boolean; newOwner?: string; error?: string }> {
   try {
-    console.log(`[BID_VALIDATION] Syncing ownership for token ${tokenId} with blockchain...`);
+    console.log(`[BID_VALIDATION] Syncing ownership for token ${token_id} with blockchain...`);
     
-    const blockchainOwner = await getBlockchainTokenOwner(tokenId);
+    const blockchainOwner = await getBlockchainTokenOwner(token_id);
     
     if (!blockchainOwner) {
       return {
@@ -392,18 +392,18 @@ export async function syncOwnershipWithBlockchain(
       };
     }
 
-    console.log(`[BID_VALIDATION] Blockchain owner for token ${tokenId}: ${blockchainOwner}`);
+    console.log(`[BID_VALIDATION] Blockchain owner for token ${token_id}: ${blockchainOwner}`);
 
     // Update individual token ownership in database
-    const updateResult = await prisma.evmCollectionToken.updateMany({
+    const updateResult = await prisma.evm_collection_tokens.updateMany({
       where: { 
-        tokenId,
-        landListingId 
+        token_id,
+        land_listing_id 
       },
-      data: { ownerAddress: blockchainOwner }
+      data: { owner_address: blockchainOwner }
     });
 
-    console.log(`[BID_VALIDATION] Updated ${updateResult.count} token records for token ${tokenId}`);
+    console.log(`[BID_VALIDATION] Updated ${updateResult.count} token records for token ${token_id}`);
 
     // Note: We don't update the listing ownership here as that's collection-level
     // Individual tokens can have different owners than the collection creator
@@ -414,7 +414,7 @@ export async function syncOwnershipWithBlockchain(
     };
 
   } catch (error) {
-    console.error('[BID_VALIDATION] Error syncing ownership with blockchain:', error);
+    console.error(`[BID_VALIDATION] Error syncing ownership for token ${token_id}:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

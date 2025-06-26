@@ -1,34 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userAddress = searchParams.get('userAddress');
+    const user_address = searchParams.get('user_address');
 
-    if (!userAddress) {
+    if (!user_address) {
       return NextResponse.json(
         { success: false, error: 'User address is required' },
         { status: 400 }
       );
     }
 
-    console.log(`[RECEIVED BIDS] Fetching completed/resolved bids for user: ${userAddress}`);
+    console.log(`[RECEIVED BIDS] Fetching completed/resolved bids for user: ${user_address}`);
 
     // Find the user by EVM address
-    const user = await prisma.user.findFirst({
+    const user = await prisma.users.findFirst({
       where: {
-        evmAddress: {
-          equals: userAddress,
+        evm_address: {
+          equals: user_address,
           mode: 'insensitive'
         }
       }
     });
 
     if (!user) {
-      console.log(`[RECEIVED BIDS] User not found for address: ${userAddress}`);
+      console.log(`[RECEIVED BIDS] User not found for address: ${user_address}`);
       return NextResponse.json({
         success: true,
         bids: [],
@@ -40,87 +38,87 @@ export async function GET(request: NextRequest) {
 
     // Find only bids received on listings owned by this user (not bids they made)
     // Excludes ACTIVE bids (those are shown in the Active Bids section)
-    const resolvedBids = await prisma.nftBid.findMany({
+    const resolvedBids = await prisma.nft_bids.findMany({
       where: {
-        bidStatus: {
+        bid_status: {
           in: ['ACCEPTED', 'REJECTED', 'WITHDRAWN', 'OUTBID']
         },
         // Only bids received on listings owned by this user
-        landListing: {
-          user: {
-            evmAddress: {
-              equals: userAddress,
+        land_listings: {
+          users: {
+            evm_address: {
+              equals: user_address,
               mode: 'insensitive'
             }
           }
         }
       },
       include: {
-        bidder: {
+        users: { // Bidder
           select: {
             id: true,
             username: true,
-            evmAddress: true
+            evm_address: true
           }
         },
-        landListing: {
+        land_listings: {
           include: {
-            user: {
+            users: { // Owner
               select: {
                 id: true,
                 username: true,
-                evmAddress: true
+                evm_address: true
               }
             }
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     });
 
     console.log(`[RECEIVED BIDS] Found ${resolvedBids.length} resolved bids received by user`);
 
     // Format the response - these are all bids received on user's listings
-    const formattedBids = resolvedBids.map(bid => ({
+    const formatted_bids = resolvedBids.map(bid => ({
       id: bid.id,
-      bidAmount: bid.bidAmount,
-      bidStatus: bid.bidStatus,
-      transactionHash: bid.transactionHash || '',
-      createdAt: bid.createdAt.toISOString(),
+      bid_amount: bid.bid_amount,
+      bid_status: bid.bid_status,
+      transaction_hash: bid.transaction_hash || '',
+      created_at: bid.created_at.toISOString(),
       bidder: {
-        id: bid.bidder.id,
-        username: bid.bidder.username,
-        evmAddress: bid.bidder.evmAddress
+        id: bid.users.id,
+        username: bid.users.username,
+        evm_address: bid.users.evm_address
       },
-      landListing: {
-        id: bid.landListing.id,
-        nftTitle: bid.landListing.nftTitle,
-        collectionId: bid.landListing.collectionId,
-        nftImageFileRef: bid.landListing.nftImageFileRef,
+      land_listing: {
+        id: bid.land_listings.id,
+        nft_title: bid.land_listings.nft_title,
+        collection_id: bid.land_listings.collection_id,
+        nft_image_file_ref: bid.land_listings.nft_image_file_ref,
         owner: {
-          id: bid.landListing.user.id,
-          username: bid.landListing.user.username,
-          evmAddress: bid.landListing.user.evmAddress
+          id: bid.land_listings.users.id,
+          username: bid.land_listings.users.username,
+          evm_address: bid.land_listings.users.evm_address
         }
       }
     }));
     
-    const statusCounts = formattedBids.reduce((acc, bid) => {
-      acc[bid.bidStatus] = (acc[bid.bidStatus] || 0) + 1;
+    const status_counts = formatted_bids.reduce((acc, bid) => {
+      acc[bid.bid_status] = (acc[bid.bid_status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    console.log(`[RECEIVED BIDS] User received ${formattedBids.length} resolved bids on their listings`);
+    console.log(`[RECEIVED BIDS] User received ${formatted_bids.length} resolved bids on their listings`);
 
     return NextResponse.json({
       success: true,
-      bids: formattedBids,
+      bids: formatted_bids,
       metadata: {
-        userFound: !!user,
-        totalReceivedBids: formattedBids.length,
-        statusBreakdown: statusCounts
+        user_found: !!user,
+        total_received_bids: formatted_bids.length,
+        status_breakdown: status_counts
       }
     });
 
@@ -134,7 +132,5 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 

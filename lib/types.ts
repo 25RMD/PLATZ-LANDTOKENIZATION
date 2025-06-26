@@ -1,6 +1,7 @@
 // lib/types.ts
 
 export interface CollectionDetail {
+  id: string; // The unique UUID from the database
   collectionId: bigint;
   startTokenId: bigint;
   totalSupply: bigint;
@@ -10,6 +11,7 @@ export interface CollectionDetail {
   creator: string;
   isListed: boolean;
   price?: bigint;
+  listingPrice?: number;
   seller?: string;
   name: string;
   image: string;

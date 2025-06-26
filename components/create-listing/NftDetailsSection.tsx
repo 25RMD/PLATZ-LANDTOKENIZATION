@@ -199,21 +199,6 @@ const NftDetailsSection: React.FC<NftDetailsProps> = ({
               DEFAULT: 10 TOKENS PER COLLECTION
             </motion.p>
           </motion.div>
-          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-            <label htmlFor="status" className="block text-black dark:text-white mb-3 text-sm font-mono uppercase tracking-wider">Listing Status</label>
-            <select
-              id="status"
-              name="status"
-              value={formData.status}
-              onChange={handleInputChange}
-              className={isSubmitting ? inputFieldDisabledStyles : inputFieldStyles}
-              disabled={isSubmitting}
-            >
-              <option value="DRAFT">DRAFT</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="PENDING">PENDING REVIEW</option>
-            </select>
-          </motion.div>
         </div>
       </motion.div>
 

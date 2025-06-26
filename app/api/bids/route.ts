@@ -1,25 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import { trackBidEvent } from '@/lib/priceTracking';
+import { randomUUID } from 'crypto';
 import { validateBidAmount, validateBidAmountFast } from '@/lib/bidSync';
-
-const prisma = new PrismaClient();
 
 // Schema for POST request validation
 const createBidSchema = z.object({
-  collectionId: z.string().min(1),
-  tokenId: z.string().min(1),
-  bidAmount: z.number().positive(),
-  transactionHash: z.string().min(1),
-  bidderAddress: z.string().min(1) // EVM address of the bidder
+  collection_id: z.string().min(1),
+  token_id: z.string().min(1),
+  bid_amount: z.number().positive(),
+  transaction_hash: z.string().min(1),
+  bidder_address: z.string().min(1) // EVM address of the bidder
 });
 
 // Schema for GET request query validation
 const getBidsSchema = z.object({
-  collectionId: z.string().nullable().optional(),
-  tokenId: z.string().nullable().optional(),
-  userAddress: z.string().nullable().optional(),
+  collection_id: z.string().nullable().optional(),
+  token_id: z.string().nullable().optional(),
+  user_address: z.string().nullable().optional(),
   status: z.enum(['ACTIVE', 'ACCEPTED', 'WITHDRAWN', 'OUTBID']).nullable().optional()
 });
 
@@ -29,10 +28,10 @@ export async function POST(request: NextRequest) {
     const validatedData = createBidSchema.parse(body);
 
     // Validate bid amount against database state (fast validation)
-    const tokenId = parseInt(validatedData.tokenId);
+    const tokenId = parseInt(validatedData.token_id);
     console.log(`🔍 [BID_API] Starting bid validation for token ${tokenId}...`);
     
-    const bidValidation = await validateBidAmountFast(tokenId, validatedData.bidAmount);
+    const bidValidation = await validateBidAmountFast(tokenId, validatedData.bid_amount);
     console.log(`[BID_API] Validation result:`, bidValidation);
     
     if (!bidValidation.valid) {
@@ -41,8 +40,8 @@ export async function POST(request: NextRequest) {
         { 
           success: false, 
           message: bidValidation.message,
-          currentBid: bidValidation.currentBid,
-          minimumBid: bidValidation.minimumBid
+          current_bid: bidValidation.currentBid,
+          minimum_bid: bidValidation.minimumBid
         },
         { status: 400 }
       );
@@ -51,8 +50,8 @@ export async function POST(request: NextRequest) {
     console.log(`[BID_API] Bid validation passed, proceeding with creation...`);
 
     // Find user by EVM address
-    const user = await prisma.user.findFirst({
-      where: { evmAddress: validatedData.bidderAddress },
+    const user = await prisma.users.findFirst({
+      where: { evm_address: validatedData.bidder_address },
       select: { id: true }
     });
     
@@ -66,9 +65,9 @@ export async function POST(request: NextRequest) {
     const userId = user.id;
 
     // Find the land listing
-    const landListing = await prisma.landListing.findFirst({
+    const landListing = await prisma.land_listings.findFirst({
       where: {
-        collectionId: validatedData.collectionId
+        collection_id: validatedData.collection_id
       }
     });
 
@@ -80,61 +79,62 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark any previous bids from this user as OUTBID
-    const previousBidsUpdate = await prisma.nftBid.updateMany({
+    const previousBidsUpdate = await prisma.nft_bids.updateMany({
       where: {
-        landListingId: landListing.id,
-        bidderUserId: userId,
-        bidStatus: 'ACTIVE'
+        land_listing_id: landListing.id,
+        bidder_user_id: userId,
+        bid_status: 'ACTIVE'
       },
       data: {
-        bidStatus: 'OUTBID'
+        bid_status: 'OUTBID'
       }
     });
 
     // Mark any lower bids as OUTBID
-    const lowerBidsUpdate = await prisma.nftBid.updateMany({
+    const lowerBidsUpdate = await prisma.nft_bids.updateMany({
       where: {
-        landListingId: landListing.id,
-        bidAmount: {
-          lt: validatedData.bidAmount
+        land_listing_id: landListing.id,
+        bid_amount: {
+          lt: validatedData.bid_amount
         },
-        bidStatus: 'ACTIVE'
+        bid_status: 'ACTIVE'
       },
       data: {
-        bidStatus: 'OUTBID'
+        bid_status: 'OUTBID'
       }
     });
 
     // Create the new bid
-    const bid = await prisma.nftBid.create({
+    const bid = await prisma.nft_bids.create({
       data: {
-        landListingId: landListing.id,
-        tokenId: parseInt(validatedData.tokenId),
-        bidderUserId: userId,
-        bidAmount: validatedData.bidAmount,
-        bidStatus: 'ACTIVE',
-        transactionHash: validatedData.transactionHash
+        id: randomUUID(),
+        land_listing_id: landListing.id,
+        token_id: parseInt(validatedData.token_id),
+        bidder_user_id: userId,
+        bid_amount: validatedData.bid_amount,
+        bid_status: 'ACTIVE',
+        transaction_hash: validatedData.transaction_hash
       },
       include: {
-        bidder: {
+        users: {
           select: {
             id: true,
             username: true,
-            evmAddress: true
+            evm_address: true
           }
         },
-        landListing: {
+        land_listings: {
           select: {
             id: true,
-            nftTitle: true,
-            collectionId: true
+            nft_title: true,
+            collection_id: true
           }
         }
       }
     });
 
     // Track the bid placement event for price analytics
-    await trackBidEvent(landListing.id, bid.id, validatedData.bidAmount, 'BID_PLACED');
+    await trackBidEvent(landListing.id, bid.id, validatedData.bid_amount, 'BID_PLACED');
 
     return NextResponse.json({
       success: true,
@@ -155,28 +155,26 @@ export async function POST(request: NextRequest) {
       { success: false, message: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
-  }
+
 }
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userAddress = searchParams.get('userAddress');
+    const user_address = searchParams.get('user_address');
 
-    if (!userAddress) {
+    if (!user_address) {
       return NextResponse.json(
-        { success: false, error: 'User address is required' },
+        { success: false, error: 'user_address is required' },
         { status: 400 }
       );
     }
 
     // First find the user by EVM address
-    const user = await prisma.user.findFirst({
+    const user = await prisma.users.findFirst({
       where: {
-        evmAddress: {
-          equals: userAddress,
+        evm_address: {
+          equals: user_address,
           mode: 'insensitive'
         }
       }
@@ -190,22 +188,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch bids for the user
-    const bids = await prisma.nftBid.findMany({
+    const bids = await prisma.nft_bids.findMany({
       where: {
-        bidderUserId: user.id
+        bidder_user_id: user.id
       },
       include: {
-        landListing: {
+        land_listings: {
           select: {
             id: true,
-            nftTitle: true,
-            collectionId: true,
-            nftImageFileRef: true
+            nft_title: true,
+            collection_id: true,
+            nft_image_file_ref: true
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     });
 
@@ -222,7 +220,5 @@ export async function GET(request: NextRequest) {
       { success: false, error: 'Failed to fetch bids' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 

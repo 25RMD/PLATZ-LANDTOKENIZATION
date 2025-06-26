@@ -74,7 +74,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await fetch('/api/auth/me');
       if (response.ok) {
-        const userData: User = await response.json();
+        const rawUser = await response.json();
+        const userData: User = {
+          id: rawUser.id,
+          username: rawUser.username,
+          email: rawUser.email,
+          evmAddress: rawUser.evm_address,
+          fullName: rawUser.full_name,
+          dateOfBirth: rawUser.date_of_birth,
+          phone: rawUser.phone,
+          kycVerified: rawUser.kyc_verified,
+          isAdmin: rawUser.is_admin,
+          createdAt: rawUser.created_at,
+          updatedAt: rawUser.updated_at,
+        } as User;
         setUser(userData);
         setIsAuthenticated(true);
         console.log('[AuthProvider] User loaded successfully:', userData.username);
@@ -100,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (mounted) {
-      fetchCurrentUser();
+    fetchCurrentUser();
     } else {
       setIsLoading(false);
     }
@@ -121,7 +134,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const responseData = await response.json();
       console.log("[AuthContext Login] API Response Data:", responseData);
       if (response.ok) {
-        setUser(responseData.user); 
+        const mappedUser: User = {
+          id: responseData.user.id,
+          username: responseData.user.username,
+          email: responseData.user.email,
+          evmAddress: responseData.user.evm_address,
+          fullName: responseData.user.full_name,
+          dateOfBirth: responseData.user.date_of_birth,
+          phone: responseData.user.phone,
+          kycVerified: responseData.user.kyc_verified,
+          isAdmin: responseData.user.is_admin,
+          createdAt: responseData.user.created_at,
+          updatedAt: responseData.user.updated_at,
+        } as User;
+        setUser(mappedUser); 
         setIsAuthenticated(true);
         console.log("[AuthContext Login] Login successful for user:", responseData.user?.username, "Is Admin:", responseData.user?.isAdmin);
         if (responseData.user?.isAdmin) {
@@ -228,12 +254,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (loginResponse.ok) {
         console.log('[AuthContext EVM Login] Setting user and authentication state...');
         console.log('[AuthContext EVM Login] User data:', loginData.user);
-        setUser(loginData.user);
+        
+        const mappedEvmUser: User = {
+          id: loginData.user.id,
+          username: loginData.user.username,
+          email: loginData.user.email,
+          evmAddress: loginData.user.evm_address,
+          fullName: loginData.user.full_name,
+          dateOfBirth: loginData.user.date_of_birth,
+          phone: loginData.user.phone,
+          kycVerified: loginData.user.kyc_verified,
+          isAdmin: loginData.user.is_admin,
+          createdAt: loginData.user.created_at,
+          updatedAt: loginData.user.updated_at,
+        } as User;
+        setUser(mappedEvmUser);
         setIsAuthenticated(true);
+        setIsLoading(false);
+        
         console.log('[AuthContext EVM Login] Authentication state updated - isAuthenticated: true');
         toast.success('Logged in with EVM Wallet successfully!');
         console.log('[AuthContext EVM Login] EVM Wallet login successful for user:', loginData.user?.username);
-        setIsLoading(false);
+        
+        // Small delay to ensure cookie is set and state is fully synchronized
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         console.log('[AuthContext EVM Login] Returning true from connectAndLoginEvmWallet');
         return true;
       } else {
@@ -270,20 +315,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await fetch('/api/profile');
       if (response.ok) {
-        const profileData: User = await response.json();
-        setIsLoading(false);
+        const rawProfile = await response.json();
+        const profileData: User = {
+          id: rawProfile.id,
+          username: rawProfile.username,
+          email: rawProfile.email,
+          evmAddress: rawProfile.evm_address,
+          fullName: rawProfile.full_name,
+          dateOfBirth: rawProfile.date_of_birth,
+          phone: rawProfile.phone,
+          kycVerified: rawProfile.kyc_verified,
+          isAdmin: rawProfile.is_admin,
+          createdAt: rawProfile.created_at,
+          updatedAt: rawProfile.updated_at,
+        } as User;
+        setUser(profileData);
         return profileData;
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch profile' }));
-        setError(errorData.message || 'Could not load profile data.');
-        setIsLoading(false);
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.message || 'Failed to fetch user profile.');
         return null;
       }
     } catch (err) {
-      console.error("Fetch profile error:", err);
-      setError('Network error fetching profile.');
-      setIsLoading(false);
+      setError('A network error occurred while fetching the profile.');
       return null;
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -293,14 +350,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let loadingToastId: string | undefined;
     try {
       loadingToastId = toast.loading('Updating profile...');
+
+      // Convert camelCase keys from frontend into snake_case expected by backend
+      const keyMap: Record<string, string> = {
+        fullName: 'full_name',
+        dateOfBirth: 'date_of_birth',
+        addressLine1: 'address_line1',
+        addressLine2: 'address_line2',
+        stateProvince: 'state_province',
+        postalCode: 'postal_code',
+        govIdType: 'gov_id_type',
+        govIdRef: 'gov_id_ref',
+        evmAddress: 'evm_address',
+      };
+
+      const transformed: Record<string, any> = {};
+      Object.entries(profileData).forEach(([key, value]) => {
+        const backendKey = keyMap[key] || key;
+        // Convert Date objects to ISO strings for JSON serialization
+        if (value instanceof Date) {
+          transformed[backendKey] = value.toISOString().split('T')[0];
+        } else {
+          transformed[backendKey] = value;
+        }
+      });
+
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData),
+        body: JSON.stringify(transformed),
       });
       const responseData = await response.json();
       if (response.ok) {
-        setUser(responseData.user); 
+        const rawUser = responseData.user;
+        const mappedUser: User = {
+          id: rawUser.id,
+          username: rawUser.username,
+          email: rawUser.email,
+          evmAddress: rawUser.evmAddress ?? rawUser.evm_address,
+          fullName: rawUser.fullName ?? rawUser.full_name,
+          dateOfBirth: rawUser.dateOfBirth ?? rawUser.date_of_birth,
+          phone: rawUser.phone,
+          addressLine1: rawUser.addressLine1 ?? rawUser.address_line1,
+          addressLine2: rawUser.addressLine2 ?? rawUser.address_line2,
+          city: rawUser.city,
+          stateProvince: rawUser.stateProvince ?? rawUser.state_province,
+          postalCode: rawUser.postalCode ?? rawUser.postal_code,
+          country: rawUser.country,
+          govIdType: rawUser.govIdType ?? rawUser.gov_id_type,
+          govIdRef: rawUser.govIdRef ?? rawUser.gov_id_ref,
+          kycVerified: rawUser.kycVerified ?? rawUser.kyc_verified,
+          isAdmin: rawUser.isAdmin ?? rawUser.is_admin,
+          createdAt: rawUser.createdAt ?? rawUser.created_at,
+          updatedAt: rawUser.updatedAt ?? rawUser.updated_at,
+        } as User;
+
+        setUser(mappedUser); 
         toast.success('Profile updated successfully!', { id: loadingToastId });
         setIsLoading(false);
         return true;
@@ -323,8 +428,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider
       value={{
         isAuthenticated,
-        isVerified: user?.kycVerified || false,
-        isAdmin: user?.isAdmin || false,
+        isVerified,
+        isAdmin,
         user,
         userId: user?.id || null,
         isLoading,

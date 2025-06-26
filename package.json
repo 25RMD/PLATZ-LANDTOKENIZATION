@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "next-dev": "next dev",
-    "dev": "concurrently -k -s first \"ngrok http 3000\" \"sleep 15 && npm run update-ngrok && npm run next-dev\" --names \"NGROK,APP\" --kill-others --success first",
+    "dev": "concurrently -k -s first \"npx ngrok http 3000\" \"sleep 15 && npm run update-ngrok && npm run next-dev\" --names \"NGROK,APP\" --kill-others --success first",
     "build": "next build",
     "build:optimized": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
     "deploy:verify": "hardhat verify --network sepolia 0x3634a1Da3bb8f2F81D7c7db37aF99A2E4F788190 0x3ed58788ab7ca932c3b3b52a9c58f81b7a4f77ad",
     "deploy:verify:collections": "hardhat verify --network sepolia 0xc2Fba30e5d703c237C7fE94E861E34ffA1536b36 0x3ec4bfe3167ba77A5906C034AABE5537BA7c4B07",
     "update-ngrok": "node scripts/update-ngrok-url.js",
@@ -18,7 +19,8 @@
     "consolidate-users:no-backup": "ts-node scripts/consolidate-duplicate-users.ts --skip-backup",
     "test-price-tracking": "npx tsx scripts/test-price-tracking.ts",
     "test-collection-stats": "npx tsx scripts/test-collection-stats-update.ts",
-    "test-blockchain-bids": "npx tsx scripts/test-blockchain-bids.ts"
+    "test-blockchain-bids": "npx tsx scripts/test-blockchain-bids.ts",
+    "seed:admin:password": "ts-node scripts/seed-admin-password.ts"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -96,7 +98,7 @@
     "@types/react-dom": "^18",
     "assert": "^2.1.0",
     "autoprefixer": "^10.4.19",
-    "buffer": "^6.0.3",
+
     "chai": "^4.5.0",
     "concurrently": "^9.1.2",
     "crypto-browserify": "^3.12.1",
