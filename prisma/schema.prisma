@@ -12,6 +12,10 @@ enum ListingStatus {
   PENDING
   APPROVED
   REJECTED
+  DRAFT
+  ACTIVE
+  DELISTED
+  LISTED
 }
 
 model Property {

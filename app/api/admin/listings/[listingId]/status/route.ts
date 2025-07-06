@@ -1,20 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyJwt } from '@/lib/authUtils';
 import prisma from '@/lib/prisma';
+import { ListingStatus } from '@prisma/client';
 
 // Define the expected structure of the request body
 interface UpdateStatusRequestBody {
-  status: string; // The new status to set for the listing (DRAFT, PENDING, ACTIVE, REJECTED, DELISTED)
+  status: ListingStatus;
 }
 
 /**
  * Update the status of a land listing
  */
-export async function PATCH(request: Request) {
-  // Extract listingid from URL
-  const url = new URL(request.url);
-  const pathParts = url.pathname.split('/');
-  const listingid = pathParts[pathParts.length - 2]; // Get the ID from the URL path
+export async function PATCH(request: NextRequest, { params: paramsPromise }: { params: Promise<{ listingId: string }> }) {
+  const { listingId } = await paramsPromise;
+  const listingid = listingId;
   
   // Get the token from cookies
   const cookieHeader = request.headers.get('cookie');
@@ -46,7 +45,7 @@ export async function PATCH(request: Request) {
 
   // Basic validation for the new status
   // Define valid statuses based on your Prisma schema
-  const validStatuses = ['DRAFT', 'PENDING', 'ACTIVE', 'REJECTED', 'DELISTED'];
+  const validStatuses: ListingStatus[] = Object.values(ListingStatus);
   if (!newStatus || !validStatuses.includes(newStatus)) {
     return NextResponse.json({ message: `Bad Request: Invalid status value. Must be one of: ${validStatuses.join(', ')}` }, { status: 400 });
   }

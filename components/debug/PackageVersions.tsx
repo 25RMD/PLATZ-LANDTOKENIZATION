@@ -13,7 +13,8 @@ const PackageVersions = () => {
         console.log("Checking package versions...");
         
         // Try to get package versions from package.json
-        const packageJson = require('/home/rmd25/Documents/coding/PLATZ/PLATZ-LANDTOKENIZATION/package.json');
+        // Use dynamic import with assert to bundle JSON (supported in Next.js 13+)
+        const { default: packageJson } = await import('../../package.json');
         const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
         
         setVersions({
