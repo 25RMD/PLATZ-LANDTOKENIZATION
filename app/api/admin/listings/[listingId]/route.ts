@@ -3,7 +3,7 @@ import { verifyJwtToken } from '@/lib/auth/jwt';
 import prisma from '@/lib/db';
 import { ListingStatus } from '@prisma/client';
 
-export async function PUT(req: NextRequest, { params }: { params: { listingId: string } }) {
+export async function PUT(req: NextRequest, { params: paramsPromise }: { params: Promise<{ listingId: string }> }) {
   const token = req.cookies.get('auth-token')?.value;
   if (!token) {
     return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
@@ -14,7 +14,7 @@ export async function PUT(req: NextRequest, { params }: { params: { listingId: s
     return NextResponse.json({ message: 'Forbidden: Admin access required' }, { status: 403 });
   }
 
-  const { listingId } = params;
+  const { listingId } = await paramsPromise;
   if (!listingId) {
     return NextResponse.json({ message: 'Listing ID is required' }, { status: 400 });
   }

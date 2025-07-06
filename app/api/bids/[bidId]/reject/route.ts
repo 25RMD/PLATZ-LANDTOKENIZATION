@@ -6,10 +6,10 @@ const prisma = new PrismaClient();
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { bidId: string } }
+  { params: paramsPromise }: { params: Promise<{ bidId: string }> }
 ) {
   try {
-    const { bidId } = params;
+    const { bidId } = await paramsPromise;
     const { userAddress } = await request.json();
 
     if (!userAddress) {

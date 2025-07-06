@@ -5,10 +5,10 @@ const prisma = new PrismaClient();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tokenId: string } }
+  { params: paramsPromise }: { params: Promise<{ tokenId: string }> }
 ) {
   try {
-    const resolvedParams = await params;
+    const resolvedParams = await paramsPromise;
     const tokenId = parseInt(resolvedParams.tokenId);
     
     if (isNaN(tokenId)) {
