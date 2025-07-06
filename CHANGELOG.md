@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Admin Dashboard Refactor**: Completely rewrote `app/admin/dashboard/page.tsx` to remove legacy KYC code, resolving numerous TypeScript errors, component prop mismatches, and state management bugs.
 - **Prisma Client Sync**: Regenerated the Prisma client to correctly include the `ListingStatus` enum, resolving import errors in the frontend.
+- **Build Failure (Empty Module)**: Added placeholder GET handler to `app/api/bids/comprehensive/route.ts` to satisfy Next.js module requirements and unblock production builds.
 
 ### Fixed
 - Resolved React hydration mismatch error by adding `suppressHydrationWarning` to the `<body>` tag in `app/layout.tsx`. This prevents errors caused by browser extensions (e.g., Grammarly) that modify the DOM.
