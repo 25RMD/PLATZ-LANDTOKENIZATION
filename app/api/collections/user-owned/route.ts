@@ -132,7 +132,8 @@ export async function GET(request: NextRequest) {
             } catch (error) {
               // Token might not exist or other error, skip
               if (process.env.ENABLE_VERBOSE_LOGS === 'true') {
-                console.warn(`[API /api/collections/user-owned] Error checking ownership of token ${tokenId}:`, error?.message || error);
+                const errMsg = error instanceof Error ? error.message : String(error);
+                console.warn(`[API /api/collections/user-owned] Error checking ownership of token ${tokenId}:`, errMsg);
               }
             }
           }

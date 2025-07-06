@@ -91,7 +91,7 @@ async function checkCollection2Plot10() {
       // Check for any bids on this token
       const bids = await prisma.nftBid.findMany({
         where: {
-          tokenId: parseInt(plot10Token.tokenId)
+          tokenId: typeof plot10Token.tokenId === 'string' ? parseInt(plot10Token.tokenId, 10) : plot10Token.tokenId
         },
         include: {
           bidder: {

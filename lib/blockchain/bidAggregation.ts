@@ -310,7 +310,12 @@ export async function aggregateBidsForUser(userAddress: string): Promise<BidAggr
         currentOwner,
         userRole: isBidder ? 'bidder' : 'token_owner',
         bidder: bid.bidder,
-        landListing: bid.landListing
+        landListing: {
+          id: bid.landListing.id,
+          nftTitle: bid.landListing.nftTitle,
+          collectionId: bid.landListing.collectionId || '',
+          nftImageFileRef: bid.landListing.nftImageFileRef,
+        }
       };
 
       processedBids.push(processedBid);

@@ -2,12 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { FiExternalLink, FiFileText, FiCode } from 'react-icons/fi';
 import PulsingDotsSpinner from '@/components/common/PulsingDotsSpinner';
 
-interface NFTMetadataSectionProps {
+interface NFTMetadataSectionDirectProps {
   contractAddress: string;
   tokenId: string;
   metadataUri: string;
   mintTransactionHash: string;
 }
+
+interface NFTCollectionLike {
+  contractAddress?: string | null;
+  mainTokenId?: string | number | null;
+  metadataUri?: string | null;
+  mintTransactionHash?: string | null;
+}
+
+interface NFTMetadataSectionCollectionProps {
+  collection: NFTCollectionLike;
+}
+
+type NFTMetadataSectionProps = NFTMetadataSectionDirectProps | NFTMetadataSectionCollectionProps;
 
 interface Metadata {
   name: string;
@@ -20,12 +33,13 @@ interface Metadata {
   [key: string]: any;
 }
 
-const NFTMetadataSection: React.FC<NFTMetadataSectionProps> = ({
-  contractAddress,
-  tokenId,
-  metadataUri,
-  mintTransactionHash,
-}) => {
+const NFTMetadataSection: React.FC<NFTMetadataSectionProps> = (props) => {
+  // Normalize props
+  const contractAddress = 'contractAddress' in props ? props.contractAddress : props.collection.contractAddress || '';
+  const tokenId = 'tokenId' in props ? props.tokenId : String(props.collection.mainTokenId ?? '0');
+  const metadataUri = 'metadataUri' in props ? props.metadataUri : props.collection.metadataUri || '';
+  const mintTransactionHash = 'mintTransactionHash' in props ? props.mintTransactionHash : props.collection.mintTransactionHash || '';
+
   const [metadata, setMetadata] = useState<Metadata | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

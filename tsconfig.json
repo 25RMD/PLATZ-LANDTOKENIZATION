@@ -54,11 +54,11 @@
     "hooks/**/*.tsx",
     ".next/types/**/*.ts",
     "hardhat.config.ts",
-    "scripts/**/*.ts",
-    "test/**/*.ts",
     "typechain-types"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "scripts",
+    "test"
   ]
 }

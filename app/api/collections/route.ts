@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import path from 'path';
+import { Prisma } from '@prisma/client';
 import { mkdir, writeFile } from 'fs/promises';
 
 
@@ -70,6 +71,8 @@ export async function GET(request: NextRequest) {
     console.log(`[API /api/collections] Found ${collections.length} collections in database`);
 
     // Map wallet address -> user profile for creators
+    
+
     let creatorUserMap: Record<string, { id: string; username: string | null; evmAddress: string | null }> = {};
 
     // Collect distinct creator addresses present in these listings
@@ -81,10 +84,10 @@ export async function GET(request: NextRequest) {
 
     if (creatorAddresses.length > 0) {
       // Build OR conditions to allow case-insensitive matching per address
-      const orConditions = creatorAddresses.map(addr => ({
+      const orConditions: Prisma.UserWhereInput[] = creatorAddresses.map(addr => ({
         evmAddress: {
           equals: addr,
-          mode: 'insensitive',
+          mode: Prisma.QueryMode.insensitive,
         },
       }));
 

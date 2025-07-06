@@ -360,7 +360,7 @@ export async function checkForDuplicateSale(
         return {
           isDuplicate: true,
           lastSaleDate: recentAcceptedBid.updatedAt,
-          transactionHash: recentAcceptedBid.transactionHash
+          transactionHash: recentAcceptedBid.transactionHash ?? undefined
         };
       }
     }

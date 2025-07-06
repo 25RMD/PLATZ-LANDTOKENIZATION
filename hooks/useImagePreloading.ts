@@ -151,7 +151,7 @@ class ImagePreloadService {
 }
 
 export const useImagePreloading = (): ImagePreloadManager => {
-  const serviceRef = useRef<ImagePreloadService>();
+  const serviceRef = useRef<ImagePreloadService | null>(null);
 
   if (!serviceRef.current) {
     serviceRef.current = ImagePreloadService.getInstance();

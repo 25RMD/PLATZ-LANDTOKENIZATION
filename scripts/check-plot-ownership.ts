@@ -128,7 +128,7 @@ async function checkPlotOwnership() {
         // Check recent bids
         const recentBids = await prisma.nftBid.findMany({
           where: {
-            tokenId: parseInt(plot10Token.tokenId)
+            tokenId: typeof plot10Token.tokenId === 'string' ? parseInt(plot10Token.tokenId, 10) : plot10Token.tokenId
           },
           include: {
             bidder: {

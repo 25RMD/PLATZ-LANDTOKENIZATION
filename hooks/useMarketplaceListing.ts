@@ -26,7 +26,7 @@ export default function useMarketplaceListing() {
       collectionId,
       mainTokenId,
       priceEth,
-      paymentToken = ethers.ZeroAddress,
+      paymentToken = ethers.ZeroAddress as `0x${string}`,
     }: {
       collectionId: string | number;
       mainTokenId: string | number;

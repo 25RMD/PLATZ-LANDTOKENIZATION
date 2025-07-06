@@ -253,7 +253,7 @@ const quantityOfChildTokens = collectionSize;
         try {
           console.log(`Listing collection ${collectionId} on marketplace for ${listing.listingPrice} ${listing.priceCurrency}...`);
           const listResult = await listCollectionOnMarketplace(
-            collectionId.toString(), // Ensure collectionId is string
+            collectionId!.toString(),
             listing.listingPrice.toString(),
             listing.priceCurrency
           );
@@ -294,12 +294,16 @@ const quantityOfChildTokens = collectionSize;
         creatorAddress: creator, // Record onchain minter's wallet address
       };
 
+      // Prepare string versions to satisfy TypeScript non-null checks
+      const collectionIdStr = collectionId!.toString();
+      const mainTokenIdStr = mainTokenId!.toString();
+
       // Only update collectionId and mainTokenId if they're not already set or different
-      if (!currentListing?.collectionId || currentListing.collectionId !== collectionId.toString()) {
-        updateData.collectionId = collectionId.toString();
+      if (!currentListing?.collectionId || currentListing.collectionId !== collectionIdStr) {
+        updateData.collectionId = collectionIdStr;
       }
-      if (!currentListing?.mainTokenId || currentListing.mainTokenId !== mainTokenId.toString()) {
-        updateData.mainTokenId = mainTokenId.toString();
+      if (!currentListing?.mainTokenId || currentListing.mainTokenId !== mainTokenIdStr) {
+        updateData.mainTokenId = mainTokenIdStr;
       }
 
       try {
@@ -320,8 +324,8 @@ const quantityOfChildTokens = collectionSize;
         success: true, 
         message: 'Collection minted successfully!' + (marketplaceListingTxHash ? ' And listed on marketplace.' : marketplaceListingError ? ' But failed to list on marketplace.' : ' Marketplace listing skipped.'),
         data: { 
-            collectionId: collectionId.toString(), 
-            mainTokenId: mainTokenId.toString(), 
+            collectionId: collectionIdStr, 
+            mainTokenId: mainTokenIdStr, 
             collectionMintTxHash: transactionHash, 
             marketplaceListingTxHash 
         } 

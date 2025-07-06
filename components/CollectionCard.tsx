@@ -105,7 +105,6 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
             rotateX: rotateX,
             rotateY: rotateY,
           }}
-          transition={{ type: "tween", ease: "linear", duration: 0.05 }} // Added fast transition
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           whileHover={{ 

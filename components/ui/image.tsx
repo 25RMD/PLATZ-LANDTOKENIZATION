@@ -233,7 +233,7 @@ export const AdvancedImage: React.FC<AdvancedImageProps> = ({
   const performanceTracking = useImageLoadTracking(src);
   
   // Lazy loading
-  const isInView = useIntersectionObserver(containerRef, {
+  const isInView = useIntersectionObserver(containerRef as unknown as React.RefObject<Element>, {
     threshold: 0.1,
     rootMargin: '100px'
   });

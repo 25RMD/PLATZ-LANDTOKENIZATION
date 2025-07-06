@@ -390,7 +390,7 @@ const OrdersPage: React.FC = () => {
         toast.dismiss(loadingToastId);
         
         // Show detailed success toast
-        const tokenName = bid.landListing.nftTitle || `Token #${bid.tokenId}`;
+        const tokenName = bid.landListing.nftTitle || `Listing #${bid.landListing.id}`;
         
         toast.success(
           `✅ Bid Withdrawn Successfully!\n` +
@@ -470,7 +470,7 @@ const OrdersPage: React.FC = () => {
         
         // Show detailed success toast
         const bidderName = bid.bidder.username || `${bid.bidder.evmAddress?.slice(0, 6)}...${bid.bidder.evmAddress?.slice(-4)}`;
-        const tokenName = bid.landListing.nftTitle || `Token #${bid.tokenId}`;
+        const tokenName = bid.landListing.nftTitle || `Listing #${bid.landListing.id}`;
         
         toast.success(
           `🚫 Bid Rejected Successfully!\n` +
@@ -553,7 +553,7 @@ const OrdersPage: React.FC = () => {
         
         // Show detailed success toast with bid information
         const bidderName = bid.bidder.username || `${bid.bidder.evmAddress?.slice(0, 6)}...${bid.bidder.evmAddress?.slice(-4)}`;
-        const tokenName = bid.landListing.nftTitle || `Token #${bid.tokenId}`;
+        const tokenName = bid.landListing.nftTitle || `Listing #${bid.landListing.id}`;
         
         toast.success(
           `🎉 Bid Accepted Successfully!\n` +

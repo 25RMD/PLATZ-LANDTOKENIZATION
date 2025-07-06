@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import PlatzLandNFTAbi from '../artifacts/contracts/PlatzLandNFTWithCollections.sol/PlatzLandNFTWithCollections.json';
-import LandMarketplaceAbi from '../artifacts/contracts/LandMarketplace.sol/LandMarketplace.json';
+import PlatzLandNFTAbi from '../lib/contracts/PlatzLandNFT.json';
+import LandMarketplaceAbi from '../lib/contracts/LandMarketplace.json';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });

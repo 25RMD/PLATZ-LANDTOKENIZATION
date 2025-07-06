@@ -9,6 +9,16 @@ export type AdditionalInfoFileFieldNames =
   | 'propertyValuationFile'
   | 'zoningComplianceFile';
 
+export type AdditionalInfoFormData = Pick<FormDataInterface,
+  | 'propertyDescription'
+  | 'propertyPhotosFile'
+  | 'propertyValuation'
+  | 'propertyValuationFile'
+  | 'valuationDate'
+  | 'zoningClassification'
+  | 'zoningComplianceFile'
+  | 'additionalNotes'>;
+
 interface AdditionalInfoProps {
   formData: FormDataInterface;
   handleInputChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;

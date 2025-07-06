@@ -340,7 +340,7 @@ const Globe = ({ scrollY, isMobile }: { scrollY: number; isMobile: boolean }) =>
       positions[i * 3 + 2] = point.z;
       
       tokenPos.push(point);
-      continents.push(point.continent || -1);
+      continents.push((point as any).continent ?? -1);
       
       // Different highlighting chances based on location
       const isLandPoint = i < continentPoints.length;

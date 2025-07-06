@@ -11,6 +11,18 @@ export type ChainOfTitleFileFieldNames =
   | 'encumbranceHistoryFile'
   | 'titleOpinionFile';
 
+export type ChainOfTitleFormData = Pick<FormDataInterface,
+  | 'previousDeedFile'
+  | 'titleReportFile'
+  | 'titleInsuranceFile'
+  | 'titleInsuranceCompany'
+  | 'titleInsurancePolicyNumber'
+  | 'encumbranceDetails'
+  | 'encumbranceHistoryFile'
+  | 'titleOpinionFile'
+  | 'attorneyOpinionProvider'
+  | 'recordedInstruments'>;
+
 interface ChainOfTitleProps {
   formData: FormDataInterface;
   handleInputChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;

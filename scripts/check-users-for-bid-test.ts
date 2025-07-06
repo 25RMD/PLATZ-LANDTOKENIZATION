@@ -35,8 +35,7 @@ async function checkUsers() {
         data: {
           username: 'testbidder',
           email: 'testbidder@example.com',
-          evmAddress: '0x742d35Cc6634C0532925a3b8d27ba6A74B8E2e5C',
-          password: 'testpassword123'
+          evmAddress: '0x742d35Cc6634C0532925a3b8d27ba6A74B8E2e5C'
         }
       });
       

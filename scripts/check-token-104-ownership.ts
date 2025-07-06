@@ -72,7 +72,7 @@ async function checkToken104Ownership() {
         
         const recentTransactions = await prisma.nftTransaction.findMany({
           where: {
-            tokenId: '104'
+            tokenId: 104
           },
           orderBy: {
             createdAt: 'desc'

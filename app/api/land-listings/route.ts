@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { ListingStatus } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { mintNft, isValidPublicKey } from '@/lib/solana-utils'; // Now contains Ethereum compatible functions
 
@@ -232,7 +233,7 @@ export async function POST(req: NextRequest) {
       mintTransactionHash: nftMintAddress, 
       nftMetadataIrysUri: nftMetadataUri,
 
-      status: ((formData as any).get('status') as string | null) || 'PENDING',
+      status: (((formData as any).get('status') as string | null) || 'PENDING') as ListingStatus,
     };
 
     // Try to find a valid user to connect to the listing, or create one if needed

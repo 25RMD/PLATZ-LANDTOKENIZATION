@@ -10,6 +10,7 @@ import {
   acceptBid,
   getListingBids
 } from '@/lib/ethereum/contractUtils';
+import { ListingStatus } from '@prisma/client';
 
 /**
  * POST /api/marketplace/create-listing
@@ -123,7 +124,7 @@ async function handleCreateListing(body: any, userId: string) {
         marketplaceListingId: result.listingId,
         listingPrice: parseFloat(price),
         priceCurrency: currency,
-        status: 'LISTED'
+        status: 'LISTED' as ListingStatus
       }
     });
 
@@ -192,7 +193,7 @@ async function handleBuyListing(body: any, userId: string) {
         data: {
           userId: userId,
           marketplaceListingId: null, // Remove listing ID as it's now sold
-          status: 'OWNED'
+          status: 'DELISTED' as ListingStatus
         }
       });
 
@@ -262,7 +263,7 @@ async function handleCancelListing(body: any, userId: string) {
       where: { id: landListing.id },
       data: {
         marketplaceListingId: null,
-        status: 'OWNED'
+        status: 'DELISTED' as ListingStatus
       }
     });
 
@@ -400,7 +401,7 @@ async function handleAcceptBid(body: any, userId: string) {
       data: {
         userId: bidder.id,
         marketplaceListingId: null, // Remove listing ID as it's now sold
-        status: 'OWNED'
+        status: 'DELISTED' as ListingStatus
       }
     });
 
@@ -569,7 +570,7 @@ async function handleGetListings(page: number, limit: number, sort: string, orde
     const landListings = await prisma.landListing.findMany({
       where: {
         marketplaceListingId: { not: null },
-        status: 'LISTED'
+        status: 'LISTED' as ListingStatus
       },
       include: {
         user: {
@@ -591,7 +592,7 @@ async function handleGetListings(page: number, limit: number, sort: string, orde
     const totalListings = await prisma.landListing.count({
       where: {
         marketplaceListingId: { not: null },
-        status: 'LISTED'
+        status: 'LISTED' as ListingStatus
       }
     });
 
@@ -617,7 +618,7 @@ async function handleGetListings(page: number, limit: number, sort: string, orde
           price: listing.listingPrice,
           currency: listing.priceCurrency,
           imageUrl: listing.coverImageUrl || listing.nftImageIrysUri,
-          seller: listing.user,
+          seller: (listing as any).user,
           marketplaceDetails,
           createdAt: listing.createdAt,
           updatedAt: listing.updatedAt

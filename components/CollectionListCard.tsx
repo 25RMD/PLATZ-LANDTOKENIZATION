@@ -1,8 +1,21 @@
 import Link from "next/link";
 import React from "react";
-import { LandListingForCollection } from "@/mainpages/CollectionsPage";
+
 import { getImageUrl, getPlaceholderImage } from "@/lib/utils/imageUtils";
 import { useCurrency } from '@/context/CurrencyContext';
+
+// Minimal shape needed by this component
+interface LandListingForCollection {
+  id: string;
+  nftImageFileRef: string | null;
+  nftTitle: string | null;
+  listingPrice: string | number | null;
+  priceCurrency: string | null;
+  nftCollectionSize?: number | null;
+  user?: {
+    username: string | null;
+  };
+}
 
 interface CollectionListCardProps {
   collection: LandListingForCollection;

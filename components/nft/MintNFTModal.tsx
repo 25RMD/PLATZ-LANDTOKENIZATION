@@ -4,9 +4,17 @@ import NFTImageUploader from './NFTImageUploader';
 interface MintNFTModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onMint: (data: MintNFTData) => Promise<void>;
-  listingId: string;
-  listingTitle: string;
+  // Maintain backward compatibility: accept either onSubmit or onMint
+  onSubmit?: (data: MintNFTData) => Promise<void>;
+  onMint?: (data: MintNFTData) => Promise<void>;
+  // Caller can pass either a full listing object or individual fields
+  listing?: {
+    id: string;
+    nftTitle?: string | null;
+    propertyDescription?: string | null;
+  };
+  listingId?: string;
+  listingTitle?: string;
   listingDescription?: string;
   isSubmitting: boolean;
 }
@@ -21,14 +29,16 @@ export interface MintNFTData {
 const MintNFTModal: React.FC<MintNFTModalProps> = ({
   isOpen,
   onClose,
+  onSubmit,
   onMint,
+  listing,
   listingId,
   listingTitle,
   listingDescription = '',
   isSubmitting
 }) => {
-  const [nftTitle, setNftTitle] = useState<string>(listingTitle || '');
-  const [nftDescription, setNftDescription] = useState<string>(listingDescription || '');
+  const [nftTitle, setNftTitle] = useState<string>(listing?.nftTitle ?? listingTitle ?? '');
+  const [nftDescription, setNftDescription] = useState<string>(listing?.propertyDescription ?? listingDescription ?? '');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,11 +72,16 @@ const MintNFTModal: React.FC<MintNFTModalProps> = ({
     }
     
     try {
-      await onMint({
+      const submitFn = onSubmit || onMint;
+      if (!submitFn) {
+        console.error("No submit handler provided to MintNFTModal");
+        return;
+      }
+      await submitFn({
         nftTitle: nftTitle.trim(),
         nftDescription: nftDescription.trim(),
         imageFile,
-        landListingId: listingId
+        landListingId: listing ? listing.id : (listingId as string)
       });
     } catch (err) {
       console.error('Error in modal submit:', err);

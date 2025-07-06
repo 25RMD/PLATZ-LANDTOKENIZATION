@@ -87,7 +87,7 @@ class ImagePerformanceMonitor {
 }
 
 export const useImagePerformance = () => {
-  const monitorRef = useRef<ImagePerformanceMonitor>();
+  const monitorRef = useRef<ImagePerformanceMonitor | null>(null);
 
   if (!monitorRef.current) {
     monitorRef.current = ImagePerformanceMonitor.getInstance();
@@ -120,7 +120,7 @@ export const useImagePerformance = () => {
 // Hook for tracking individual image load performance
 export const useImageLoadTracking = (url: string) => {
   const { recordImageLoad } = useImagePerformance();
-  const startTimeRef = useRef<number>();
+  const startTimeRef = useRef<number | null>(null);
 
   const onLoadStart = useCallback(() => {
     startTimeRef.current = performance.now();

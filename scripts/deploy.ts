@@ -1,7 +1,6 @@
 import hre from "hardhat";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from 'url';
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
@@ -27,7 +26,6 @@ async function main() {
   
   // Optionally, save the contract addresses
   try {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const contractsDir = path.join(__dirname, '..', 'contract-addresses');
   
   if (!fs.existsSync(contractsDir)) {

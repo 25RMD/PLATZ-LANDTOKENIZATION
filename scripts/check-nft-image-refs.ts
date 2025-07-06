@@ -109,7 +109,7 @@ async function checkNftImageRefs() {
       
       // List the first 10 files (or all if less than 10)
       console.log('\nSample files in uploads directory:');
-      files.slice(0, 10).forEach(file => {
+      files.slice(0, 10).forEach((file: string) => {
         console.log(`  ${file}`);
       });
       
