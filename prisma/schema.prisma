@@ -368,3 +368,29 @@ model CollectionPriceHistory {
   @@index([createdAt])
   @@map("collection_price_history")
 }
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  eventType       String   @map("event_type")
+  userId          String?  @map("user_id")
+  userAddress     String?  @map("user_address")
+  landListingId   String?  @map("land_listing_id")
+  tokenId         Int?     @map("token_id")
+  bidId           String?  @map("bid_id")
+  transactionHash String?  @map("transaction_hash") @db.VarChar(66)
+  fromAddress     String?  @map("from_address") @db.VarChar(42)
+  toAddress       String?  @map("to_address") @db.VarChar(42)
+  amount          Float?
+  details         Json     @map("details")
+  metadata        Json?    @map("metadata")
+  timestamp       DateTime @default(now())
+
+  @@index([eventType])
+  @@index([userId])
+  @@index([userAddress])
+  @@index([landListingId])
+  @@index([tokenId])
+  @@index([bidId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}

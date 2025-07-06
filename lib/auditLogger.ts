@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/db';
 
 export type AuditEventType = 
   | 'BID_PLACED'
@@ -11,7 +9,8 @@ export type AuditEventType =
   | 'OWNERSHIP_TRANSFER'
   | 'OWNERSHIP_SYNC'
   | 'VALIDATION_FAILURE'
-  | 'DATA_INCONSISTENCY';
+  | 'DATA_INCONSISTENCY'
+  | 'BID_ACCEPTANCE_VALIDATION_BYPASS';
 
 export interface AuditLogData {
   eventType: AuditEventType;

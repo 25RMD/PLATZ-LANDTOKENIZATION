@@ -1,6 +1,17 @@
 import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+// Helper to get secure random bytes in any runtime
+const getRandomBytes = (length: number): Uint8Array => {
+  if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(length);
+    globalThis.crypto.getRandomValues(bytes);
+    return bytes;
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { randomBytes } = require('crypto') as typeof import('crypto');
+    return randomBytes(length);
+  }
+};
 
 const JWT_SECRET_KEY = process.env.JWT_SECRET;
 const JWT_EXPIRATION = process.env.JWT_EXPIRES_IN || '7d';
@@ -45,10 +56,9 @@ export const verifyJwt = async (token: string): Promise<{ userId: string; isAdmi
   }
 };
 
-// Simple function to generate a nonce (replace with more secure if needed, e.g., crypto module)
+// Generate cryptographically-secure nonce usable in both Node & Edge
 export const generateNonce = (): string => {
-   // Generate a more robust nonce using crypto if available in your environment
-   // For example, in Node.js:
-   return crypto.randomBytes(16).toString('hex');
-   // return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-} 
+  return Array.from(getRandomBytes(16))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+};
