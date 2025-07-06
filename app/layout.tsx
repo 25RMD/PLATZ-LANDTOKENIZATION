@@ -13,8 +13,8 @@ import { cookieToInitialState } from '@wagmi/core';
 import { wagmiConfig } from '@/lib/wagmiConfig';
 
 export const metadata: Metadata = {
-  title: "NFT Marketplace",
-  description: "Discover, collect, and sell extraordinary NFTs",
+  title: "Platz - Land Tokenization DApp",
+  description: "Discover, collect, and sell land tokens",
 };
 
 export default async function RootLayout({
