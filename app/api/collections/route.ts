@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const collections = await prisma.landListing.findMany({
       where: {
         AND: [
-          { status: 'APPROVED' }, // <<< Only fetch approved listings
+          { status: 'APPROVED' },
           { collectionId: { not: null } },
           { 
             OR: [

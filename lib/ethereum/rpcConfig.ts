@@ -1,4 +1,7 @@
-import { ethers } from 'ethers';
+import { ethers, setLogLevel } from 'ethers';
+// Suppress verbose provider warnings (e.g., "JsonRpcProvider failed to detect network ...")
+// Only errors will be shown; remove entirely with 'off' if desired.
+setLogLevel('error');
 import { throttle } from 'lodash';
 
 // Extend the Window interface to include the ethereum property

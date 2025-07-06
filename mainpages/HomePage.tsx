@@ -3,7 +3,11 @@ import React, { useRef, useState } from "react";
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import Link from "next/link";
 import AnimatedButton from "@/components/common/AnimatedButton";
-import GlobeAnimation from "@/components/three/GlobeAnimation";
+import dynamic from "next/dynamic";
+
+const GlobeAnimation = dynamic(() => import("@/components/three/GlobeAnimation"), {
+  ssr: false,
+});
 import { 
   FiPieChart, 
   FiRepeat, 

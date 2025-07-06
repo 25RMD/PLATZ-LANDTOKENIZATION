@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
         latitude: true,
         longitude: true,
         contractAddress: true,
+        creatorAddress: true,
         mintTransactionHash: true,
         mintTimestamp: true,
         createdAt: true,
@@ -93,8 +94,12 @@ export async function GET(request: NextRequest) {
         let totalTokens = 0;
         let ownershipType: 'TOKEN_OWNER' | 'COLLECTION_CREATOR' | 'BOTH' = 'TOKEN_OWNER';
 
-        // Check if user is the collection creator
-        const isCreator = collection.user?.evmAddress?.toLowerCase() === userAddress.toLowerCase();
+        // Check if user is the collection creator (either via linked profile or direct creatorAddress stored on listing)
+        const userAddrLower = userAddress.toLowerCase();
+        const isCreator = (
+          collection.user?.evmAddress?.toLowerCase() === userAddrLower ||
+          (collection.creatorAddress ? collection.creatorAddress.toLowerCase() === userAddrLower : false)
+        );
 
         try {
           // Get the contract instance
@@ -104,8 +109,17 @@ export async function GET(request: NextRequest) {
             client: publicClient
           });
 
-          // Get all token IDs in this collection
-          const tokenIds = await contract.read.getTokensInCollection([BigInt(collection.collectionId)]) as bigint[];
+          // Fetch collection data (startTokenId, totalSupply, mainTokenId, ...)
+          const [startTokenId, totalSupply, mainTokenId] = await contract.read.getCollection([
+            BigInt(collection.collectionId),
+          ]) as [bigint, bigint, bigint, string, string, string];
+
+          // Build token ID list: main token + child tokens
+          const childCount = Number(totalSupply) - 1;
+          const tokenIds: bigint[] = [mainTokenId];
+          for (let i = 0; i < childCount; i++) {
+            tokenIds.push(startTokenId + BigInt(i));
+          }
           totalTokens = tokenIds.length;
           
           // Check ownership of each token
@@ -117,11 +131,15 @@ export async function GET(request: NextRequest) {
               }
             } catch (error) {
               // Token might not exist or other error, skip
-              console.warn(`[API /api/collections/user-owned] Error checking ownership of token ${tokenId}:`, error);
+              if (process.env.ENABLE_VERBOSE_LOGS === 'true') {
+                console.warn(`[API /api/collections/user-owned] Error checking ownership of token ${tokenId}:`, error?.message || error);
+              }
             }
           }
         } catch (contractError) {
-          console.error(`[API /api/collections/user-owned] Error accessing contract for collection ${collection.collectionId}:`, contractError);
+          if (process.env.ENABLE_VERBOSE_LOGS === 'true') {
+           console.error(`[API /api/collections/user-owned] Error accessing contract for collection ${collection.collectionId}:`, (contractError as Error)?.message || contractError);
+         }
           // If we can't check blockchain, but user is creator, still include it
           if (isCreator) {
             totalTokens = collection.nftCollectionSize || 0;
@@ -155,6 +173,7 @@ export async function GET(request: NextRequest) {
             floorPrice: collection.listingPrice ? parseFloat(collection.listingPrice.toString()) : null,
             totalValue: userTokenCount * (collection.listingPrice ? parseFloat(collection.listingPrice.toString()) : 0),
             owner: collection.user || { id: '', username: null, evmAddress: null },
+            creatorAddress: collection.creatorAddress || null,
             listings: [{
               id: collection.id,
               mainTokenId: collection.mainTokenId,

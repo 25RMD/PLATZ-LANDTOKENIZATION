@@ -161,7 +161,14 @@ const Header = () => {
             </div>
           ) : (
             <AnimatedButton 
-              onClick={() => connect()} 
+              onClick={() => { 
+                console.log("Header: Desktop 'Connect Wallet' clicked."); 
+                if (connectors.length > 0) {
+                  connect({ connector: connectors[0] });
+                } else {
+                  console.error("No wallet connectors found.");
+                }
+              }} 
               className="flex items-center space-x-2 text-sm whitespace-nowrap border border-black/20 dark:border-white/20 rounded-md px-3 xl:px-4 py-2 font-medium hover:bg-black/5 dark:hover:bg-white/5 transition"
             >
               <FaWallet />
@@ -348,7 +355,12 @@ const Header = () => {
                     ) : (
                       <AnimatedButton 
                         onClick={() => {
-                          connect();
+                          console.log("Header: Mobile 'Connect Wallet' clicked.");
+                          if (connectors.length > 0) {
+                            connect({ connector: connectors[0] });
+                          } else {
+                            console.error("No wallet connectors found.");
+                          }
                           setMobileMenuOpen(false);
                         }} 
                         className="w-full flex items-center justify-center space-x-2 py-3"

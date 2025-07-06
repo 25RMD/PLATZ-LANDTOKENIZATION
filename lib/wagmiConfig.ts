@@ -21,7 +21,6 @@ const SEPOLIA_RPC_URLS = [
 export const wagmiConfig = createConfig({
   chains,
   connectors: [
-    // @ts-ignore - Ignoring type issues due to potential version mismatches
     injected({
       shimDisconnect: true,
     }),

@@ -103,53 +103,57 @@ const ProfileContent = () => {
   };
 
   const handleLinkWallet = async () => {
+    console.log('[handleLinkWallet] Status:', { isEvmWalletConnected, connectedEvmAddress });
     setLinkWalletLoading(true);
     clearContextError();
 
-      try {
-    if (!isEvmWalletConnected || !connectedEvmAddress) {
-              toast.error("Please connect your wallet first.");
-      return;
+    const isValidAddress = connectedEvmAddress && /^0x[a-fA-F0-9]{40}$/.test(connectedEvmAddress);
+
+    if (!isEvmWalletConnected || !isValidAddress) {
+        toast.error("A valid wallet address could not be found. Please ensure your wallet is connected properly and try again.");
+        setLinkWalletLoading(false);
+        return;
     }
 
-      const challengeResponse = await fetch('/api/profile/evm/challenge', { 
+    try {
+      const challengeResponse = await fetch('/api/profile/evm/challenge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ evmAddress: connectedEvmAddress }),
-      }); 
+        body: JSON.stringify({ evmAddress: connectedEvmAddress }),
+      });
 
       if (!challengeResponse.ok) {
-              const challengeData = await challengeResponse.json();
-              throw new Error(challengeData.message || 'Failed to get challenge.');
-          }
+        const challengeData = await challengeResponse.json();
+        throw new Error(challengeData.message || 'Failed to get challenge.');
+      }
 
-          const { challenge } = await challengeResponse.json();
+      // The API returns { nonce }. Construct the exact message expected by the server
+      const { nonce } = await challengeResponse.json();
+      const message = `Please sign this message to link your EVM wallet to your profile.\nNonce: ${nonce}`;
+      const signature = await signMessageAsync({ account: connectedEvmAddress as `0x${string}`, message });
 
-          const signature = await signMessageAsync({ message: challenge });
-
-      const linkResponse = await fetch('/api/profile/evm/link-wallet', { 
+      const linkResponse = await fetch('/api/profile/evm/link-wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  evmAddress: connectedEvmAddress,
-                  signature,
-                  challenge,
-              }),
-          });
+        body: JSON.stringify({
+          address: connectedEvmAddress,
+          signature,
+        }),
+      });
 
       if (!linkResponse.ok) {
-              const linkData = await linkResponse.json();
-              throw new Error(linkData.message || 'Failed to link wallet.');
-          }
+        const linkData = await linkResponse.json();
+        throw new Error(linkData.message || 'Failed to link wallet.');
+      }
 
-          toast.success('EVM wallet linked successfully!');
-          await fetchUserProfile(); 
-      } catch (error: any) {
-          console.error('Error linking wallet:', error);
-          if (error.message?.includes('rejected') || error.message?.includes('denied')) {
-              toast.error('Wallet connection cancelled by user.');
+      toast.success('EVM wallet linked successfully!');
+      await fetchUserProfile(); 
+    } catch (error: any) {
+      console.error('Error linking wallet:', error);
+      if (error.message?.includes('rejected') || error.message?.includes('denied')) {
+        toast.error('Wallet connection cancelled by user.');
       } else {
-              toast.error(`Failed to link wallet: ${error.message}`);
+        toast.error(`Failed to link wallet: ${error.message}`);
       }
     } finally {
       setLinkWalletLoading(false);

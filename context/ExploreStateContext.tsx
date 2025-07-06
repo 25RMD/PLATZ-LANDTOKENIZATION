@@ -40,7 +40,7 @@ interface ExploreStateContextType {
 // Initial state
 const initialState: ExplorePageState = {
   onChainCollections: [],
-  loading: true,
+  loading: false,
   error: null,
   page: 1,
   totalPages: 1,
@@ -75,11 +75,21 @@ export const ExploreStateProvider: React.FC<ExploreStateProviderProps> = ({ chil
   stateRef.current = state;
 
   const updateState = useCallback((updates: Partial<ExplorePageState>) => {
-    setState(prevState => ({
-      ...prevState,
-      ...updates,
-      lastUpdated: Date.now(),
-    }));
+    setState(prevState => {
+      // Determine if the incoming update should refresh the timestamp.
+      // "Transient" UI updates such as toggling `loading` or `error` alone
+      // should not bump `lastUpdated`, otherwise effects that depend on it
+      // can thrash and cause update-depth errors.
+      const updateKeys = Object.keys(updates);
+      const onlyTransient = updateKeys.length > 0 && updateKeys.every(k => k === 'loading' || k === 'error');
+
+      // Merge state – but only overwrite `lastUpdated` for non-transient updates.
+      return {
+        ...prevState,
+        ...updates,
+        lastUpdated: onlyTransient ? prevState.lastUpdated : Date.now(),
+      };
+    });
   }, []);
 
   const clearState = useCallback(() => {

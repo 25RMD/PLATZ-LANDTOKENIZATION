@@ -46,6 +46,41 @@ async function main() {
 
   console.log(`Created/Updated admin user: ${adminUser.username} (ID: ${adminUser.id})`);
 
+  
+  // Create a sample collection for the explore page
+  console.log('Creating a sample collection...');
+
+  const sampleCollection = await prisma.landListing.upsert({
+    where: { slug: 'sample-collection-1' },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      status: 'APPROVED',
+      mintStatus: 'COMPLETED',
+      collectionId: "1",
+      slug: 'sample-collection-1',
+      nftTitle: 'My First Collection',
+      nftDescription: 'This is a sample collection created by the seed script.',
+      nftCollectionSize: 10,
+      listingPrice: 1.5,
+      priceCurrency: 'ETH',
+      country: 'USA',
+      state: 'California',
+      city: 'San Francisco',
+      localGovernmentArea: 'San Francisco County',
+      propertyAreaSqm: 500,
+      latitude: 37.7749,
+      longitude: -122.4194,
+      creatorAddress: '0x0000000000000000000000000000000000000000',
+      contractAddress: '0x1234567890123456789012345678901234567890',
+      mintTransactionHash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+      mintTimestamp: new Date(),
+      nftImageFileRef: 'https://via.placeholder.com/500',
+    },
+  });
+
+  console.log(`Created sample collection: ${sampleCollection.nftTitle}`);
+
   console.log(`Seeding finished.`);
 }
 

@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
 
     if (!nftTitleForCheck || !nftImageFileForCheck) {
       return NextResponse.json({
-        error: 'For development, NFT Title and NFT Image are required to create a basic listing.',
-        // success: false, // Kept consistent with other error responses
+        message: 'NFT Title and NFT Image are required to create a basic listing (development constraint).',
+        error: 'VALIDATION_ERROR',
       }, { status: 400 });
     }
     // --- End of development check ---
@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
       mintTransactionHash: nftMintAddress, 
       nftMetadataIrysUri: nftMetadataUri,
 
-      status: ((formData as any).get('status') as string | null) || 'DRAFT',
+      status: ((formData as any).get('status') as string | null) || 'PENDING',
     };
 
     // Try to find a valid user to connect to the listing, or create one if needed
@@ -329,7 +329,8 @@ export async function POST(req: NextRequest) {
     
     // Return a structured error response
     return NextResponse.json({ 
-        error: errorMessage, 
+        message: errorMessage, 
+        error: 'REQUEST_FAILED',
         // Only include details if the object is not empty
         details: Object.keys(errorDetails).length > 0 ? errorDetails : undefined 
     }, { status: statusCode });

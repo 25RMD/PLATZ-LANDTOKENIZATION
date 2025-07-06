@@ -81,7 +81,6 @@ export interface FormDataInterface {
   priceCurrency: string; 
   nftCollectionSize: number; 
 
-  // Status & Additional Notes (from createListing.ts original + any general fields)
-  status: 'DRAFT' | 'ACTIVE' | 'PENDING'; 
+  // Additional Notes
   additionalNotes?: string;
 }

@@ -1,9 +1,11 @@
 import type { Config } from 'tailwindcss';
+import tailwindcssAnimate from 'tailwindcss-animate';
+import tailwindcssTypography from '@tailwindcss/typography';
 // No need to import colors for V3 extend
 
 const config: Config = {
   // Enable class-based dark mode
-  darkMode: ['class', 'class'],
+  darkMode: 'class',
 
   // Specify the paths to all of your template files
   content: [
@@ -141,7 +143,7 @@ const config: Config = {
   },
 
   // Add any plugins (optional)
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate, tailwindcssTypography],
 };
 
-export default config; 
+export default config;

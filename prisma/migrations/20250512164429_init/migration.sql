@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "ListingStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
 -- CreateTable
 CREATE TABLE "properties" (
     "id" TEXT NOT NULL,
@@ -141,7 +144,7 @@ CREATE TABLE "land_listings" (
     "listing_title" TEXT,
     "listing_price" DOUBLE PRECISION,
     "price_currency" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "status" "ListingStatus" NOT NULL DEFAULT 'PENDING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "mint_status" TEXT,

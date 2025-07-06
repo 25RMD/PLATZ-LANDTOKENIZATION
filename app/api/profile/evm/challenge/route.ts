@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { address } = body;
+    console.log('[API /evm/challenge] Received body:', body);
+    const { evmAddress: address } = body;
 
     if (!address || typeof address !== 'string' || !isAddress(address)) {
       return NextResponse.json({ message: 'Invalid or missing EVM address' }, { status: 400 });
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       data: { signInNonce: nonce },
     });
 
-    console.log(`Generated signInNonce for user ${authenticatedUserId} to link EVM address ${normalizedAddress}: ${nonce}`);
+        console.log(`Generated signInNonce for user ${authenticatedUserId} to link EVM address ${normalizedAddress}: ${nonce}`);
 
     return NextResponse.json({ nonce }, { status: 200 });
 

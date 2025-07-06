@@ -96,7 +96,7 @@ const SignUpPage = () => {
                 textShadow: "0 0 20px rgba(0, 0, 0, 0.3)",
               }}
             >
-              REGISTER ACCESS
+              SIGN UP
             </motion.h1>
 
             <motion.form 

@@ -97,7 +97,7 @@ const initialFormData: FormDataInterface = { // Explicitly type initialFormData
   listingPrice: "",
   priceCurrency: "ETH",
   nftCollectionSize: 10, // Default, display as read-only
-  status: "DRAFT", // Default status
+
   additionalNotes: "", // Default additional notes
 };
 
@@ -293,7 +293,7 @@ const CreateListingContent = () => {
             dataToSubmit.append(key, value, value.name);
         } else if (value !== null && value !== undefined) { // Handle non-file values
            // Skip read-only fields
-            if (!['docHash', 'ipfsUri', 'mintTimestamp', 'tokenId'].includes(key)) {
+             if (!['docHash', 'ipfsUri', 'mintTimestamp', 'tokenId'].includes(key)) {
                  dataToSubmit.append(key, String(value));
             }
         }

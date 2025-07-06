@@ -2,8 +2,8 @@ import { ethers } from 'ethers';
 import { createPublicClient, http, createWalletClient, custom } from 'viem';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
-import PlatzLandNFTAbi from '../../artifacts/contracts/PlatzLandNFTWithCollections.sol/PlatzLandNFTWithCollections.json';
-import LandMarketplaceAbi from '../../artifacts/contracts/LandMarketplace.sol/LandMarketplace.json';
+import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
+import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
 
 // This will be populated after contract deployment
 let CONTRACT_ADDRESS: string | null = null;
@@ -118,11 +118,11 @@ export const getNFTContract = async (signerOrProvider?: ethers.Signer | ethers.P
   console.log('Using NFT contract address:', nftAddress);
   
   if (signerOrProvider) {
-    return new ethers.Contract(nftAddress, PlatzLandNFTAbi.abi, signerOrProvider);
+    return new ethers.Contract(nftAddress, PlatzLandNFTABI, signerOrProvider);
   }
   
   const { signer } = await getProviderAndSigner();
-  return new ethers.Contract(nftAddress, PlatzLandNFTAbi.abi, signer);
+  return new ethers.Contract(nftAddress, PlatzLandNFTABI, signer);
 };
 
 // Get Marketplace contract instance
@@ -140,11 +140,11 @@ export const getMarketplaceContract = async (signerOrProvider?: ethers.Signer | 
   console.log('Using marketplace contract address:', marketplaceAddress);
   
   if (signerOrProvider) {
-    return new ethers.Contract(marketplaceAddress, LandMarketplaceAbi.abi, signerOrProvider);
+    return new ethers.Contract(marketplaceAddress, LandMarketplaceABI, signerOrProvider);
   }
   
   const { signer } = await getProviderAndSigner();
-  return new ethers.Contract(marketplaceAddress, LandMarketplaceAbi.abi, signer);
+  return new ethers.Contract(marketplaceAddress, LandMarketplaceABI, signer);
 };
 
 // Mint a new land NFT
@@ -958,7 +958,7 @@ export const getContract = async () => {
   console.log('Using NFT contract address in getContract:', nftAddress);
   
   const { signer } = await getProviderAndSigner();
-  return new ethers.Contract(nftAddress, PlatzLandNFTAbi.abi, signer);
+  return new ethers.Contract(nftAddress, PlatzLandNFTABI, signer);
 };
 
 // Create a collection with batch minting

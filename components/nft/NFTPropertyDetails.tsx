@@ -118,7 +118,7 @@ const NFTPropertyDetails: React.FC<NFTPropertyDetailsProps> = ({ collection }) =
                 {collection.nftCollectionSize} NFTs
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                1 main NFT + {collection.nftCollectionSize - 1} fractional ownership tokens
+                1 main NFT + {collection.nftCollectionSize} fractional ownership tokens
               </p>
             </div>
           </div>

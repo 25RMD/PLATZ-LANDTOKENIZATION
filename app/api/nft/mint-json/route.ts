@@ -114,8 +114,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    const quantityOfChildTokens = collectionSize > 0 ? collectionSize -1 : 0;
-    console.log(`[mint-json API] Processing landListingId: ${landListingId}, collectionSize from request: ${collectionSize}, derived quantityOfChildTokens: ${quantityOfChildTokens}`);
+    // Treat collectionSize as the intended number of CHILD tokens (excluding the main token)
+if (collectionSize <= 0) {
+  return NextResponse.json({ success: false, error: 'collectionSize must be at least 1' }, { status: 400 });
+}
+
+const quantityOfChildTokens = collectionSize;
+    console.log(`[mint-json API] Processing landListingId: ${landListingId}, collectionSize (child tokens) from request: ${collectionSize}, using quantityOfChildTokens: ${quantityOfChildTokens}`);
     if (quantityOfChildTokens < 0) {
        return NextResponse.json({ success: false, error: 'collectionSize must be at least 1' }, { status: 400 });
     }
@@ -197,7 +202,7 @@ export async function POST(request: NextRequest) {
     // This metadata describes the collection itself
     const collectionMetadata = {
       name: `Collection: ${nftTitle || listing.parcelNumber || landListingId}`,
-      description: `A collection of ${collectionSize} NFTs representing fractional ownership or aspects of land listing ${landListingId}. Includes one main token and ${quantityOfChildTokens} child tokens.`,
+      description: `A collection of ${collectionSize + 1} NFTs representing fractional ownership or aspects of land listing ${landListingId}. Includes one main token and ${quantityOfChildTokens} child tokens.`,
       image: mainTokenImageFullUrl, // Collection can also use the main token image
       external_link: `${normalizedBaseUrl}/collections/${landListingId}`, // A potential page for the collection itself
       seller_fee_basis_points: 250, // Example: 2.5%
