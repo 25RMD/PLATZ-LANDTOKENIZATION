@@ -154,7 +154,11 @@ export default function VerifyEnvironmentPage() {
                 <li>Start your Next.js development server: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">npm run dev</code></li>
                 <li>In a separate terminal, run: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">ngrok http 3001</code></li>
                 <li>Copy the HTTPS URL from ngrok (looks like <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">https://abc123.ngrok.io</code>)</li>
-                <li>Add to your <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">.env.local</code> file: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">NEXT_PUBLIC_BASE_URL=https://abc123.ngrok.io</code></li>
+                <li>
+                  For local development that needs to be accessed by a smart contract, add your ngrok URL to your <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">.env.local</code> file:
+                  <code className="block bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded mt-1">NEXT_PUBLIC_BASE_URL=https://your-ngrok-url.ngrok.io</code>
+                  <p className="text-xs text-gray-500 mt-1">This is not required for Vercel deployments, as the Vercel URL is used automatically.</p>
+                </li>
                 <li>Restart your Next.js server for the environment variable to take effect</li>
               </ol>
             </div>

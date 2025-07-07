@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBaseUrl } from '@/lib/getBaseUrl';
 import fs from 'fs';
 import path from 'path';
 import prisma from '@/lib/db';
@@ -300,14 +301,14 @@ export async function POST(request: NextRequest) {
     const localAdditionalTokensBaseDir = `/uploads/metadata/`; 
 
     // Construct Base URL for public accessibility
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const baseUrl = getBaseUrl();
     if (!baseUrl) {
-      console.error('NEXT_PUBLIC_BASE_URL is not set. Metadata URIs will not be publicly accessible.');
+      console.error('Could not determine base URL. Metadata URIs will not be publicly accessible.');
       await prisma.landListing.update({
         where: { id: landListingId },
         data: {
           mintStatus: 'FAILED',
-          mintErrorReason: 'Server configuration error: NEXT_PUBLIC_BASE_URL not set.',
+          mintErrorReason: 'Server configuration error: Base URL not configured.',
         },
       });
       return NextResponse.json({

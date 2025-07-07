@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getBaseUrl } from '@/lib/getBaseUrl';
 
 /**
  * API endpoint to check environment configuration
@@ -8,21 +9,22 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   const checks = {
     baseUrl: {
-      value: process.env.NEXT_PUBLIC_BASE_URL || 'Not set',
-      status: process.env.NEXT_PUBLIC_BASE_URL ? (
-        process.env.NEXT_PUBLIC_BASE_URL.includes('localhost') 
-          ? 'warning' 
-          : process.env.NEXT_PUBLIC_BASE_URL.includes('ngrok.io') 
-            ? 'success' 
-            : 'info'
-      ) : 'error',
-      message: process.env.NEXT_PUBLIC_BASE_URL 
-        ? (process.env.NEXT_PUBLIC_BASE_URL.includes('localhost') 
-            ? 'Using localhost URL - smart contracts will not be able to access NFT metadata'
-            : process.env.NEXT_PUBLIC_BASE_URL.includes('ngrok.io')
-              ? 'Using ngrok URL - suitable for development with smart contracts'
-              : 'Using custom URL - ensure this is publicly accessible')
-        : 'NEXT_PUBLIC_BASE_URL not set - required for NFT minting'
+      name: 'Base URL',
+      value: getBaseUrl(),
+      status: (() => {
+        const baseUrl = getBaseUrl();
+        if (!baseUrl || baseUrl.includes('localhost')) return 'warning';
+        if (baseUrl.includes('ngrok') || baseUrl.includes('vercel.app')) return 'success';
+        return 'info';
+      })(),
+      message: (() => {
+        const baseUrl = getBaseUrl();
+        if (!baseUrl) return 'Base URL could not be determined. NFT minting will fail.';
+        if (baseUrl.includes('localhost')) return 'Using localhost. External services cannot access metadata.';
+        if (baseUrl.includes('ngrok')) return 'Using ngrok. Good for local development.';
+        if (baseUrl.includes('vercel.app')) return 'Using Vercel URL. Ready for production.';
+        return 'Custom URL detected. Ensure it is publicly accessible.';
+      })(),
     },
     nftContract: {
       value: process.env.NFT_CONTRACT_ADDRESS || 'Not set',

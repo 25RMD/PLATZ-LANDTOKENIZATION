@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { createPublicClient, http, createWalletClient, custom } from 'viem';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
+import { getBaseUrl } from '@/lib/getBaseUrl';
 import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
 import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
 
@@ -170,7 +171,7 @@ export const mintLandNFT = async (
   }
 
   // Check if we're using ngrok correctly
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const baseUrl = getBaseUrl();
   if (!baseUrl || baseUrl.includes('localhost')) {
     console.warn("NEXT_PUBLIC_BASE_URL is not set or using localhost. Smart contracts may not be able to access your metadata.");
   } else if (baseUrl.includes('ngrok') && !metadataUri.includes('ngrok')) {
@@ -682,9 +683,9 @@ export const getProviderAndSignerV2 = async () => {
     });
   };
   
-  // Try to get the private key from multiple possible environment variables
+  // The private key is loaded from server-side environment variables for signing transactions.
+  // It should never be exposed to the client.
   const privateKey = process.env.SERVER_WALLET_PRIVATE_KEY || 
-                    process.env.NEXT_PUBLIC_SERVER_WALLET_PRIVATE_KEY || 
                     '8d442fd15cc758fa0bf73cfb9e8db6f757bd8c65f95792e80751cfc75a2c3a94';
   
   console.log(`Found ${rpcUrls.length} potential RPC URLs to try`);

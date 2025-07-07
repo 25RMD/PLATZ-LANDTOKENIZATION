@@ -1,7 +1,14 @@
 /** @type {import('next').NextConfig} */
 
-// Read the ngrok URL from environment variable
-const ngrokDevOrigin = process.env.NEXT_PUBLIC_BASE_URL;
+// This utility is duplicated from lib/getBaseUrl.ts to avoid module resolution
+// issues in this CommonJS config file.
+const getBaseUrl = () => {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  return null; // Return null if no specific URL is set
+};
+
+const devOrigin = getBaseUrl();
 
 const initialAllowedOrigins = [
   'http://localhost:3000',
@@ -12,14 +19,15 @@ const initialAllowedOrigins = [
   'http://172.20.10.2:3001',
 ];
 
-if (ngrokDevOrigin) {
-  // Ensure we don't add duplicates if it's already localhost or similar
-  if (!initialAllowedOrigins.includes(ngrokDevOrigin)) {
-    initialAllowedOrigins.push(ngrokDevOrigin);
+if (devOrigin) {
+  if (!initialAllowedOrigins.includes(devOrigin)) {
+    initialAllowedOrigins.push(devOrigin);
+    console.log(`[next.config.js] Added dynamic origin ${devOrigin} to allowedDevOrigins.`);
+  } else {
+    console.log(`[next.config.js] Dynamic origin ${devOrigin} is already in allowedDevOrigins.`);
   }
-  console.log(`[next.config.js] Added ${ngrokDevOrigin} to allowedDevOrigins.`);
 } else {
-  console.log('[next.config.js] NEXT_PUBLIC_BASE_URL not set, ngrok origin not added to allowedDevOrigins.');
+  console.log('[next.config.js] No dynamic origin (VERCEL_URL or NEXT_PUBLIC_BASE_URL) found to add to allowedDevOrigins.');
 }
 
 const nextConfig = {

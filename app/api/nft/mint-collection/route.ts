@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBaseUrl } from '@/lib/getBaseUrl';
 import prisma from '@/lib/prisma';
 import { createCollection } from '@/lib/ethereum/contractUtils';
 import fs from 'fs';
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Create a fully qualified URL for the image (for dev environment)
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+    const baseUrl = getBaseUrl();
     
     // Ensure the baseUrl doesn't have a trailing slash
     const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;

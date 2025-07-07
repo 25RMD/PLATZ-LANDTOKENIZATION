@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBaseUrl } from '@/lib/getBaseUrl';
 import prisma from '@/lib/db';
 import { verifyJwtToken } from '@/lib/auth/jwt';
 import { 
@@ -173,7 +174,7 @@ const quantityOfChildTokens = collectionSize;
       return NextResponse.json({ success: false, error: 'Failed to save main token image', details: (e as Error).message }, { status: 500 });
     }
     
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+    const baseUrl = getBaseUrl();
     const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     const mainTokenImageFullUrl = `${normalizedBaseUrl}${mainTokenImageUrlPath}`;
 
