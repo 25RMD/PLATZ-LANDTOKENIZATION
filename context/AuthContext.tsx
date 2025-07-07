@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, [fetchCurrentUser, mounted]);
+  }, [mounted]);
 
   const login = async (username: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
