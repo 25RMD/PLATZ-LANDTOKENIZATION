@@ -92,7 +92,7 @@ const ProfileContent = () => {
       }
       setPageLoading(false);
     });
-  }, [fetchUserProfile]);
+  }, []);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
