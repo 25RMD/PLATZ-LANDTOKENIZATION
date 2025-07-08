@@ -35,7 +35,7 @@ interface ProfileFormData {
 }
 
 const ProfileContent = () => {
-  const { user, isVerified, fetchUserProfile, updateUserProfile, error: contextError, clearError: clearContextError, isLoading: actionLoading } = useAuth();
+  const { user, isVerified, isAuthenticated, fetchUserProfile, updateUserProfile, error: contextError, clearError: clearContextError, isLoading: actionLoading } = useAuth();
   const { address: connectedEvmAddress, isConnected: isEvmWalletConnected } = useAccount(); 
   const { 
     data, 
@@ -92,7 +92,7 @@ const ProfileContent = () => {
       }
       setPageLoading(false);
     });
-  }, []);
+  }, [isAuthenticated]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
