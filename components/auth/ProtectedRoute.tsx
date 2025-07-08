@@ -14,8 +14,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   // Removed router and redirectDelay state and useEffect as we are no longer redirecting from here.
 
-  // While loading the authentication status, show a loading indicator
-  if (isLoading) {
+  // Show loading spinner only while auth status is being determined and user is not yet authenticated
+  if (isLoading && !isAuthenticated) {
     console.log('ProtectedRoute: Showing loading spinner - isLoading:', isLoading);
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
