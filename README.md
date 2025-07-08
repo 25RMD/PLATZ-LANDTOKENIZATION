@@ -57,7 +57,7 @@ npx hardhat test
 To deploy to Sepolia testnet:
 
 1. Set up your `.env` file with:
-   - `PRIVATE_KEY`: Your Ethereum private key
+   - `SERVER_WALLET_PRIVATE_KEY`: Your Ethereum private key
    - `SEPOLIA_RPC_URL`: URL to Sepolia node provider
    - `ETHERSCAN_API_KEY`: API key for verification
 

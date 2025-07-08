@@ -322,7 +322,7 @@ const Header = () => {
                 <div className="pt-4 border-t border-gray-200 dark:border-zinc-700 space-y-4 px-3">
                   {/* Theme Switcher */}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-text-light dark:text-text-dark">Theme</span>
+                    <span className="text-sm font-medium text-text-light dark:text-text-dark">SWITCH THEME</span>
                     <ThemeSwitcher />
                   </div>
                   

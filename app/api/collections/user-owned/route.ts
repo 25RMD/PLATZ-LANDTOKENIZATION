@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Create public client for blockchain queries
     const publicClient = createPublicClient({
       chain: sepolia,
-      transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY')
+      transport: http(process.env.RPC_URL || 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY')
     });
 
     // Get all collections from database

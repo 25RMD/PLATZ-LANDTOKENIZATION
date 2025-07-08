@@ -50,7 +50,7 @@ console.log("[DEBUG] SEPOLIA_RPC_URL from process.env (after explicit load of .e
 console.log("[DEBUG] ETHERSCAN_API_KEY from process.env (after explicit load of .env.local):", process.env.ETHERSCAN_API_KEY);
 require("@nomicfoundation/hardhat-toolbox");
 // console.log("[DEBUG] SEPOLIA_RPC_URL from process.env:", process.env.SEPOLIA_RPC_URL); // Original debug line, now superseded
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "8d442fd15cc758fa0bf73cfb9e8db6f757bd8c65f95792e80751cfc75a2c3a94";
+const SERVER_WALLET_PRIVATE_KEY = process.env.SERVER_WALLET_PRIVATE_KEY || "8d442fd15cc758fa0bf73cfb9e8db6f757bd8c65f95792e80751cfc75a2c3a94";
 // Using more reliable public RPC endpoints with fallbacks
 const SEPOLIA_RPC_URLS = [
     process.env.SEPOLIA_RPC_URL,
@@ -77,7 +77,7 @@ const config = {
         hardhat: {},
         sepolia: {
             url: SEPOLIA_RPC_URL,
-            accounts: [PRIVATE_KEY],
+            accounts: [SERVER_WALLET_PRIVATE_KEY],
             timeout: 120000, // 120 seconds (increased from 60s)
             gasMultiplier: 1.2, // Add 20% to gas estimates to prevent failures
         },

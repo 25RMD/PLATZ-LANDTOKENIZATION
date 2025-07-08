@@ -220,13 +220,13 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
           Minting will create a collection of 100 NFTs on the Ethereum Sepolia testnet. The main NFT will contain all property details, while the additional 99 NFTs represent fractional ownership shares.
         </p>
         
-        {process.env.NEXT_PUBLIC_BASE_URL?.includes('ngrok') ? (
+        {process.env.BASE_URL?.includes('ngrok') ? (
           <div className="flex items-start mb-4 p-2 bg-green-50 dark:bg-green-900/20 rounded-md">
             <div className="mt-0.5 mr-3 flex-shrink-0 text-green-500">
               <FiCheckCircle size={18} />
             </div>
             <div className="text-sm text-gray-700 dark:text-gray-300">
-              <p>Using ngrok for public access: <span className="font-mono text-xs">{process.env.NEXT_PUBLIC_BASE_URL}</span></p>
+              <p>Using ngrok for public access: <span className="font-mono text-xs">{process.env.BASE_URL}</span></p>
               <p className="text-xs mt-1">Your metadata and images will be accessible to the smart contract through this public URL.</p>
             </div>
           </div>
@@ -236,8 +236,8 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
               <FiAlertCircle size={18} />
             </div>
             <div className="text-sm text-gray-700 dark:text-gray-300">
-              <p>You appear to be using a local URL: <span className="font-mono text-xs">{process.env.NEXT_PUBLIC_BASE_URL || 'localhost'}</span></p>
-              <p className="text-xs mt-1">For smart contracts to access your NFT data, set up ngrok and add the URL to <span className="font-mono text-xs">.env.local</span> as <span className="font-mono text-xs">NEXT_PUBLIC_BASE_URL</span>.</p>
+              <p>You appear to be using a local URL: <span className="font-mono text-xs">{process.env.BASE_URL || 'localhost'}</span></p>
+              <p className="text-xs mt-1">For smart contracts to access your NFT data, set up ngrok and add the URL to <span className="font-mono text-xs">.env.local</span> as <span className="font-mono text-xs">BASE_URL</span>.</p>
             </div>
           </div>
         )}

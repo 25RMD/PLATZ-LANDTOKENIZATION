@@ -159,7 +159,7 @@ export async function PATCH(
     // For BID ACCEPTANCE - handle smart contract interaction
     if (validatedData.status === 'ACCEPTED') {
       // Check if we have a server-side wallet for executing the transaction
-      let serverPrivateKey = process.env.SERVER_WALLET_PRIVATE_KEY || process.env.PRIVATE_KEY;
+      let serverPrivateKey = process.env.SERVER_WALLET_PRIVATE_KEY || process.env.SERVER_WALLET_PRIVATE_KEY;
       if (!serverPrivateKey) {
         return NextResponse.json(
           { success: false, message: 'Server wallet not configured for automated NFT transfers' },

@@ -14,7 +14,7 @@ const chains = [sepolia, mainnet] as const;
 // Define multiple Sepolia RPC endpoints for fallback
 const SEPOLIA_RPC_URLS = [
   'https://rpc.ankr.com/eth_sepolia/70110cc66e9b830d75f56bf44c3e8c599d71fe51ad70bf9d8a66c68ad97e0e57', // Primary Ankr RPC
-  process.env.NEXT_PUBLIC_RPC_URL
+  process.env.RPC_URL
 ].filter(Boolean) as string[]; // Filter out undefined/null values
 
 // Create wagmi config with only injected connector (browser wallets)

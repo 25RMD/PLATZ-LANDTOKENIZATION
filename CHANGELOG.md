@@ -113,8 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed NFT collection images not displaying on ExploreNFTPage by implementing a two-tier workaround in `fetchCollectionDetails`:
-  - Rewrites outdated ngrok URLs in the `collectionURI` (from the smart contract) to the current `NEXT_PUBLIC_BASE_URL` before fetching metadata.
-  - After fetching metadata, if the `image` URL within the metadata is also an outdated ngrok URL, it's rewritten to the current `NEXT_PUBLIC_BASE_URL`.
+  - Rewrites outdated ngrok URLs in the `collectionURI` (from the smart contract) to the current `BASE_URL` before fetching metadata.
+  - After fetching metadata, if the `image` URL within the metadata is also an outdated ngrok URL, it's rewritten to the current `BASE_URL`.
 
 - Resolved type mismatch errors in `app/api/nft/mint-collection/route.ts` during `LandListing` database updates after NFT collection minting. Ensured `collectionId` and `mainTokenId` (which are strings) are correctly assigned to Prisma model fields (defined as `String?`). Applied explicit `{ set: ... }` syntax for these and other string fields to satisfy TypeScript's type checking and improve robustness. Added checks for missing IDs post-mint event parsing.
 - **Next.js 15 Compatibility:**

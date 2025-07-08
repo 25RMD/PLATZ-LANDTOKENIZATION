@@ -12,8 +12,8 @@ export const getBaseUrl = () => {
   }
 
   // 2. Local development with ngrok
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    return process.env.NEXT_PUBLIC_BASE_URL;
+  if (process.env.BASE_URL) {
+    return process.env.BASE_URL;
   }
 
   // 3. Default to localhost

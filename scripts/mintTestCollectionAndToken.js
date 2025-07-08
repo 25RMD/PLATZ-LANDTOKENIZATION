@@ -42,7 +42,7 @@ async function withRetry(operation, maxRetries = 3, delayMs = 5000) {
 
 async function main() {
   const provider = getProvider();
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY || process.env.SEPOLIA_PRIVATE_KEY, provider);
+  const wallet = new ethers.Wallet(process.env.SERVER_WALLET_PRIVATE_KEY || process.env.SERVER_WALLET_PRIVATE_KEY, provider);
   console.log("Using account:", wallet.address);
 
   const contractAddress = process.env.NFT_CONTRACT_ADDRESS;
@@ -62,9 +62,9 @@ async function main() {
 
   const recipientAddress = wallet.address;
   
-  const currentNgrokUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const currentNgrokUrl = process.env.BASE_URL;
   if (!currentNgrokUrl) {
-    console.error("NEXT_PUBLIC_BASE_URL (ngrok URL) not found in .env.local or environment.");
+    console.error("BASE_URL (ngrok URL) not found in .env.local or environment.");
     process.exit(1);
   }
 

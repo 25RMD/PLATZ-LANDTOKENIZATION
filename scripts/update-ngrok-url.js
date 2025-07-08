@@ -32,14 +32,14 @@ async function updateNgrokUrl() {
       // Update .env.local
       let envContent = fs.readFileSync(envPath, 'utf8');
       
-      // Update or add NEXT_PUBLIC_BASE_URL
-      if (envContent.includes('NEXT_PUBLIC_BASE_URL=')) {
+      // Update or add BASE_URL
+      if (envContent.includes('BASE_URL=')) {
         envContent = envContent.replace(
-          /NEXT_PUBLIC_BASE_URL=.*/,
-          `NEXT_PUBLIC_BASE_URL=${ngrokUrl}`
+          /BASE_URL=.*/,
+          `BASE_URL=${ngrokUrl}`
         );
       } else {
-        envContent += `\nNEXT_PUBLIC_BASE_URL=${ngrokUrl}\n`;
+        envContent += `\nBASE_URL=${ngrokUrl}\n`;
       }
       
       fs.writeFileSync(envPath, envContent);

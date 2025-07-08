@@ -343,15 +343,16 @@ const ProfileContent = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="max-w-3xl mx-auto mt-12 mb-12 p-8 border border-black/10 dark:border-white/10 rounded-cyber-lg shadow-2xl bg-primary-light dark:bg-primary-dark cyber-grid"
+      className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 border border-black/10 dark:border-white/10 rounded-cyber-lg shadow-2xl bg-primary-light dark:bg-primary-dark cyber-grid"
     >
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
-              <h1 className="text-3xl font-bold text-text-light dark:text-text-dark mb-4 sm:mb-0 font-mono">
+              <h1 className="text-3xl font-bold text-text-light dark:text-text-dark mb-2 font-mono">
                 User Profile
               </h1>
                {/* Verification Status Badge */}
-               <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-cyber text-xs font-medium font-mono border ${isVerified
+               <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-cyber text-xs font-medium font-mono border ${
+                    isVerified
                     ? 'bg-success-minimal/10 text-success-minimal border-success-minimal/20'
                     : 'bg-warning-minimal/10 text-warning-minimal border-warning-minimal/20'
                 }`}>
@@ -359,18 +360,21 @@ const ProfileContent = () => {
                   {isVerified ? 'VERIFIED' : 'NOT VERIFIED'}
                </div>
           </div>
-           <AnimatedButton
-             onClick={() => {
-                 setIsEditing(!isEditing);
-                 if (isEditing) setFormErrors({}); 
-             }}
-             className={`px-5 py-2 text-sm rounded-cyber border transition-all duration-300 font-mono ${isEditing
-                ? 'bg-black/5 dark:bg-white/5 border-black/20 dark:border-white/20 text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10'
-                : 'bg-text-light dark:bg-text-dark border-text-light dark:border-text-dark text-primary-light dark:text-primary-dark hover:bg-text-light/90 dark:hover:bg-text-dark/90'
+          <div className="w-full sm:w-auto mt-3 sm:mt-0">
+            <AnimatedButton
+              onClick={() => {
+                  setIsEditing(!isEditing);
+                  if (isEditing) setFormErrors({}); 
+              }}
+              className={`w-full sm:w-auto px-5 py-2 text-sm rounded-cyber border transition-all duration-300 font-mono ${
+                isEditing
+                  ? 'bg-black/5 dark:bg-white/5 border-black/20 dark:border-white/20 text-text-light dark:text-text-dark hover:bg-black/10 dark:hover:bg-white/10'
+                  : 'bg-text-light dark:bg-text-dark border-text-light dark:border-text-dark text-primary-light dark:text-primary-dark hover:bg-text-light/90 dark:hover:bg-text-dark/90'
               }`}
             >
-             {isEditing ? 'CANCEL EDIT' : 'EDIT PROFILE'}
-           </AnimatedButton>
+              {isEditing ? 'CANCEL EDIT' : 'EDIT PROFILE'}
+            </AnimatedButton>
+          </div>
       </div>
 
       {/* Guidance for unverified users */} 
@@ -381,7 +385,7 @@ const ProfileContent = () => {
          </div>
       )}
 
-      <div className="space-y-1">
+      <div className="space-y-6 sm:space-y-8">
         {/* Section 1: Basic Info (Non-Editable) */}
         <h2 className="text-xl font-bold text-text-light dark:text-text-dark pt-2 pb-3 border-b border-black/20 dark:border-white/20 mb-4 font-mono">
              ACCOUNT INFORMATION
@@ -556,7 +560,7 @@ const ProfileContent = () => {
         {/* Wrap editable sections in a form */}
         <form onSubmit={handleSubmit}>
           {/* Section 2: Personal Details (Editable) */}
-           <h2 className="text-xl font-bold text-text-light dark:text-text-dark pt-5 pb-3 border-b border-black/20 dark:border-white/20 mb-4 font-mono">
+           <h2 className="text-lg sm:text-xl font-bold text-text-light dark:text-text-dark pt-4 sm:pt-5 pb-2 sm:pb-3 border-b border-black/20 dark:border-white/20 mb-3 sm:mb-4 font-mono">
                PERSONAL DETAILS
            </h2>
           {renderField('Full Legal Name', 'fullName', 'text')}
@@ -565,12 +569,12 @@ const ProfileContent = () => {
           {renderField('Phone Number', 'phone', 'tel')} 
 
            {/* Section 3: Address (Editable) */}
-           <h2 className="text-xl font-bold text-text-light dark:text-text-dark pt-5 pb-3 border-b border-black/20 dark:border-white/20 mb-4 font-mono">
+           <h2 className="text-lg sm:text-xl font-bold text-text-light dark:text-text-dark pt-4 sm:pt-5 pb-2 sm:pb-3 border-b border-black/20 dark:border-white/20 mb-3 sm:mb-4 font-mono">
                RESIDENTIAL / BUSINESS ADDRESS
            </h2>
           {renderField('Address Line 1', 'addressLine1')}
           {renderField('Address Line 2', 'addressLine2')}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3">
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pt-2 sm:pt-3">
               {renderField('City', 'city')}
               {renderField('State/Province', 'stateProvince')}
               {renderField('Postal Code', 'postalCode')}
@@ -578,10 +582,10 @@ const ProfileContent = () => {
           {renderField('Country', 'country')}
 
           {/* Section 4: Documents (Editable References) */}
-           <h2 className="text-xl font-bold text-text-light dark:text-text-dark pt-5 pb-3 border-b border-black/20 dark:border-white/20 mb-4 font-mono">
+           <h2 className="text-lg sm:text-xl font-bold text-text-light dark:text-text-dark pt-4 sm:pt-5 pb-2 sm:pb-3 border-b border-black/20 dark:border-white/20 mb-3 sm:mb-4 font-mono">
                KYC DOCUMENTS (REFERENCES)
            </h2>
-           <p className="text-xs text-text-light/60 dark:text-text-dark/60 mb-4 font-mono">Provide references (e.g., file IDs, secure links) to your uploaded documents. Actual document upload requires a separate process.</p>
+            <p className="text-xs text-text-light/60 dark:text-text-dark/60 mb-3 sm:mb-4 px-1 font-mono">Provide references (e.g., file IDs, secure links) to your uploaded documents. Actual document upload requires a separate process.</p>
            {/* Example Select for ID Type */}
            {renderField('Government ID Type', 'govIdType', 'select', false, [
                {value: 'passport', label: 'Passport'},
@@ -593,11 +597,11 @@ const ProfileContent = () => {
            {renderField('Source of Funds Document Reference', 'sofDocRef', 'text')}
 
           {isEditing && (
-            <div className="pt-6 text-right border-t border-black/20 dark:border-white/20 mt-8">
+             <div className="pt-4 sm:pt-6 text-center sm:text-right border-t border-black/20 dark:border-white/20 mt-6 sm:mt-8">
                <AnimatedButton
                  type="submit" 
                  disabled={actionLoading || !isEditing}
-                 className="inline-flex justify-center py-2.5 px-6 border border-success-minimal rounded-cyber shadow-sm text-sm font-bold text-success-minimal bg-success-minimal/10 hover:bg-success-minimal/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-success-minimal/50 disabled:opacity-60 font-mono transition-all duration-300"
+                 className="w-full sm:w-auto inline-flex justify-center py-2.5 px-6 border border-success-minimal rounded-cyber shadow-sm text-sm font-bold text-success-minimal bg-success-minimal/10 hover:bg-success-minimal/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-success-minimal/50 disabled:opacity-60 font-mono transition-all duration-300"
                >
                  {actionLoading ? 'SAVING...' : 'SAVE CHANGES'}
                </AnimatedButton>

@@ -428,9 +428,9 @@ async function generateLandNFTMetadata(landListingId: string): Promise<any> {
     throw new Error(`Land listing with ID ${landListingId} not found for metadata generation.`);
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const baseUrl = process.env.BASE_URL;
   if (!baseUrl) {
-    console.warn('NEXT_PUBLIC_BASE_URL is not set. Image URLs in metadata might be incomplete.');
+    console.warn('BASE_URL is not set. Image URLs in metadata might be incomplete.');
   }
   const normalizedBaseUrl = baseUrl ? (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) : '';
   const imageUrl = landListing.nftImageFileRef 

@@ -14,7 +14,7 @@ if (envConfig.error) {
 
 console.log("[DEBUG] SEPOLIA_RPC_URL from process.env (in hardhat.config.ts):", process.env.SEPOLIA_RPC_URL);
 console.log("[DEBUG] ETHERSCAN_API_KEY from process.env (in hardhat.config.ts):", process.env.ETHERSCAN_API_KEY);
-console.log("[DEBUG] PRIVATE_KEY from process.env (in hardhat.config.ts):", process.env.PRIVATE_KEY);
+console.log("[DEBUG] SERVER_WALLET_PRIVATE_KEY from process.env (in hardhat.config.ts):", process.env.SERVER_WALLET_PRIVATE_KEY);
 
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
@@ -25,14 +25,14 @@ const DEFAULT_SEPOLIA_RPC_URL = "https://eth-sepolia.public.blastapi.io";
 const DEFAULT_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; 
 
 const sepoliaRpcUrl = process.env.SEPOLIA_RPC_URL || DEFAULT_SEPOLIA_RPC_URL;
-const privateKey = process.env.PRIVATE_KEY || DEFAULT_PRIVATE_KEY;
+const privateKey = process.env.SERVER_WALLET_PRIVATE_KEY || DEFAULT_PRIVATE_KEY;
 const etherscanApiKey = process.env.ETHERSCAN_API_KEY || "";
 
 if (!process.env.SEPOLIA_RPC_URL) {
   console.warn(`[WARN] SEPOLIA_RPC_URL not found in environment variables. Using default: ${DEFAULT_SEPOLIA_RPC_URL}`);
 }
-if (!process.env.PRIVATE_KEY) {
-  console.warn(`[WARN] PRIVATE_KEY not found in environment variables. Using a default (unsafe) key for configuration. Ensure your actual key is used for signing transactions.`);
+if (!process.env.SERVER_WALLET_PRIVATE_KEY) {
+  console.warn(`[WARN] SERVER_WALLET_PRIVATE_KEY not found in environment variables. Using a default (unsafe) key for configuration. Ensure your actual key is used for signing transactions.`);
 }
 
 const config: HardhatUserConfig = {

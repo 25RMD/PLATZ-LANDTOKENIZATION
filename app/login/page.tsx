@@ -302,12 +302,12 @@ const LoginPage = () => {
               transition={{ delay: 1.0 }}
             >
               <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono">
-                Need access credentials?{' '}
+                New user?{' '}
                 <Link 
                   href="/signup" 
                   className="font-medium text-black dark:text-white hover:text-black/80 dark:hover:text-white/80 underline underline-offset-2 font-mono uppercase tracking-wide transition-colors"
                 >
-                  Register Here
+                  Signup here
           </Link>
         </p>
             </motion.div>

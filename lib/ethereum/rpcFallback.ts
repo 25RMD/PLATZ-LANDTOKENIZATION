@@ -3,7 +3,7 @@ import { createPublicClient, http } from 'viem';
 // Array of reliable public Sepolia RPC endpoints in priority order
 export const PUBLIC_SEPOLIA_RPC_URLS = [
   // Use environment variables if defined
-  process.env.NEXT_PUBLIC_RPC_URL,
+  process.env.RPC_URL,
   process.env.RPC_URL,
   process.env.SEPOLIA_RPC_URL,
   

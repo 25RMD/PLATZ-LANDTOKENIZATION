@@ -4,7 +4,7 @@
 // issues in this CommonJS config file.
 const getBaseUrl = () => {
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  if (process.env.BASE_URL) return process.env.BASE_URL;
   return null; // Return null if no specific URL is set
 };
 
@@ -27,7 +27,7 @@ if (devOrigin) {
     console.log(`[next.config.js] Dynamic origin ${devOrigin} is already in allowedDevOrigins.`);
   }
 } else {
-  console.log('[next.config.js] No dynamic origin (VERCEL_URL or NEXT_PUBLIC_BASE_URL) found to add to allowedDevOrigins.');
+  console.log('[next.config.js] No dynamic origin (VERCEL_URL or BASE_URL) found to add to allowedDevOrigins.');
 }
 
 const nextConfig = {

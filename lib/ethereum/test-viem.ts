@@ -25,7 +25,7 @@ export async function testViemConnection() {
     // Create a Viem client with the Alchemy RPC URL
     const client = createPublicClient({
       chain: sepolia,
-      transport: http(process.env.NEXT_PUBLIC_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/-9NA8V25gEEn6DZokD_cuOxFRFVzf5qo"),
+      transport: http(process.env.RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/-9NA8V25gEEn6DZokD_cuOxFRFVzf5qo"),
       batch: {
         multicall: true,
       },

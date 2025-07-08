@@ -173,9 +173,9 @@ export const mintLandNFT = async (
   // Check if we're using ngrok correctly
   const baseUrl = getBaseUrl();
   if (!baseUrl || baseUrl.includes('localhost')) {
-    console.warn("NEXT_PUBLIC_BASE_URL is not set or using localhost. Smart contracts may not be able to access your metadata.");
+    console.warn("BASE_URL is not set or using localhost. Smart contracts may not be able to access your metadata.");
   } else if (baseUrl.includes('ngrok') && !metadataUri.includes('ngrok')) {
-    console.warn("NEXT_PUBLIC_BASE_URL contains 'ngrok' but metadata URI doesn't. Check your configuration.");
+    console.warn("BASE_URL contains 'ngrok' but metadata URI doesn't. Check your configuration.");
   }
 
   // Optional: Validate URI is publicly accessible (commented out for simplicity)
@@ -190,7 +190,7 @@ export const mintLandNFT = async (
     console.log(`Metadata URI is accessible. Status: ${response.status}`);
   } catch (error) {
     console.error(`Metadata URI is not accessible: ${metadataUri}`, error);
-    throw new Error(`Metadata URI is not publicly accessible. Please ensure your ngrok tunnel is running and NEXT_PUBLIC_BASE_URL is set correctly.`);
+    throw new Error(`Metadata URI is not publicly accessible. Please ensure your ngrok tunnel is running and BASE_URL is set correctly.`);
   }
   */
   
@@ -643,7 +643,7 @@ export const getProviderAndSignerV2 = async () => {
   const rpcUrls = [
     // First try user-configured endpoints
     process.env.RPC_URL,
-    process.env.NEXT_PUBLIC_RPC_URL,
+    process.env.RPC_URL,
     
     // Premium endpoints (more reliable)
     'https://eth-sepolia.g.alchemy.com/v2/demo',

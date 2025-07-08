@@ -4,7 +4,7 @@ require("@nomicfoundation/hardhat-toolbox");
 require("dotenv/config"); // Import and configure dotenv
 require("ts-node/register"); // Add this for explicit ts-node registration
 const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org"; // Fallback if not set
-const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY || "0000000000000000000000000000000000000000000000000000000000000001"; // A different invalid, but non-zero, raw hex key
+const SERVER_WALLET_PRIVATE_KEY = process.env.SERVER_WALLET_PRIVATE_KEY || "0000000000000000000000000000000000000000000000000000000000000001"; // A different invalid, but non-zero, raw hex key
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 const config = {
     solidity: {
@@ -27,7 +27,7 @@ const config = {
         },
         sepolia: {
             url: SEPOLIA_RPC_URL,
-            accounts: [`0x${SEPOLIA_PRIVATE_KEY}`], // Hardhat expects accounts to be 0x-prefixed hex strings
+            accounts: [`0x${SERVER_WALLET_PRIVATE_KEY}`], // Hardhat expects accounts to be 0x-prefixed hex strings
             chainId: 11155111, // Sepolia chain ID
         },
     },

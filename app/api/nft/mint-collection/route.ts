@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
     // Show warning only if not using ngrok
     if (baseUrl.includes('localhost') || !baseUrl.includes('ngrok')) {
       console.warn('WARNING: Using URL that may not be publicly accessible for NFT metadata: ' + baseUrl);
-      console.warn('For development with smart contracts, please use ngrok and set NEXT_PUBLIC_BASE_URL to your ngrok URL');
+      console.warn('For development with smart contracts, please use ngrok and set BASE_URL to your ngrok URL');
     } else {
       console.log('Using public URL for NFT resources: ' + normalizedBaseUrl);
     }
@@ -320,7 +320,7 @@ export async function POST(request: NextRequest) {
     
     // Validate URLs are accessible to the blockchain
     if (!normalizedBaseUrl.startsWith('https://') && !normalizedBaseUrl.startsWith('http://')) {
-      throw new Error('NEXT_PUBLIC_BASE_URL must be a valid HTTP/HTTPS URL for metadata to be accessible by smart contracts');
+      throw new Error('NEXT_PUBLIC  _BASE_URL must be a valid HTTP/HTTPS URL for metadata to be accessible by smart contracts');
     }
 
     // --- 9. Mint Collection on blockchain ---

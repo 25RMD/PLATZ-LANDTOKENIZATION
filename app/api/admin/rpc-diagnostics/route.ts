@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     
     // Create a provider and signer
     const provider = new ethers.JsonRpcProvider(
-      rpcUrl || process.env.NEXT_PUBLIC_RPC_URL || RPC_URLS[0]
+      rpcUrl || process.env.RPC_URL || RPC_URLS[0]
     );
     
     // Create a random wallet (just for testing)

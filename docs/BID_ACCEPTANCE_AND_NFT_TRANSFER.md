@@ -125,7 +125,7 @@ model NftBid {
 # deploy.env or .env.local
 SERVER_WALLET_PRIVATE_KEY="your_private_key_here"
 # OR
-PRIVATE_KEY="your_private_key_here"  # Fallback
+SERVER_WALLET_PRIVATE_KEY="your_private_key_here"  # Fallback
 
 # Contract addresses
 LAND_MARKETPLACE_ADDRESS="0xc2Fba30e5d703c237C7fE94E861E34ffA1536b36"

@@ -28,7 +28,7 @@ const RPC_SWITCH_THRESHOLD = 5; // Number of failures before switching RPC
 // List of reliable Sepolia RPC URLs with weights (higher = more preferred)
 const RPC_ENDPOINTS = [
   // Primary: Environment variables take precedence
-  { url: process.env.NEXT_PUBLIC_RPC_URL, weight: 100 },
+  { url: process.env.RPC_URL, weight: 100 },
   { url: process.env.RPC_URL, weight: 90 },
   { url: process.env.SEPOLIA_RPC_URL, weight: 80 },
   { url: process.env.FALLBACK_RPC_URL_1, weight: 70 },
