@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import path from 'path';
 import { Prisma } from '@prisma/client';
 import { mkdir, writeFile } from 'fs/promises';
+import { PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
 
 
 /**
@@ -14,12 +15,19 @@ export async function GET(request: NextRequest) {
   try {
     console.log('[API /api/collections] Fetching collections from database...');
     
+    // Use the actual deployed contract address from environment, not the hardcoded default
+    const deployedContractAddress = process.env.NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || PLATZ_LAND_NFT_ADDRESS;
+    console.log(`[API /api/collections] Using Contract Address: ${deployedContractAddress}`);
+    console.log(`[API /api/collections] Default Address: ${PLATZ_LAND_NFT_ADDRESS}`);
+    
     // Get all land listings that have been minted as collections
+    // IMPORTANT: Only return collections that were minted to the currently deployed contract
     const collections = await prisma.landListing.findMany({
       where: {
         AND: [
           { status: 'APPROVED' },
           { collectionId: { not: null } },
+          { contractAddress: deployedContractAddress }, // Filter by deployed contract address
           { 
             OR: [
               { mintStatus: 'COMPLETED' },

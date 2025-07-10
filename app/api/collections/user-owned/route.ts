@@ -26,6 +26,11 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`[API /api/collections/user-owned] Fetching collections for user: ${userAddress}`);
+    
+    // Use the actual deployed contract address from environment, not the hardcoded default
+    const deployedContractAddress = process.env.NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || PLATZ_LAND_NFT_ADDRESS;
+    console.log(`[API /api/collections/user-owned] Using Contract Address: ${deployedContractAddress}`);
+    console.log(`[API /api/collections/user-owned] Default Address: ${PLATZ_LAND_NFT_ADDRESS}`);
 
     // Create public client for blockchain queries
     const publicClient = createPublicClient({
@@ -33,11 +38,12 @@ export async function GET(request: NextRequest) {
       transport: http(process.env.RPC_URL || 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY')
     });
 
-    // Get all collections from database
+    // Get all collections from database - only from deployed contract
     const allCollections = await prisma.landListing.findMany({
       where: {
         AND: [
           { collectionId: { not: null } },
+          { contractAddress: deployedContractAddress }, // Filter by deployed contract address
           { 
             OR: [
               { mintStatus: 'COMPLETED' },
@@ -104,7 +110,7 @@ export async function GET(request: NextRequest) {
         try {
           // Get the contract instance
           const contract = getContract({
-            address: PLATZ_LAND_NFT_ADDRESS as `0x${string}`,
+            address: deployedContractAddress as `0x${string}`,
             abi: PlatzLandNFTABI,
             client: publicClient
           });

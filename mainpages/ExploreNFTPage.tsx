@@ -196,56 +196,14 @@ const ExploreNFTPage: React.FC = () => {
   if (loading) {
     return (
       <motion.div 
-        className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)] bg-gray-50 dark:bg-primary-dark"
+        className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8 bg-gray-50 dark:bg-primary-dark min-h-screen"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Cyber loading background */}
-        <motion.div
-          className="absolute inset-0 opacity-5 dark:opacity-10"
-          animate={{
-            background: [
-              "radial-gradient(circle at 20% 80%, rgba(0, 0, 0, 0.3) 0%, transparent 50%)",
-              "radial-gradient(circle at 80% 20%, rgba(0, 0, 0, 0.2) 0%, transparent 50%)",
-              "radial-gradient(circle at 20% 80%, rgba(0, 0, 0, 0.3) 0%, transparent 50%)",
-            ],
-          }}
-          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-        />
-        
-        <motion.div
-          animate={{ 
-            scale: [1, 1.1, 1],
-            rotate: [0, 5, -5, 0]
-          }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="mb-6"
-        >
-        <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
-        </motion.div>
-        
-        <motion.h2 
-          className="text-xl font-mono uppercase tracking-wider text-black dark:text-white mb-2"
-          animate={{ 
-            textShadow: [
-              "0 0 10px rgba(0, 0, 0, 0.5)",
-              "0 0 20px rgba(0, 0, 0, 0.8)",
-              "0 0 10px rgba(0, 0, 0, 0.5)",
-            ]
-          }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          LOADING LISTINGS
-        </motion.h2>
-        
-        <motion.p 
-          className="text-sm font-mono text-black/70 dark:text-white/70"
-          animate={{ opacity: [0.7, 1, 0.7] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        >
-          Fetching NFT listing data...
-        </motion.p>
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <PulsingDotsSpinner size={48} color="bg-black dark:bg-white" />
+        </div>
       </motion.div>
     );
   }

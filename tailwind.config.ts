@@ -19,6 +19,9 @@ const config: Config = {
   // Define your theme customizations
   theme: {
   	extend: {
+  		screens: {
+  			'xs': '475px',
+  		},
   		colors: {
   			'primary-light': '#FFFFFF',
   			'secondary-light': '#FAFAFA',
@@ -143,7 +146,25 @@ const config: Config = {
   },
 
   // Add any plugins (optional)
-  plugins: [tailwindcssAnimate, tailwindcssTypography],
+  plugins: [
+    tailwindcssAnimate, 
+    tailwindcssTypography,
+    // Add scrollbar-hide utility
+    function({ addUtilities }: any) {
+      addUtilities({
+        '.scrollbar-hide': {
+          /* IE and Edge */
+          '-ms-overflow-style': 'none',
+          /* Firefox */
+          'scrollbar-width': 'none',
+          /* Safari and Chrome */
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          }
+        }
+      })
+    }
+  ],
 };
 
 export default config;

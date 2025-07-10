@@ -246,10 +246,10 @@ const quantityOfChildTokens = collectionSize;
       
       console.log(`Collection minted: Collection ID ${collectionId}, Main Token ID ${mainTokenId}, Tx: ${transactionHash}`);
       
-      // --- 7. Marketplace Listing for Collection ---
-      let marketplaceListingTxHash: string | undefined = undefined;
-      let marketplaceListingError: string | undefined = undefined;
-      
+      // --- 7. Marketplace Listing (re-enabled with correct contract) ---
+      let marketplaceListingTxHash: string | null = null;
+      let marketplaceListingError: string | null = null;
+
       if (listing.listingPrice && listing.priceCurrency) {
         try {
           console.log(`Listing collection ${collectionId} on marketplace for ${listing.listingPrice} ${listing.priceCurrency}...`);
@@ -284,6 +284,7 @@ const quantityOfChildTokens = collectionSize;
       // Prepare update data - avoid updating collectionId if it's already set to prevent unique constraint violation
       const updateData: any = {
         mintStatus: 'COMPLETED_COLLECTION', // New status
+        status: 'APPROVED', // Auto-approve successfully minted collections
         mintTransactionHash: transactionHash, // Original collection mint tx
         collectionNftTitle: nftTitle, 
         marketplaceTransactionHash: marketplaceListingTxHash, // New field for prisma schema

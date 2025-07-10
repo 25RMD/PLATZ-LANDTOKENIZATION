@@ -99,7 +99,7 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
         {/* Card container with 3D tilt */}
         <motion.div
           ref={cardRef}
-          className="relative z-10 border border-black/20 dark:border-white/20 rounded-cyber-lg h-full bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group transition-all duration-500 flex flex-col"
+          className="relative z-10 border border-black/20 dark:border-white/20 hover:border-black/60 dark:hover:border-white/60 hover:shadow-xl hover:shadow-black/20 dark:hover:shadow-white/10 rounded-cyber-lg h-full bg-gray-50/95 dark:bg-primary-dark/95 backdrop-blur-cyber overflow-hidden group transition-all duration-500 flex flex-col"
           style={{
             transformStyle: "preserve-3d",
             rotateX: rotateX,
@@ -108,8 +108,6 @@ const CollectionCard = ({ collection }: { collection: CollectionDetail }) => {
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           whileHover={{ 
-            borderColor: "rgba(0, 0, 0, 0.8)",
-            boxShadow: "0 0 40px rgba(0, 0, 0, 0.3)",
             scale: 1.02
           }}
           whileTap={{ scale: 0.98 }}
