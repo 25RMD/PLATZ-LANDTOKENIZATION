@@ -267,7 +267,7 @@ const ExploreNFTPage: React.FC = () => {
             onClick={loadCollections} 
             className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 font-mono uppercase tracking-wider border border-red-400 rounded-cyber"
           >
-            <FiLoader className="mr-2" /> RETRY CONNECTION
+            <FiRefreshCw className="mr-2" /> RETRY CONNECTION
         </AnimatedButton>
         </motion.div>
       </motion.div>
