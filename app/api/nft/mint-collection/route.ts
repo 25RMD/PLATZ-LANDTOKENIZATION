@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getBaseUrl } from '@/lib/getBaseUrl';
 import prisma from '@/lib/prisma';
 import { createCollection } from '@/lib/ethereum/contractUtils';
-import fs from 'fs';
-import path from 'path';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -22,24 +21,15 @@ import { v4 as uuidv4 } from 'uuid';
  * }
  */
 
-// Helper function to save a buffer to a file and return its URL
+// Helper function to save a buffer to Cloudinary and return its URL
 const saveBufferToFile = async (buffer: Buffer, fileName: string, contentType: string): Promise<string> => {
-  // Create a unique filename to prevent collisions
-  const fileExtension = contentType.split('/')[1] || 'png';
-  const uniqueFilename = `${uuidv4()}-${fileName}.${fileExtension}`;
-  
-  // Ensure public/uploads directory exists
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    const result = await uploadToCloudinary(buffer, fileName, 'nft-collections');
+    return result.secure_url;
+  } catch (error) {
+    console.error('Error uploading to Cloudinary:', error);
+    throw new Error(`Failed to upload ${fileName} to cloud storage`);
   }
-  
-  // Save the file
-  const filePath = path.join(uploadsDir, uniqueFilename);
-  fs.writeFileSync(filePath, buffer);
-  
-  // Return the URL path for the file
-  return `/uploads/${uniqueFilename}`;
 };
 
 // Helper function to update mint status
@@ -270,60 +260,23 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
     
-    // --- 6. Create metadata directory for child tokens ---
-    const metadataDir = path.join(process.cwd(), 'uploads', 'metadata');
-    if (!fs.existsSync(metadataDir)) {
-      fs.mkdirSync(metadataDir, { recursive: true });
-    }
+    // --- 6. Create metadata for child tokens using Cloudinary ---
+    console.log('Creating child token metadata using cloud storage...');
+    const childTokensBaseURI = `${normalizedBaseUrl}/api/child-metadata/${landListingId}/`;
     
-    // --- 7. Generate and save child token metadata ---
-    for (let i = 1; i <= quantity; i++) {
-      const childTokenMetadata = {
-        ...mainTokenMetadata,
-        name: `${mainTokenMetadata.name} - Plot ${i}`,
-        description: `${mainTokenMetadata.description} - Sub-plot ${i} of the collection.`,
-        attributes: [
-          ...mainTokenMetadata.attributes.filter(attr => attr.trait_type !== "Token Type"),
-          { trait_type: "Token Type", value: "Child Token" },
-          { trait_type: "Plot Number", value: i },
-          { trait_type: "Parent Collection", value: `${mainTokenMetadata.name} Collection` }
-        ]
-      };
-      
-      try {
-        // Save the child token metadata with format "1.json", "2.json", etc.
-        // This matches the expected format for tokenURI in the contract
-        const childTokenFilePath = path.join(metadataDir, `${i}.json`);
-        fs.writeFileSync(childTokenFilePath, JSON.stringify(childTokenMetadata, null, 2));
-        console.log(`Child token ${i} metadata saved to: ${childTokenFilePath}`);
-      } catch (e) {
-        await updateMintStatus(landListingId, 'FAILED', `Failed to save child token ${i} metadata`);
-        console.error(`Error saving child token ${i} metadata:`, e);
-        return NextResponse.json({ 
-          success: false, 
-          error: `Failed to save child token ${i} metadata`, 
-          details: (e as Error).message 
-        }, { status: 500 });
-      }
-    }
-    
-    // --- 8. Create fully qualified URLs ---
-    const mainTokenMetadataFullUrl = `${normalizedBaseUrl}${mainTokenMetadataUrl}`;
-    const collectionMetadataFullUrl = `${normalizedBaseUrl}${collectionMetadataUrl}`;
-    // For child tokens, the baseURI will be used with the filename "1.json", "2.json", etc.
-    const childTokensBaseURI = `${normalizedBaseUrl}/api/static/metadata/`;
+    // We'll create child token metadata on-demand rather than pre-creating files
+    console.log(`Child tokens will use base URI: ${childTokensBaseURI}`);
+
+    // --- 6.5. Create fully qualified URLs for blockchain ---
+    const mainTokenMetadataFullUrl = mainTokenMetadataUrl; // Already a full Cloudinary URL
+    const collectionMetadataFullUrl = collectionMetadataUrl; // Already a full Cloudinary URL
     
     console.log(`Using URLs:`);
     console.log(`- Main Token Metadata: ${mainTokenMetadataFullUrl}`);
     console.log(`- Collection Metadata: ${collectionMetadataFullUrl}`);
     console.log(`- Child Tokens Base URI: ${childTokensBaseURI}`);
-    
-    // Validate URLs are accessible to the blockchain
-    if (!normalizedBaseUrl.startsWith('https://') && !normalizedBaseUrl.startsWith('http://')) {
-      throw new Error('NEXT_PUBLIC  _BASE_URL must be a valid HTTP/HTTPS URL for metadata to be accessible by smart contracts');
-    }
 
-    // --- 9. Mint Collection on blockchain ---
+    // --- 7. Mint Collection on blockchain ---
     let createCollectionResult;
     try {
       console.log('Calling createCollection contract utility...');

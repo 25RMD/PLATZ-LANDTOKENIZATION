@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Loader2, CheckCircle, XCircle, AlertTriangle, RefreshCcw } from 'lucide-react';
@@ -16,14 +16,14 @@ interface MintingStatus {
   error?: string;
 }
 
-export function NftMintingMonitor({ 
+export const NftMintingMonitor: React.FC<NftMintingMonitorProps> = ({
   landListingId,
   onMintingComplete,
-  refreshInterval = 5000 
-}: NftMintingMonitorProps) {
+  refreshInterval = 2000, // Default 2 seconds
+}) => {
   const [status, setStatus] = useState<MintingStatus>({ status: 'NOT_STARTED' });
   const [loading, setLoading] = useState(false);
-  const [intervalId, setIntervalId] = useState<number | null>(null);
+  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   // Function to fetch the minting status
@@ -128,7 +128,7 @@ export function NftMintingMonitor({
   useEffect(() => {
     fetchMintingStatus();
     
-    // Set up polling interval if status is PENDING
+    // Start polling if status is PENDING
     if (status.status === 'PENDING' && !intervalId) {
       const id = setInterval(fetchMintingStatus, refreshInterval);
       setIntervalId(id);

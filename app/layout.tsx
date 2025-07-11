@@ -11,6 +11,7 @@ import ErrorBoundary from '@/app/error-boundary';
 import { headers } from 'next/headers';
 import { cookieToInitialState } from '@wagmi/core';
 import { wagmiConfig } from '@/lib/wagmiConfig';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export const metadata: Metadata = {
   title: "Platz - Land Tokenization DApp",
@@ -29,6 +30,7 @@ export default async function RootLayout({
   );
   return (
     <html lang="en" suppressHydrationWarning>
+      <SpeedInsights />
       <body 
         suppressHydrationWarning={true}
         className={`${GeistSans.variable} ${GeistMono.variable} font-mono bg-primary-light dark:bg-primary-dark text-text-light dark:text-text-dark transition-all duration-500 cyber-grid`}

@@ -7,8 +7,7 @@ import {
   createListing,
   listCollectionOnMarketplace
 } from '@/lib/ethereum/contractUtils';
-import fs from 'fs';
-import path from 'path';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 
@@ -28,26 +27,16 @@ import { Prisma } from '@prisma/client';
  * }
  */
 
-// Helper function to save a buffer to a file and return its URL
+// Helper function to save a buffer to Cloudinary and return its URL
 const saveBufferToFile = async (buffer: Buffer, fileName: string, contentType: string, subfolder?: string): Promise<string> => {
-  // Create a unique filename to prevent collisions
-  const fileExtension = contentType.split('/')[1] || 'png';
-  const uniqueFilename = `${uuidv4()}-${fileName}.${fileExtension}`;
-  
-  // Ensure public/uploads directory and subfolder (if any) exists
-  const baseUploadsDir = path.join(process.cwd(), 'public', 'uploads');
-  const targetDir = subfolder ? path.join(baseUploadsDir, subfolder) : baseUploadsDir;
-
-  if (!fs.existsSync(targetDir)) {
-    fs.mkdirSync(targetDir, { recursive: true });
+  try {
+    const folderPath = subfolder ? `nft-images/${subfolder}` : 'nft-images';
+    const result = await uploadToCloudinary(buffer, fileName, folderPath);
+    return result.secure_url;
+  } catch (error) {
+    console.error('Error uploading to Cloudinary:', error);
+    throw new Error(`Failed to upload ${fileName} to cloud storage`);
   }
-  
-  // Save the file
-  const filePath = path.join(targetDir, uniqueFilename);
-  fs.writeFileSync(filePath, buffer);
-  
-  // Return the URL path for the file
-  return subfolder ? `/uploads/${subfolder}/${uniqueFilename}` : `/uploads/${uniqueFilename}`;
 };
 
 // Helper to create and save metadata JSON
@@ -249,7 +238,7 @@ const quantityOfChildTokens = collectionSize;
       // --- 7. Marketplace Listing (re-enabled with correct contract) ---
       let marketplaceListingTxHash: string | null = null;
       let marketplaceListingError: string | null = null;
-
+      
       if (listing.listingPrice && listing.priceCurrency) {
         try {
           console.log(`Listing collection ${collectionId} on marketplace for ${listing.listingPrice} ${listing.priceCurrency}...`);

@@ -4,6 +4,7 @@ import path from 'path';
 import { Prisma } from '@prisma/client';
 import { mkdir, writeFile } from 'fs/promises';
 import { PLATZ_LAND_NFT_ADDRESS } from '@/config/contracts';
+import { uploadFileToCloudinary } from '@/lib/cloudinary';
 
 
 /**
@@ -223,35 +224,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    // --- Implement actual image upload locally --- 
+    // --- Implement actual image upload to Cloudinary --- 
     let imageUrl = '';
     try {
-      const bytes = await imageFile.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      // Generate a unique filename (e.g., timestamp + original name)
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
-      const extension = path.extname(imageFile.name);
-      const filename = `${imageFile.name.replace(extension, '').slice(0, 20).replace(/[^a-z0-9]/gi, '_')}_${uniqueSuffix}${extension}`;
-      
-      // Define the upload directory relative to the project root
-      const uploadDir = path.join(process.cwd(), 'public/uploads/properties');
-      const filePath = path.join(uploadDir, filename);
-
-      // Ensure the upload directory exists
-      await mkdir(uploadDir, { recursive: true });
-
-      // Write the file
-      await writeFile(filePath, buffer);
-      console.log(`API POST /api/collections: Uploaded file saved to ${filePath}`);
-
-      // Construct the public URL
-      imageUrl = `/uploads/properties/${filename}`;
-      console.log(`API POST /api/collections: Public image URL: ${imageUrl}`);
+      console.log(`API POST /api/collections: Uploading image to Cloudinary...`);
+      const result = await uploadFileToCloudinary(imageFile, 'collections');
+      imageUrl = result.secure_url;
+      console.log(`API POST /api/collections: Image uploaded to Cloudinary: ${imageUrl}`);
 
     } catch (uploadError) {
-      console.error('API POST /api/collections: Error uploading image:', uploadError);
-      return NextResponse.json({ message: 'Error uploading image file.' }, { status: 500 });
+      console.error('API POST /api/collections: Error uploading image to Cloudinary:', uploadError);
+      return NextResponse.json({ message: 'Error uploading image file to cloud storage.' }, { status: 500 });
     }
     // ---------------------------------------------
 

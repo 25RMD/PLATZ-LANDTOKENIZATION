@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`[API /api/collections/user-owned] Fetching collections for user: ${userAddress}`);
-    
+
     // Use the actual deployed contract address from environment, not the hardcoded default
     const deployedContractAddress = process.env.NFT_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS || PLATZ_LAND_NFT_ADDRESS;
     console.log(`[API /api/collections/user-owned] Using Contract Address: ${deployedContractAddress}`);

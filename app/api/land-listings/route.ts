@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
-import { ListingStatus } from '@prisma/client';
+import prisma from '@/lib/db';
+import { Prisma, ListingStatus } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
-import { mintNft, isValidPublicKey } from '@/lib/solana-utils'; // Now contains Ethereum compatible functions
+import { uploadFileToCloudinary } from '@/lib/cloudinary';
+import { mintNft, isValidPublicKey } from '@/lib/solana-utils';
 
 // Helper function to get string value from FormData
 const getString = (formData: any, key: string): string | null => {
@@ -19,23 +17,15 @@ const getFile = (formData: any, key: string): File | null => {
   return value instanceof File ? value : null;
 };
 
-// Helper function to save a file to the uploads directory and return a unique filename
+// Helper function to save a file to Cloudinary and return the URL
 const saveFile = async (file: File): Promise<string> => {
-  // Create a unique filename to prevent collisions
-  const uniqueFilename = `${uuidv4()}-${file.name}`;
-  
-  // Ensure public/uploads directory exists
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    const result = await uploadFileToCloudinary(file, 'land-listings');
+    return result.secure_url;
+  } catch (error) {
+    console.error('Error uploading file to Cloudinary:', error);
+    throw new Error(`Failed to upload file: ${file.name}`);
   }
-  
-  // Save the file
-  const filePath = path.join(uploadsDir, uniqueFilename);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  fs.writeFileSync(filePath, buffer);
-  
-  return uniqueFilename;
 };
 
 // Helper function to filter out undefined fields or fields that don't exist in the schema

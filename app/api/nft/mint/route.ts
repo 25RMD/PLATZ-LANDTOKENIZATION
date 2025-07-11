@@ -8,6 +8,7 @@ import {
   createCollection
 } from '@/lib/ethereum/contractUtils';
 import { v4 as uuidv4 } from 'uuid';
+import { uploadFileToCloudinary } from '@/lib/cloudinary';
 
 /**
  * POST /api/nft/mint
@@ -93,36 +94,24 @@ export async function POST(request: NextRequest) {
     
     console.log('Updated land listing status to PENDING');
     
-    // Save the NFT image to local storage
-    console.log('Saving NFT image to local storage...');
+    // Save the NFT image to Cloudinary
+    console.log('Saving NFT image to Cloudinary...');
     
     let nftImageFileName;
     try {
-      // Create public/uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
+      console.log('Uploading image to Cloudinary...');
+      const result = await uploadFileToCloudinary(nftImageFile, 'nft-images');
+      nftImageFileName = result.secure_url;
       
-      // Generate unique filename
-      const fileExtension = nftImageFile.name.split('.').pop() || 'png';
-      nftImageFileName = `${uuidv4()}.${fileExtension}`;
-      const filePath = path.join(uploadsDir, nftImageFileName);
-      
-      // Convert File to ArrayBuffer and save to disk
-      const arrayBuffer = await nftImageFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      fs.writeFileSync(filePath, buffer);
-      
-      console.log('NFT image saved to local storage with filename:', nftImageFileName);
+      console.log('NFT image uploaded to Cloudinary with URL:', nftImageFileName);
       
     } catch (storageError) {
-      console.error('Local storage error:', storageError);
+      console.error('Cloudinary storage error:', storageError);
       await prisma.landListing.update({
         where: { id: landListingId },
         data: {
           mintStatus: 'FAILED',
-          mintErrorReason: 'Failed to save image to local storage',
+          mintErrorReason: 'Failed to save image to Cloudinary',
         },
       });
       return NextResponse.json({

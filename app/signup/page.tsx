@@ -254,12 +254,12 @@ const SignUpPage = () => {
               transition={{ delay: 0.6 }}
             >
               <p className="text-sm text-text-light/60 dark:text-text-dark/60 font-mono">
-                Already have access credentials?{' '}
+                Already have an account?{' '}
                 <Link 
                   href="/login" 
                   className="font-medium text-black dark:text-white hover:text-black/80 dark:hover:text-white/80 underline underline-offset-2 font-mono uppercase tracking-wide transition-colors"
                 >
-                  Access Terminal
+                  Login
                 </Link>
               </p>
             </motion.div>

@@ -1138,9 +1138,9 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                     <FiExternalLink className="ml-1" size={14} />
                   </motion.a>
                 ) : (
-                  <p className="text-base font-medium text-text-light dark:text-text-dark truncate font-mono">
+                <p className="text-base font-medium text-text-light dark:text-text-dark truncate font-mono">
                     Unknown
-                  </p>
+                </p>
                 )}
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }}>
@@ -1414,7 +1414,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                           }
                         </p>
                         <div className="mt-2 space-y-1">
-                          {isOwnedByUser ? (
+                                                  {isOwnedByUser ? (
                           <div className="text-center py-1 sm:py-2">
                               <motion.p 
                                 className="text-xs text-black dark:text-cyber-accent font-medium font-mono uppercase tracking-wider"
