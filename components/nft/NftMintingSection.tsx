@@ -48,7 +48,7 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
 
   // Check minting status when component mounts or landListingId or status changes
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
+    let intervalId: number | null = null;
 
     if (landListingId && (mintStatus === 'PENDING' || (mintStatus === 'NOT_STARTED' && !mintingResult))) {
       checkMintingStatus();

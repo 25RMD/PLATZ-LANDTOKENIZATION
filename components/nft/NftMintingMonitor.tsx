@@ -23,7 +23,7 @@ export const NftMintingMonitor: React.FC<NftMintingMonitorProps> = ({
 }) => {
   const [status, setStatus] = useState<MintingStatus>({ status: 'NOT_STARTED' });
   const [loading, setLoading] = useState(false);
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [intervalId, setIntervalId] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Function to fetch the minting status
@@ -131,7 +131,7 @@ export const NftMintingMonitor: React.FC<NftMintingMonitorProps> = ({
     // Start polling if status is PENDING
     if (status.status === 'PENDING' && !intervalId) {
       const id = setInterval(fetchMintingStatus, refreshInterval);
-      setIntervalId(id);
+      setIntervalId(id as number);
     }
     
     // Clean up interval when component unmounts
