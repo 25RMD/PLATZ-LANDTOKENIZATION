@@ -1269,7 +1269,7 @@ const NFTCollectionDetailPage: React.FC<NFTCollectionDetailPageProps> = ({ colle
                 textShadow: "0 0 15px rgba(0, 0, 0, 0.3)",
               }}
             >
-              LISTING TOKENS
+              LISTED TOKENS
             </motion.h2>
             <motion.p 
               className="text-text-light/70 dark:text-text-dark/70 mb-4 sm:mb-6 font-mono text-sm sm:text-base"

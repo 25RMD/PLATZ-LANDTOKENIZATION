@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 // import { useAccount, useContractRead, usePublicClient } from 'wagmi'; // Temporarily disabled
 // import { Abi } from 'viem'; // Temporarily disabled
 import { motion } from 'framer-motion';
-import { FiAlertCircle, FiLoader, FiPackage, FiSearch, FiFilter, FiGrid, FiList, FiMap, FiX, FiLayers } from 'react-icons/fi';
+import { FiAlertCircle, FiRefreshCw, FiPackage, FiSearch, FiFilter, FiGrid, FiList, FiMap, FiX, FiLayers } from 'react-icons/fi';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext'; // Re-enabled with hydration guards
 import { useExploreState } from '@/context/ExploreStateContext';
@@ -346,7 +346,7 @@ const ExploreNFTPage: React.FC = () => {
 
   return (
     <motion.div 
-      className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8 bg-gray-50 dark:bg-primary-dark min-h-screen"
+      className="container mx-auto py-6 sm:py-8 px-3 sm:px-4 md:px-6 lg:px-8 bg-gray-50 dark:bg-primary-dark min-h-screen pb-12"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8 }}
@@ -419,9 +419,9 @@ const ExploreNFTPage: React.FC = () => {
             </motion.div>
           </motion.div>
           
-          {/* Stats display */}
+          {/* Stats display with refresh button */}
           <motion.div 
-            className="flex space-x-6"
+            className="flex space-x-4"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 }}
@@ -433,6 +433,25 @@ const ExploreNFTPage: React.FC = () => {
               <div className="text-2xl font-bold font-mono text-black dark:text-white">{onChainCollections.length}</div>
               <div className="text-xs font-mono text-black/60 dark:text-white/60 uppercase tracking-wider">LISTINGS</div>
             </motion.div>
+            
+            {/* Refresh Button */}
+            <motion.button
+              onClick={() => {
+                updateState({ onChainCollections: [], lastUpdated: undefined });
+                loadCollections();
+              }}
+              className="p-4 border border-black/20 dark:border-white/20 rounded-cyber bg-white/10 dark:bg-black/10 backdrop-blur-sm hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300"
+              whileHover={{ scale: 1.05, borderColor: "rgba(0, 0, 0, 0.4)" }}
+              whileTap={{ scale: 0.95 }}
+              title="Refresh listings"
+            >
+              <motion.div
+                animate={loading ? { rotate: 360 } : {}}
+                transition={loading ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
+              >
+                <FiRefreshCw className={`text-black dark:text-white ${loading ? 'animate-spin' : ''}`} size={20} />
+              </motion.div>
+            </motion.button>
           </motion.div>
         </motion.div>
 
