@@ -19,7 +19,7 @@
     "test-price-tracking": "npx tsx scripts/test-price-tracking.ts",
     "test-collection-stats": "npx tsx scripts/test-collection-stats-update.ts",
     "test-blockchain-bids": "npx tsx scripts/test-blockchain-bids.ts",
-    "vercel-build": "npm install --legacy-peer-deps && next build"
+    "vercel-build": "next build"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
