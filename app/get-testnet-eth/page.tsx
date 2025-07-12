@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiExternalLink, FiCopy, FiCheck, FiAlertCircle, FiDollarSign } from 'react-icons/fi';
-import { useAccount, useChainId, useSwitchChain } from 'wagmi';
+import { useAccount, useChainId, useSwitchNetwork } from 'wagmi';
 import AnimatedButton from '@/components/common/AnimatedButton';
 import toast from 'react-hot-toast';
 
@@ -64,7 +64,7 @@ const faucets: Faucet[] = [
 const GetTestnetEthPage: React.FC = () => {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
+  const { switchNetwork } = useSwitchNetwork();
   const [copiedAddress, setCopiedAddress] = useState(false);
 
   const isOnSepoliaNetwork = chainId === SEPOLIA_CHAIN_ID;
@@ -83,7 +83,9 @@ const GetTestnetEthPage: React.FC = () => {
   };
 
   const handleSwitchToSepolia = () => {
-    switchChain({ chainId: SEPOLIA_CHAIN_ID });
+    if (switchNetwork) {
+      switchNetwork(SEPOLIA_CHAIN_ID);
+    }
   };
 
   return (

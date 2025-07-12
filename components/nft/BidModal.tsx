@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, usePublicClient, useWalletClient, useBalance, useChainId, useSwitchChain } from 'wagmi';
+import { useAccount, usePublicClient, useWalletClient, useBalance, useChainId, useSwitchNetwork } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import { FiX, FiDollarSign, FiAlertTriangle, FiExternalLink } from 'react-icons/fi';
 import AnimatedButton from '@/components/common/AnimatedButton';
@@ -38,7 +38,7 @@ const BidModal: React.FC<BidModalProps> = ({
 }) => {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
+  const { switchNetwork } = useSwitchNetwork();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { formatCurrencyAmount, formatEthAmount, formatPriceWithConversion } = useCurrency();
@@ -343,7 +343,7 @@ const BidModal: React.FC<BidModalProps> = ({
                   </p>
                 </div>
                 <AnimatedButton
-                  onClick={() => switchChain({ chainId: SEPOLIA_CHAIN_ID })}
+                  onClick={() => switchNetwork && switchNetwork(SEPOLIA_CHAIN_ID)}
                   className="bg-orange-600 hover:bg-orange-700 text-white py-1 px-3 rounded text-sm"
                 >
                   Switch Network

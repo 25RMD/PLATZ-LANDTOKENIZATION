@@ -131,7 +131,7 @@ export const NftMintingMonitor: React.FC<NftMintingMonitorProps> = ({
     // Start polling if status is PENDING
     if (status.status === 'PENDING' && !intervalId) {
       const id = setInterval(fetchMintingStatus, refreshInterval);
-      setIntervalId(id as number);
+      setIntervalId(id as unknown as number);
     }
     
     // Clean up interval when component unmounts

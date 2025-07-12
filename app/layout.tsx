@@ -8,9 +8,6 @@ import { AppProviders } from "@/components/providers/AppProviders";
 import { Toaster } from 'react-hot-toast';
 import { Inter } from "next/font/google";
 import ErrorBoundary from '@/app/error-boundary';
-import { headers } from 'next/headers';
-import { cookieToInitialState } from '@wagmi/core';
-import { wagmiConfig } from '@/lib/wagmiConfig';
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export const metadata: Metadata = {
@@ -23,11 +20,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-    const hdrs = await headers();
-  const initialState = cookieToInitialState(
-    wagmiConfig,
-    hdrs.get('cookie') ?? undefined
-  );
   return (
     <html lang="en" suppressHydrationWarning>
       <SpeedInsights />
@@ -35,7 +27,7 @@ export default async function RootLayout({
         suppressHydrationWarning={true}
         className={`${GeistSans.variable} ${GeistMono.variable} font-mono bg-primary-light dark:bg-primary-dark text-text-light dark:text-text-dark transition-all duration-500 cyber-grid`}
       >        
-        <AppProviders initialState={initialState}>
+        <AppProviders>
           <div className="flex flex-col min-h-screen relative overflow-hidden">
             <Header />
             <main className="flex-grow pt-20 sm:pt-24 relative z-10">

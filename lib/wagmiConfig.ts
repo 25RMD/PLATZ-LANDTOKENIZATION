@@ -1,6 +1,8 @@
-import { http, createConfig, fallback } from 'wagmi';
-import { sepolia, mainnet } from 'wagmi/chains';
-import { injected } from '@wagmi/connectors';
+import { configureChains, createConfig } from 'wagmi';
+import { sepolia, mainnet } from 'viem/chains';
+import { InjectedConnector } from '@wagmi/connectors/injected';
+import { publicProvider } from 'wagmi/providers/public';
+import { jsonRpcProvider } from 'wagmi/providers/jsonRpc';
 
 /**
  * Wagmi configuration for Ethereum wallet connections
@@ -9,7 +11,7 @@ import { injected } from '@wagmi/connectors';
  */
 
 // Define chains to support
-const chains = [sepolia, mainnet] as const;
+const chains = [sepolia, mainnet];
 
 // Define multiple Sepolia RPC endpoints for fallback
 const SEPOLIA_RPC_URLS = [
@@ -17,33 +19,35 @@ const SEPOLIA_RPC_URLS = [
   process.env.RPC_URL
 ].filter(Boolean) as string[]; // Filter out undefined/null values
 
+// Configure chains and providers
+const { chains: configuredChains, publicClient } = configureChains(
+  chains,
+  [
+    jsonRpcProvider({
+      rpc: (chain) => {
+        if (chain.id === sepolia.id) {
+          return { http: SEPOLIA_RPC_URLS[0] };
+        }
+        if (chain.id === mainnet.id) {
+          return { http: 'https://eth.llamarpc.com' };
+        }
+        return null;
+      },
+    }),
+    publicProvider(),
+  ]
+);
+
 // Create wagmi config with only injected connector (browser wallets)
 export const wagmiConfig = createConfig({
-  chains,
+  autoConnect: true,
   connectors: [
-    injected({
-      shimDisconnect: true,
+    new InjectedConnector({
+      chains: configuredChains,
+      options: {
+        shimDisconnect: true,
+      },
     }),
   ],
-  transports: {
-    [mainnet.id]: http('https://eth.llamarpc.com'),
-    [sepolia.id]: fallback(
-      SEPOLIA_RPC_URLS.map(url => 
-        http(url, {
-          timeout: 10000, // 10 seconds timeout
-          fetchOptions: {
-            cache: 'no-store',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-          },
-          retryCount: 3,
-          retryDelay: 1000, // 1 second between retries
-        })
-      ),
-      { rank: true } // Automatically rank transports by latency and reliability
-    ),
-  },
-  ssr: true,
+  publicClient,
 });

@@ -7,7 +7,7 @@ import { CurrencyProvider } from '@/context/CurrencyContext';
 import { ExploreStateProvider } from '@/context/ExploreStateContext';
 import React from 'react';
 
-export function AppProviders({ children, initialState }: { children: React.ReactNode, initialState?: any }) {
+export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider
       attribute="class"
@@ -15,7 +15,7 @@ export function AppProviders({ children, initialState }: { children: React.React
       enableSystem
       disableTransitionOnChange
     >
-      <WagmiProvider initialState={initialState}>
+      <WagmiProvider>
         <AuthProvider>
           <CurrencyProvider>
             <ExploreStateProvider>

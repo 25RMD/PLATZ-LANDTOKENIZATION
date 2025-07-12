@@ -3,7 +3,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAccount, useConnect, useDisconnect, useSignMessage as useWagmiSignMessage } from 'wagmi';
-import { injected } from '@wagmi/connectors';
 import { toast } from 'react-hot-toast';
 
 interface User {

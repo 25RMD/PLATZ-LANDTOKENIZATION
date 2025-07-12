@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
           const contract = getContract({
             address: deployedContractAddress as `0x${string}`,
             abi: PlatzLandNFTABI,
-            client: publicClient
+            publicClient
           });
 
           // Fetch collection data (startTokenId, totalSupply, mainTokenId, ...)

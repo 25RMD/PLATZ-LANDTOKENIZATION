@@ -1,4 +1,5 @@
 import { createPublicClient, http } from 'viem';
+import { sepolia } from 'viem/chains';
 
 // Array of reliable public Sepolia RPC endpoints in priority order
 export const PUBLIC_SEPOLIA_RPC_URLS = [
@@ -29,24 +30,12 @@ export const createFallbackPublicClient = async () => {
       console.log(`Trying RPC URL: ${url.substring(0, 30)}...`);
       
       const client = createPublicClient({
-        chain: {
-          id: 11155111,
-          name: 'Sepolia',
-          nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
-          rpcUrls: {
-            default: { http: [url] },
-            public: { http: [url] }
-          },
-          blockExplorers: {
-            default: { name: 'Etherscan', url: 'https://sepolia.etherscan.io' }
-          },
-          testnet: true
-        },
+        chain: sepolia,
         transport: http(url, {
-          timeout: 10000,
+          timeout: 8000,
           retryCount: 2,
-          retryDelay: 1000
-        })
+          retryDelay: 1000,
+        }),
       });
       
       // Test the connection with a simple call

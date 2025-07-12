@@ -1,19 +1,5 @@
 import { createPublicClient, http, Block } from "viem";
-
-// Define Sepolia chain inline to avoid viem/chains import issues
-const sepolia = {
-  id: 11155111,
-  name: 'Sepolia',
-  nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://rpc.sepolia.org'] },
-    public: { http: ['https://rpc.sepolia.org'] }
-  },
-  blockExplorers: {
-    default: { name: 'Etherscan', url: 'https://sepolia.etherscan.io' }
-  },
-  testnet: true
-};
+import { sepolia } from "viem/chains";
 
 /**
  * Test function to verify Viem integration works correctly

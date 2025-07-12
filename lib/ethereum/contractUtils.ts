@@ -5,6 +5,7 @@ import prisma from '@/lib/db';
 import { getBaseUrl } from '@/lib/getBaseUrl';
 import { PlatzLandNFTABI } from '@/contracts/PlatzLandNFTABI';
 import { LandMarketplaceABI } from '@/contracts/LandMarketplaceABI';
+import { sepolia } from 'viem/chains';
 
 // This will be populated after contract deployment
 let CONTRACT_ADDRESS: string | null = null;
@@ -666,20 +667,8 @@ export const getProviderAndSignerV2 = async () => {
   const createViemPublicClient = (rpcUrl: string) => {
     console.log(`Creating Viem public client with RPC URL: ${rpcUrl.substring(0, 20)}...`);
     return createPublicClient({
-      chain: {
-        id: 11155111,
-        name: 'Sepolia',
-        nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
-        rpcUrls: {
-          default: { http: [rpcUrl] },
-          public: { http: [rpcUrl] }
-        },
-        blockExplorers: {
-          default: { name: 'Etherscan', url: 'https://sepolia.etherscan.io' }
-        },
-        testnet: true
-      },
-      transport: http(rpcUrl),
+      chain: sepolia,
+      transport: http(rpcUrl)
     });
   };
   
@@ -763,19 +752,7 @@ export const getProviderAndSignerV2 = async () => {
           try {
             // Create Viem client with better configuration
             const client = createPublicClient({
-              chain: {
-                id: 11155111,
-                name: 'Sepolia',
-                nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
-                rpcUrls: {
-                  default: { http: [url] },
-                  public: { http: [url] }
-                },
-                blockExplorers: {
-                  default: { name: 'Etherscan', url: 'https://sepolia.etherscan.io' }
-                },
-                testnet: true
-              },
+              chain: sepolia,
               transport: http(url, {
                 timeout: timeoutMs - 1000, // Slightly shorter than our overall timeout
                 retryCount: 2,

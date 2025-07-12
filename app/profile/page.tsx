@@ -40,7 +40,7 @@ const ProfileContent = () => {
   const { 
     data, 
     signMessageAsync, 
-    isPending: isSigningMessage, 
+    isLoading: isSigningMessage, 
     isError: isSignMessageError, 
     error: signMessageHookError, 
     status: signMessageStatus 
@@ -130,7 +130,7 @@ const ProfileContent = () => {
       // The API returns { nonce }. Construct the exact message expected by the server
       const { nonce } = await challengeResponse.json();
       const message = `Please sign this message to link your EVM wallet to your profile.\nNonce: ${nonce}`;
-      const signature = await signMessageAsync({ account: connectedEvmAddress as `0x${string}`, message });
+      const signature = await signMessageAsync({ message });
 
       const linkResponse = await fetch('/api/profile/evm/link-wallet', {
         method: 'POST',

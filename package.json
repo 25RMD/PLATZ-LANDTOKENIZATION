@@ -18,7 +18,8 @@
     "consolidate-users:no-backup": "ts-node scripts/consolidate-duplicate-users.ts --skip-backup",
     "test-price-tracking": "npx tsx scripts/test-price-tracking.ts",
     "test-collection-stats": "npx tsx scripts/test-collection-stats-update.ts",
-    "test-blockchain-bids": "npx tsx scripts/test-blockchain-bids.ts"
+    "test-blockchain-bids": "npx tsx scripts/test-blockchain-bids.ts",
+    "vercel-build": "npm install --legacy-peer-deps && next build"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -42,8 +43,8 @@
     "@types/three": "^0.176.0",
     "@types/uuid": "^10.0.0",
     "@vercel/speed-insights": "^1.2.0",
-    "@wagmi/connectors": "4.1.19",
-    "@wagmi/core": "2.6.10",
+    "@wagmi/connectors": "3.1.11",
+    "@wagmi/core": "1.4.13",
     "axios": "^1.9.0",
     "bcryptjs": "^2.4.3",
     "bs58": "^6.0.0",
@@ -73,8 +74,8 @@
     "three": "^0.177.0",
     "tweetnacl": "^1.0.3",
     "uuid": "^11.1.0",
-    "viem": "^2.10.3",
-    "wagmi": "2.5.13",
+    "viem": "1.21.4",
+    "wagmi": "1.4.13",
     "zod": "^3.24.3"
   },
   "devDependencies": {

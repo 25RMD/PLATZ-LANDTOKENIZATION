@@ -52,7 +52,7 @@ const NftMintingSection: React.FC<NftMintingProps> = ({
 
     if (landListingId && (mintStatus === 'PENDING' || (mintStatus === 'NOT_STARTED' && !mintingResult))) {
       checkMintingStatus();
-      intervalId = setInterval(checkMintingStatus, 7000);
+      intervalId = setInterval(checkMintingStatus, 7000) as unknown as number;
     }
     return () => {
       if (intervalId) clearInterval(intervalId);
