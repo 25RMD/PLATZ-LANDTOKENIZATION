@@ -15,7 +15,8 @@ import OwnerKycSection from '@/components/create-listing/OwnerKycSection';
 import ChainOfTitleSection from '@/components/create-listing/ChainOfTitleSection';
 import AdditionalInfoSection from '@/components/create-listing/AdditionalInfoSection';
 import NftDetailsSection from '@/components/create-listing/NftDetailsSection';
-import NftMintingSection from '@/components/nft/NftMintingSection'; 
+import { useAccount } from 'wagmi';
+import { toast } from 'react-hot-toast';
 
 // Import types from the child component
 import { type LegalDocumentsFormData, type LegalDocumentsFileFieldNames } from '@/components/create-listing/LegalDocumentsSection';
@@ -104,6 +105,7 @@ const initialFormData: FormDataInterface = { // Explicitly type initialFormData
 // Actual page component that handles rendering logic
 const CreateListingContent = () => {
   const { isVerified } = useAuth(); // Get verification status
+  const { address: connectedEvmAddress, isConnected: isEvmWalletConnected } = useAccount();
 
   // State for the form using the new initial state
   const [formData, setFormData] = useState(initialFormData);
@@ -113,6 +115,13 @@ const CreateListingContent = () => {
   const [idDocumentError, setIdDocumentError] = useState<string | null>(null);
   const [savedListingId, setSavedListingId] = useState<string | undefined>(undefined);
   const [isEditMode, setIsEditMode] = useState(false);
+  
+  // New state for combined listing + minting process
+  const [currentStep, setCurrentStep] = useState<'idle' | 'creating-listing' | 'minting-nft' | 'completed' | 'failed'>('idle');
+  const [mintingError, setMintingError] = useState<string | null>(null);
+  const [mintingResult, setMintingResult] = useState<any>(null);
+  const [isProcessComplete, setIsProcessComplete] = useState(false);
+  
   // State for file previews (using a map for scalability)
   const [filePreviews, setFilePreviews] = useState<Record<string, string | string[]>>({});
 
@@ -230,50 +239,67 @@ const CreateListingContent = () => {
     }
   };
 
+  // Function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  // Function to reset the process
+  const resetProcess = () => {
+    setCurrentStep('idle');
+    setError(null);
+    setMintingError(null);
+    setMintingResult(null);
+    setIsProcessComplete(false);
+    setSavedListingId(undefined);
+    setIsEditMode(false);
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    
+    // Prevent multiple submissions
+    if (isSubmitting || currentStep !== 'idle') {
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     setTitleDeedError(null);
     setIdDocumentError(null);
+    setMintingError(null);
+    setCurrentStep('creating-listing');
 
-    // --- Manual Validation for Required Fields (Development: Only NFT fields are critical) ---
+    // --- Manual Validation for Required Fields ---
     let isValid = true;
     
-    // Comment out or remove checks for non-NFT fields for development
-    /*
-    if (!formData.titleDeedFile) {
-      setTitleDeedError(() => "Title Deed document is required.");
-      isValid = false;
-    }
-
-    if (!formData.idDocumentFile) {
-      setIdDocumentError(() => "ID Document is required.");
-      isValid = false;
-    }
-    */
-
-    // Add checks for essential NFT fields
+    // Check for essential NFT fields
     if (!formData.nftTitle) {
-      setError("NFT Title is required."); // Use general error for now, or create specific state
+      setError("NFT Title is required."); 
       isValid = false;
     }
 
     if (!formData.nftImageFile) {
-      setError("NFT Image is required."); // Use general error for now, or create specific state
+      setError("NFT Image is required."); 
+      isValid = false;
+    }
+
+    // Check if wallet is connected for minting
+    if (!isEvmWalletConnected || !connectedEvmAddress) {
+      setError("Please connect your Ethereum wallet to create listings with NFT minting.");
       isValid = false;
     }
 
     if (!isValid) {
       setIsSubmitting(false);
-      return; // Stop submission
+      setCurrentStep('idle');
+      return;
     }
-    // --- End of Manual Validation ---
-
-    // Clear previous errors if any before new submission attempt
-    setError(null);
-    setTitleDeedError(null);
-    setIdDocumentError(null);
 
     const dataToSubmit = new FormData();
 
@@ -283,34 +309,24 @@ const CreateListingContent = () => {
         
         // Check if it's the multi-file field
         if (key === 'propertyPhotosFile' && Array.isArray(value)) {
-           value.forEach((file: File, index: number) => { // Type file and index
-             // Use bracket notation for array fields, e.g., propertyPhotosFile[0], propertyPhotosFile[1]
-             // The exact naming convention might depend on your backend API expectation.
-             // Using a simple key like 'propertyPhotosFile' multiple times is also common.
-             dataToSubmit.append(key, file, file.name); // Append each file with the same key
+           value.forEach((file: File, index: number) => {
+             dataToSubmit.append(key, file, file.name);
            });
-        } else if (value instanceof File) { // Handle single files
+        } else if (value instanceof File) {
             dataToSubmit.append(key, value, value.name);
-        } else if (value !== null && value !== undefined) { // Handle non-file values
-           // Skip read-only fields
-             if (!['docHash', 'ipfsUri', 'mintTimestamp', 'tokenId'].includes(key)) {
+        } else if (value !== null && value !== undefined) {
+           if (!['docHash', 'ipfsUri', 'mintTimestamp', 'tokenId'].includes(key)) {
                  dataToSubmit.append(key, String(value));
             }
         }
     });
 
-    console.log("Submitting FormData:"); // For debugging
-    for (let pair of dataToSubmit.entries()) { // More detailed FormData logging
-       console.log(pair[0]+ ', ', pair[1]); 
-    }
-
     try {
-      // TODO: Update API endpoint for land listings
-      const response = await fetch('/api/land-listings', { // <-- IMPORTANT: Use the correct endpoint
+      // STEP 1: Create the listing
+      console.log("Step 1: Creating land listing...");
+      const response = await fetch('/api/land-listings', {
         method: 'POST',
         body: dataToSubmit,
-        // Headers might not be needed if backend handles FormData correctly
-        // headers: { 'Content-Type': 'multipart/form-data' }, // Usually set automatically by browser for FormData
       });
 
       if (!response.ok) {
@@ -318,26 +334,72 @@ const CreateListingContent = () => {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      const newListing = await response.json(); // Assuming API returns the created listing
-      
-      // Set the saved listing ID to enable NFT minting
+      const newListing = await response.json();
       setSavedListingId(newListing.id);
       setIsEditMode(true);
       
-      alert(`Land Listing '${newListing.parcelNumber || 'Unknown Parcel'}' created successfully! You can now mint NFTs for this listing.`);
+      console.log(`Listing created successfully: ${newListing.id}`);
+
+      // STEP 2: Mint NFT automatically
+      setCurrentStep('minting-nft');
+      console.log("Step 2: Minting NFT...");
+
+      const { nftTitle, nftDescription, nftImageFile } = formData;
       
-      // Don't reset the form in edit mode
-      // Instead, scroll to the NFT minting section
-      setTimeout(() => {
-        const mintingSection = document.getElementById('nft-minting-section');
-        if (mintingSection) {
-          mintingSection.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 500);
+      // Ensure nftImageFile exists (should be validated earlier, but double-check)
+      if (!nftImageFile) {
+        throw new Error("NFT image file is required for minting");
+      }
+      
+      // Convert image to base64
+      const imageBase64 = await fileToBase64(nftImageFile);
+      
+      const mintPayload = {
+        landListingId: newListing.id,
+        nftTitle,
+        nftDescription: nftDescription || '',
+        imageBase64,
+        ownerAddress: connectedEvmAddress,
+        collectionSize: formData.nftCollectionSize,
+      };
+      
+      const mintResponse = await fetch('/api/nft/mint-json', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(mintPayload),
+      });
+
+      const mintData = await mintResponse.json();
+
+      if (mintData.success) {
+        setMintingResult(mintData.data);
+        setCurrentStep('completed');
+        setIsProcessComplete(true);
+        
+        toast.success(`Success! Land listing "${newListing.parcelNumber || 'Unknown Parcel'}" created and NFT minted successfully!`);
+        
+      } else {
+        setMintingError(mintData.details || mintData.error || 'Failed to mint NFT');
+        setCurrentStep('failed');
+        
+        toast.error(`Listing created successfully, but NFT minting failed: ${mintData.details || mintData.error || 'Unknown error'}\n\nYou can try minting again later from your listings page.`);
+      }
 
     } catch (error: any) {
-      console.error("Error creating land listing:", error);
-      alert(`Failed to create listing: ${error.message || 'Unknown error'}`);
+      console.error("Error in create listing + mint process:", error);
+      setError(error.message || 'Unknown error occurred');
+      setCurrentStep('failed');
+      
+      // Determine error message based on whether we have a saved listing ID
+      if (!savedListingId) {
+        // Error occurred during listing creation
+        toast.error(`Failed to create listing: ${error.message || 'Unknown error'}`);
+      } else {
+        // Error occurred during minting (listing was created successfully)
+        toast.error(`Listing created but minting failed: ${error.message || 'Unknown error'}\n\nYou can try minting again later from your listings page.`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -685,18 +747,91 @@ const CreateListingContent = () => {
               </motion.div>
             </div>
           </motion.div>
-        
-        {/* NFT Minting Section */}
-        <div id="nft-minting-section">
-          <NftMintingSection
-            landListingId={savedListingId}
-            formData={formData}
-            isSubmitting={isSubmitting}
-            isEditMode={isEditMode}
-            inputFieldStyles={inputFieldStyles}
-            inputFieldDisabledStyles={inputFieldDisabledStyles}
-          />
-        </div>
+
+        {/* Process Status Display */}
+        {(currentStep !== 'idle' || mintingError || mintingResult) && (
+          <motion.div 
+            className="pt-8 px-12 pb-8 border-t-2 border-black/20 dark:border-white/20"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h3 className="text-xl font-mono uppercase tracking-wider text-black dark:text-white mb-6">
+              Process Status
+            </h3>
+            
+            <div className="space-y-4">
+              {/* Step 1: Creating Listing */}
+              <div className={`flex items-center p-4 rounded-lg border ${
+                currentStep === 'creating-listing' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' :
+                ['minting-nft', 'completed', 'failed'].includes(currentStep) ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
+                'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50'
+              }`}>
+                <div className={`mr-4 w-6 h-6 rounded-full flex items-center justify-center ${
+                  currentStep === 'creating-listing' ? 'bg-blue-500 text-white animate-pulse' :
+                  ['minting-nft', 'completed', 'failed'].includes(currentStep) ? 'bg-green-500 text-white' :
+                  'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
+                }`}>
+                  {currentStep === 'creating-listing' ? '⏳' : 
+                   ['minting-nft', 'completed', 'failed'].includes(currentStep) ? '✓' : '1'}
+                </div>
+                <span className="font-mono text-sm">
+                  {currentStep === 'creating-listing' ? 'Creating listing...' : 
+                   ['minting-nft', 'completed', 'failed'].includes(currentStep) ? 'Listing created successfully' :
+                   'Create listing'}
+                </span>
+              </div>
+
+              {/* Step 2: Minting NFT */}
+              <div className={`flex items-center p-4 rounded-lg border ${
+                currentStep === 'minting-nft' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' :
+                currentStep === 'completed' ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
+                currentStep === 'failed' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50'
+              }`}>
+                <div className={`mr-4 w-6 h-6 rounded-full flex items-center justify-center ${
+                  currentStep === 'minting-nft' ? 'bg-blue-500 text-white animate-pulse' :
+                  currentStep === 'completed' ? 'bg-green-500 text-white' :
+                  currentStep === 'failed' ? 'bg-red-500 text-white' :
+                  'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
+                }`}>
+                  {currentStep === 'minting-nft' ? '⏳' : 
+                   currentStep === 'completed' ? '✓' :
+                   currentStep === 'failed' ? '✗' : '2'}
+                </div>
+                <span className="font-mono text-sm">
+                  {currentStep === 'minting-nft' ? 'Minting NFT...' : 
+                   currentStep === 'completed' ? 'NFT minted successfully' :
+                   currentStep === 'failed' ? `Minting failed: ${mintingError}` :
+                   'Mint NFT'}
+                </span>
+              </div>
+
+              {/* Success message with transaction details */}
+              {currentStep === 'completed' && mintingResult && (
+                <div className="p-4 bg-green-100 dark:bg-green-900/30 border border-green-500 rounded-lg">
+                  <h4 className="font-mono text-sm font-bold text-green-800 dark:text-green-200 mb-2">
+                    Transaction Hash:
+                  </h4>
+                  <div className="space-y-1 text-xs font-mono text-green-700 dark:text-green-300">
+                    {(mintingResult.collectionMintTxHash || mintingResult.transactionHash) && (
+                      <p>
+                        <a 
+                          href={`https://sepolia.etherscan.io/tx/${mintingResult.collectionMintTxHash || mintingResult.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          {mintingResult.collectionMintTxHash || mintingResult.transactionHash}
+                        </a>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Submit Button */}
           <motion.div 
@@ -710,19 +845,60 @@ const CreateListingContent = () => {
               animate={{ opacity: [0.6, 1, 0.6] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-            <span className="text-red-500">*</span> Required fields
+              <span className="text-red-500">*</span> Required fields
+              {!isEvmWalletConnected && (
+                <div className="mt-2 text-amber-600 dark:text-amber-400">
+                  ⚠️ Connect wallet to create listing with NFT
+                </div>
+              )}
             </motion.div>
             <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: isSubmitting || isProcessComplete ? 1 : 1.05 }}
+              whileTap={{ scale: isSubmitting || isProcessComplete ? 1 : 0.95 }}
             >
-          <AnimatedButton 
-            type="submit" 
-            disabled={isSubmitting} 
-                className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-12 py-4 font-mono uppercase tracking-wider text-lg border border-black/30 dark:border-white/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-                {isSubmitting ? 'CREATING LISTING...' : 'CREATE LAND LISTING'}
-          </AnimatedButton>
+              {currentStep === 'failed' ? (
+                <div className="flex gap-4">
+                  <AnimatedButton 
+                    type="button"
+                    onClick={resetProcess}
+                    className="px-8 py-4 font-mono uppercase tracking-wider text-lg border border-amber-500 bg-amber-500 text-white hover:bg-amber-600 hover:border-amber-600 transition-all"
+                  >
+                    RESET & TRY AGAIN
+                  </AnimatedButton>
+                  <AnimatedButton 
+                    type="submit" 
+                    disabled={isSubmitting || !isEvmWalletConnected} 
+                    className={`px-8 py-4 font-mono uppercase tracking-wider text-lg border transition-all ${
+                      isSubmitting
+                      ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 border-gray-400 dark:border-gray-600 cursor-not-allowed'
+                      : !isEvmWalletConnected
+                      ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 border-gray-400 dark:border-gray-600 cursor-not-allowed'
+                      : 'bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 border-black/30 dark:border-white/30'
+                    }`}
+                  >
+                    RETRY PROCESS
+                  </AnimatedButton>
+                </div>
+              ) : (
+                <AnimatedButton 
+                  type="submit" 
+                  disabled={isSubmitting || isProcessComplete || !isEvmWalletConnected} 
+                  className={`px-12 py-4 font-mono uppercase tracking-wider text-lg border transition-all ${
+                    isProcessComplete 
+                      ? 'bg-green-600 dark:bg-green-500 text-white border-green-600 dark:border-green-500 cursor-default'
+                      : isSubmitting
+                      ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 border-gray-400 dark:border-gray-600 cursor-not-allowed'
+                      : !isEvmWalletConnected
+                      ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 border-gray-400 dark:border-gray-600 cursor-not-allowed'
+                      : 'bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 border-black/30 dark:border-white/30'
+                  }`}
+                >
+                  {isProcessComplete ? '✓ COMPLETED SUCCESSFULLY' :
+                   currentStep === 'creating-listing' ? 'CREATING LISTING...' :
+                   currentStep === 'minting-nft' ? 'MINTING NFT...' :
+                   'CREATE LISTING & MINT NFT'}
+                </AnimatedButton>
+              )}
             </motion.div>
           </motion.div>
         </motion.form>
