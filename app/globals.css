@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  /* Global 90% scaling for the entire website - clean approach */
+  html {
+    zoom: 0.9;
+  }
+  
   body {
     /* Ensure smooth transitions and proper text rendering */
     text-rendering: optimizeLegibility;

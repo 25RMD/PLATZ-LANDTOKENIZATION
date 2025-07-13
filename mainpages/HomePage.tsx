@@ -253,9 +253,12 @@ const HomePage = () => {
           transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
         />
 
-        {/* 3D Globe Background - Fixed positioning */}
+        {/* 3D Globe Background - Fixed positioning with zoom compensation */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <div className="w-[600px] h-[600px] sm:w-[700px] sm:h-[700px] md:w-[800px] md:h-[800px]">
+          <div className="w-[600px] h-[600px] sm:w-[700px] sm:h-[700px] md:w-[800px] md:h-[800px]" style={{
+            transform: 'scale(1.111)',
+            transformOrigin: 'center center'
+          }}>
             <GlobeAnimation className="opacity-60 dark:opacity-50" />
           </div>
         </div>

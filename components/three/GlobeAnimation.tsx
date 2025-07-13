@@ -49,621 +49,382 @@ const useIsMobile = () => {
   return isMobile;
 };
 
-// Helper function to create a star-shaped texture with enhanced glow
-const createStarTexture = () => {
+// Helper function to create realistic Earth diffuse texture
+const createEarthTexture = () => {
   const canvas = document.createElement('canvas');
-  const size = 128; // Higher resolution for better glow
+  const size = 2048; // Higher resolution for better detail
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
   
-  ctx.clearRect(0, 0, size, size);
+  // Create realistic ocean gradient
+  const oceanGradient = ctx.createLinearGradient(0, 0, 0, size);
+  oceanGradient.addColorStop(0, '#0f172a'); // Very deep blue
+  oceanGradient.addColorStop(0.3, '#1e40af'); // Deep blue
+  oceanGradient.addColorStop(0.5, '#2563eb'); // Ocean blue
+  oceanGradient.addColorStop(0.7, '#3b82f6'); // Lighter blue
+  oceanGradient.addColorStop(1, '#1e40af'); // Back to deep
   
-  // Create multiple glow layers for enhanced effect
-  const centerX = size / 2;
-  const centerY = size / 2;
-  
-  // Outer glow layer
-  const outerGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size * 0.5);
-  outerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
-  outerGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.1)');
-  outerGlow.addColorStop(0.7, 'rgba(255, 255, 255, 0.05)');
-  outerGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
-  
-  ctx.fillStyle = outerGlow;
+  ctx.fillStyle = oceanGradient;
   ctx.fillRect(0, 0, size, size);
   
-  // Middle glow layer
-  const middleGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size * 0.35);
-  middleGlow.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-  middleGlow.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');
-  middleGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
-  
-  ctx.fillStyle = middleGlow;
-  ctx.fillRect(0, 0, size, size);
-  
-  // Create star shape
-  const outerRadius = size * 0.25;
-  const innerRadius = size * 0.1;
-  const spikes = 5;
-  
-  ctx.save();
-  ctx.beginPath();
-  for (let i = 0; i < spikes * 2; i++) {
-    const angle = (i * Math.PI) / spikes - Math.PI / 2;
-    const radius = i % 2 === 0 ? outerRadius : innerRadius;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
+  // Add ocean depth variations
+  for (let i = 0; i < 200; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const radius = Math.random() * 100 + 50;
     
-    if (i === 0) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
+    const depthGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    depthGradient.addColorStop(0, 'rgba(15, 23, 42, 0.3)'); // Darker depths
+    depthGradient.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    
+    ctx.fillStyle = depthGradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
   }
-  ctx.closePath();
   
-  // Star gradient
-  const starGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerRadius);
-  starGradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-  starGradient.addColorStop(0.2, 'rgba(255, 255, 240, 1.0)');
-  starGradient.addColorStop(0.5, 'rgba(255, 255, 200, 0.9)');
-  starGradient.addColorStop(0.8, 'rgba(255, 255, 150, 0.6)');
-  starGradient.addColorStop(1, 'rgba(255, 255, 100, 0.3)');
-  
-  ctx.fillStyle = starGradient;
-  ctx.fill();
-  
-  // Add bright core
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, size * 0.06, 0, Math.PI * 2);
-  const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size * 0.06);
-  coreGradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-  coreGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)');
-  coreGradient.addColorStop(1, 'rgba(255, 255, 255, 0.7)');
-  ctx.fillStyle = coreGradient;
-  ctx.fill();
-  
-  ctx.restore();
-  
-  return new THREE.CanvasTexture(canvas);
-};
-
-// Helper function to create points that roughly follow continent patterns
-const getContinentPoints = (radius: number, count: number) => {
-  const points: Array<{
-    x: number;
-    y: number;
-    z: number;
-    phi: number;
-    theta: number;
-    continent: number;
-  }> = [];
-  
-  // Define rough continent regions (lat, lon ranges)
+  // Create realistic continent shapes and positions
   const continents = [
     // North America
-    { latRange: [25, 70], lonRange: [-160, -60], density: 0.15 },
-    // South America  
-    { latRange: [-55, 15], lonRange: [-80, -35], density: 0.12 },
-    // Europe
-    { latRange: [35, 70], lonRange: [-10, 40], density: 0.1 },
+    {
+      x: 0.2, y: 0.3, width: 0.3, height: 0.4,
+      color: '#166534', // Dark green
+      shapes: [
+        { x: 0.1, y: 0.1, w: 0.25, h: 0.35 }, // Main landmass
+        { x: 0.05, y: 0.45, w: 0.15, h: 0.15 }, // Mexico
+        { x: 0.35, y: 0.05, w: 0.1, h: 0.2 }, // Greenland
+      ]
+    },
+    // South America
+    {
+      x: 0.25, y: 0.6, width: 0.15, height: 0.35,
+      color: '#15803d',
+      shapes: [
+        { x: 0.05, y: 0.1, w: 0.12, h: 0.3 }, // Main continent
+        { x: 0.02, y: 0.05, w: 0.08, h: 0.1 }, // Northern part
+      ]
+    },
     // Africa
-    { latRange: [-35, 35], lonRange: [-20, 50], density: 0.15 },
+    {
+      x: 0.48, y: 0.35, width: 0.18, height: 0.45,
+      color: '#22c55e',
+      shapes: [
+        { x: 0.02, y: 0.1, w: 0.14, h: 0.35 }, // Main Africa
+        { x: 0.12, y: 0.02, w: 0.06, h: 0.12 }, // North Africa
+      ]
+    },
+    // Europe
+    {
+      x: 0.45, y: 0.15, width: 0.15, height: 0.2,
+      color: '#16a34a',
+      shapes: [
+        { x: 0.02, y: 0.05, w: 0.12, h: 0.15 }, // Main Europe
+        { x: 0.08, y: 0.02, w: 0.06, h: 0.08 }, // Scandinavia
+      ]
+    },
     // Asia
-    { latRange: [10, 70], lonRange: [60, 180], density: 0.2 },
-    // Australia/Oceania
-    { latRange: [-45, -10], lonRange: [110, 180], density: 0.08 },
-    // Additional scattered points for islands and other regions
-    { latRange: [-90, 90], lonRange: [-180, 180], density: 0.2 }
+    {
+      x: 0.55, y: 0.15, width: 0.4, height: 0.45,
+      color: '#15803d',
+      shapes: [
+        { x: 0.05, y: 0.1, w: 0.35, h: 0.3 }, // Main Asia
+        { x: 0.25, y: 0.05, w: 0.15, h: 0.15 }, // Siberia
+        { x: 0.15, y: 0.35, w: 0.2, h: 0.1 }, // India
+      ]
+    },
+    // Australia
+    {
+      x: 0.75, y: 0.7, width: 0.2, height: 0.15,
+      color: '#ca8a04',
+      shapes: [
+        { x: 0.02, y: 0.02, w: 0.16, h: 0.11 }, // Australia
+        { x: 0.12, y: 0.12, w: 0.06, h: 0.03 }, // Tasmania
+      ]
+    }
   ];
   
+  // Draw continents with realistic shapes
   continents.forEach(continent => {
-    const continentCount = Math.floor(count * continent.density);
+    continent.shapes.forEach(shape => {
+      const baseX = continent.x * size + shape.x * size;
+      const baseY = continent.y * size + shape.y * size;
+      const width = shape.w * size;
+      const height = shape.h * size;
+      
+      // Create terrain gradient
+      const terrainGradient = ctx.createRadialGradient(
+        baseX + width/2, baseY + height/2, 0,
+        baseX + width/2, baseY + height/2, Math.max(width, height)/2
+      );
+      terrainGradient.addColorStop(0, continent.color);
+      terrainGradient.addColorStop(0.4, '#22c55e'); // Lighter green
+      terrainGradient.addColorStop(0.7, '#16a34a'); // Medium green
+      terrainGradient.addColorStop(1, '#15803d'); // Darker green
+      
+      ctx.fillStyle = terrainGradient;
+      
+      // Create organic continent shape
+      ctx.beginPath();
+      const points = 32;
+      for (let i = 0; i <= points; i++) {
+        const angle = (i / points) * Math.PI * 2;
+        const noise1 = Math.sin(angle * 3) * 0.1;
+        const noise2 = Math.cos(angle * 5) * 0.05;
+        const noise3 = Math.sin(angle * 7) * 0.03;
+        const totalNoise = noise1 + noise2 + noise3;
+        
+        const radiusX = (width / 2) * (1 + totalNoise);
+        const radiusY = (height / 2) * (1 + totalNoise * 0.8);
+        
+        const x = baseX + width/2 + Math.cos(angle) * radiusX;
+        const y = baseY + height/2 + Math.sin(angle) * radiusY;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+      ctx.fill();
+      
+      // Add mountain ranges and terrain features
+      for (let j = 0; j < 20; j++) {
+        const mx = baseX + Math.random() * width;
+        const my = baseY + Math.random() * height;
+        const mRadius = Math.random() * 30 + 10;
+        
+        const mountainGradient = ctx.createRadialGradient(mx, my, 0, mx, my, mRadius);
+        mountainGradient.addColorStop(0, '#365314'); // Dark green/brown
+        mountainGradient.addColorStop(0.5, '#16a34a');
+        mountainGradient.addColorStop(1, 'rgba(22, 163, 74, 0)');
+        
+        ctx.fillStyle = mountainGradient;
+        ctx.beginPath();
+        ctx.arc(mx, my, mRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+  });
+  
+  // Add ice caps
+  // North pole
+  const northPoleGradient = ctx.createRadialGradient(size/2, 0, 0, size/2, 0, size * 0.15);
+  northPoleGradient.addColorStop(0, '#f8fafc'); // White
+  northPoleGradient.addColorStop(0.7, '#e2e8f0'); // Light gray
+  northPoleGradient.addColorStop(1, 'rgba(226, 232, 240, 0)');
+  
+  ctx.fillStyle = northPoleGradient;
+  ctx.beginPath();
+  ctx.arc(size/2, 0, size * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // South pole
+  const southPoleGradient = ctx.createRadialGradient(size/2, size, 0, size/2, size, size * 0.12);
+  southPoleGradient.addColorStop(0, '#f8fafc');
+  southPoleGradient.addColorStop(0.7, '#e2e8f0');
+  southPoleGradient.addColorStop(1, 'rgba(226, 232, 240, 0)');
+  
+  ctx.fillStyle = southPoleGradient;
+  ctx.beginPath();
+  ctx.arc(size/2, size, size * 0.12, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Add subtle cloud patterns
+  ctx.globalAlpha = 0.15;
+  ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < 100; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const radius = Math.random() * 40 + 20;
     
-    for (let i = 0; i < continentCount; i++) {
-      // Random point within continent bounds
-      const lat = continent.latRange[0] + Math.random() * (continent.latRange[1] - continent.latRange[0]);
-      const lon = continent.lonRange[0] + Math.random() * (continent.lonRange[1] - continent.lonRange[0]);
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  return texture;
+};
+
+// Helper function to create realistic Earth normal map
+const createEarthNormalMap = () => {
+  const canvas = document.createElement('canvas');
+  const size = 1024;
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  
+  // Create base normal map color (neutral)
+  ctx.fillStyle = '#8080ff';
+  ctx.fillRect(0, 0, size, size);
+  
+  // Add mountain ranges with proper normal mapping
+  const mountainRanges = [
+    // Himalayas
+    { x: 0.7, y: 0.35, w: 0.15, h: 0.05, intensity: 0.8 },
+    // Andes
+    { x: 0.28, y: 0.6, w: 0.03, h: 0.3, intensity: 0.7 },
+    // Rockies
+    { x: 0.15, y: 0.3, w: 0.05, h: 0.2, intensity: 0.6 },
+    // Alps
+    { x: 0.48, y: 0.25, w: 0.06, h: 0.03, intensity: 0.5 },
+    // Urals
+    { x: 0.58, y: 0.2, w: 0.02, h: 0.15, intensity: 0.4 },
+  ];
+  
+  mountainRanges.forEach(range => {
+    const baseX = range.x * size;
+    const baseY = range.y * size;
+    const width = range.w * size;
+    const height = range.h * size;
+    
+    for (let i = 0; i < 50; i++) {
+      const x = baseX + Math.random() * width;
+      const y = baseY + Math.random() * height;
+      const radius = Math.random() * 20 + 10;
       
-      // Convert to spherical coordinates
-      const phi = (lon + 180) * (Math.PI / 180); // longitude to phi
-      const theta = (90 - lat) * (Math.PI / 180); // latitude to theta
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      const intensity = range.intensity * (0.5 + Math.random() * 0.5);
+      gradient.addColorStop(0, `rgba(${128 + intensity * 127}, ${128 + intensity * 127}, ${255}, 1)`);
+      gradient.addColorStop(1, 'rgba(128, 128, 255, 0)');
       
-      points.push({
-        x: radius * Math.sin(theta) * Math.cos(phi),
-        y: radius * Math.cos(theta),
-        z: radius * Math.sin(theta) * Math.sin(phi),
-        phi,
-        theta,
-        continent: continents.indexOf(continent)
-      });
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
     }
   });
   
-  return points;
+  // Add ocean depth variations
+  for (let i = 0; i < 200; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const radius = Math.random() * 30 + 10;
+    const depth = Math.random() * 0.2 + 0.1;
+    
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, `rgba(${128 - depth * 127}, ${128 - depth * 127}, ${255}, 1)`);
+    gradient.addColorStop(1, 'rgba(128, 128, 255, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  return texture;
 };
 
-// Helper function to create random points on sphere surface
-const getRandomSpherePoint = (radius: number) => {
-  const phi = Math.random() * Math.PI * 2;
-  const theta = Math.random() * Math.PI;
-  return {
-    x: radius * Math.sin(theta) * Math.cos(phi),
-    y: radius * Math.cos(theta),
-    z: radius * Math.sin(theta) * Math.sin(phi),
-    phi,
-    theta
-  };
-};
-
-// Globe component that renders the 3D wireframe sphere
+// Globe component that renders the realistic Earth sphere
 const Globe = ({ scrollY, isMobile }: { scrollY: number; isMobile: boolean }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const gridRef = useRef<THREE.Group>(null);
-  const particlesRef = useRef<THREE.Points>(null);
-  const connectionsRef = useRef<THREE.Group>(null);
   const isFirstFrame = useRef(true);
 
   // Adjust quality based on device
   const quality = useMemo(() => {
-    return isMobile ? { segments: 32, particles: 75, connections: 25 } : { segments: 64, particles: 150, connections: 50 };
+    return isMobile ? { segments: 32 } : { segments: 64 };
   }, [isMobile]);
 
-  // Create globe geometry with wireframe
+  // Create globe geometry with higher detail for realistic Earth
   const globeGeometry = useMemo(() => {
-    return new THREE.SphereGeometry(2, quality.segments, quality.segments);
+    return new THREE.SphereGeometry(2.2, quality.segments, quality.segments);
   }, [quality.segments]);
 
-  // Create grid lines around the globe (realistic Earth lat/lon)
-  const gridLines = useMemo(() => {
-    const group = new THREE.Group();
-    const latLines = isMobile ? 9 : 18;
-    const lonLines = isMobile ? 12 : 24;
-    const lineRes = isMobile ? 32 : 64;
+  // Create realistic Earth material
+  const earthMaterial = useMemo(() => {
+    const diffuseTexture = createEarthTexture();
+    const normalTexture = createEarthNormalMap();
     
-    // Latitude lines (horizontal circles)
-    for (let i = 1; i < latLines; i++) {
-      const lat = -90 + (i / latLines) * 180;
-      const phi = (90 - lat) * (Math.PI / 180);
-      const radius = 2 * Math.sin(phi);
-      const y = 2 * Math.cos(phi);
-      
-      if (radius > 0.1) {
-        const points = [];
-        for (let j = 0; j <= lineRes; j++) {
-          const angle = (j / lineRes) * Math.PI * 2;
-          points.push(new THREE.Vector3(
-            radius * Math.cos(angle),
-            y,
-            radius * Math.sin(angle)
-          ));
-        }
-        
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        
-        // Special styling for equator and tropics
-        let opacity, color;
-        if (Math.abs(lat) < 1) { // Equator
-          opacity = isMobile ? 0.8 : 1.0;
-          color = '#ffffff';
-        } else if (Math.abs(lat - 23.5) < 1 || Math.abs(lat + 23.5) < 1) { // Tropics
-          opacity = isMobile ? 0.7 : 0.9;
-          color = '#00ffaa';
-        } else if (Math.abs(lat - 66.5) < 1 || Math.abs(lat + 66.5) < 1) { // Arctic/Antarctic circles
-          opacity = isMobile ? 0.6 : 0.8;
-          color = '#00aaff';
-        } else {
-          opacity = isMobile ? 0.4 : 0.6;
-          color = '#ffffff';
-        }
-        
-        const material = new THREE.LineBasicMaterial({ 
-          color, 
-          opacity, 
-          transparent: true 
-        });
-        const line = new THREE.Line(geometry, material);
-        group.add(line);
-      }
-    }
-
-    // Longitude lines (vertical semicircles)
-    for (let i = 0; i < lonLines; i++) {
-      const lon = (i / lonLines) * 360 - 180;
-      const angle = (lon + 180) * (Math.PI / 180);
-      const points = [];
-      
-      for (let j = 0; j <= lineRes / 2; j++) {
-        const lat = -90 + (j / (lineRes / 2)) * 180;
-        const phi = (90 - lat) * (Math.PI / 180);
-        points.push(new THREE.Vector3(
-          2 * Math.sin(phi) * Math.cos(angle),
-          2 * Math.cos(phi),
-          2 * Math.sin(phi) * Math.sin(angle)
-        ));
-      }
-      
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      
-      // Special styling for prime meridian and international date line
-      let opacity, color;
-      if (Math.abs(lon) < 1) { // Prime Meridian
-        opacity = isMobile ? 0.8 : 1.0;
-        color = '#ffffff';
-      } else if (Math.abs(lon - 180) < 1 || Math.abs(lon + 180) < 1) { // International Date Line
-        opacity = isMobile ? 0.7 : 0.9;
-        color = '#00aaff';
-      } else {
-        opacity = isMobile ? 0.3 : 0.5;
-        color = '#ffffff';
-      }
-      
-      const material = new THREE.LineBasicMaterial({ 
-        color, 
-        opacity, 
-        transparent: true 
-      });
-      const line = new THREE.Line(geometry, material);
-      group.add(line);
-    }
-
-    return group;
-  }, [isMobile, quality]);
-
-  // Create particles for land tokens with continent-based distribution
-  const { particles, tokenPositions, highlightedTokens, continentData } = useMemo(() => {
-    const particleCount = quality.particles;
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    const sizes = new Float32Array(particleCount);
-    const glowIntensity = new Float32Array(particleCount);
-    const tokenPos = [];
-    const highlighted = [];
-    const continents = [];
-    
-    // Get continent-based points for more realistic distribution
-    const continentPoints = getContinentPoints(2.0, Math.floor(particleCount * 0.7));
-    const randomPoints = [];
-    
-    // Fill remaining with random ocean/space points
-    for (let i = continentPoints.length; i < particleCount; i++) {
-      randomPoints.push(getRandomSpherePoint(2.0));
-    }
-    
-    const allPoints = [...continentPoints, ...randomPoints];
-    
-    for (let i = 0; i < particleCount; i++) {
-      const point = allPoints[i] || getRandomSpherePoint(2.0);
-      positions[i * 3] = point.x;
-      positions[i * 3 + 1] = point.y;
-      positions[i * 3 + 2] = point.z;
-      
-      tokenPos.push(point);
-      continents.push((point as any).continent ?? -1);
-      
-      // Different highlighting chances based on location
-      const isLandPoint = i < continentPoints.length;
-      const highlightChance = isLandPoint ? 0.2 : 0.08;
-      const isHighlighted = Math.random() < highlightChance;
-      highlighted.push(isHighlighted);
-      
-      if (isHighlighted) {
-        // Highlighted tokens: vibrant glowing colors
-        if (isLandPoint) {
-          colors[i * 3] = 1.0; // R - Pure golden glow
-          colors[i * 3 + 1] = 0.9; // G  
-          colors[i * 3 + 2] = 0.3; // B
-        } else {
-          colors[i * 3] = 0.3; // R - Pure cyan glow
-          colors[i * 3 + 1] = 0.9; // G
-          colors[i * 3 + 2] = 1.0; // B
-        }
-        sizes[i] = isMobile ? 0.12 : 0.15;
-        glowIntensity[i] = 1.0;
-      } else {
-        // Regular tokens: softer glowing colors
-        if (isLandPoint) {
-          colors[i * 3] = 0.8; // R (warm earth glow)
-          colors[i * 3 + 1] = 0.7; // G
-          colors[i * 3 + 2] = 0.4; // B
-        } else {
-          colors[i * 3] = 0.4; // R (ocean blue glow)
-          colors[i * 3 + 1] = 0.7; // G
-          colors[i * 3 + 2] = 0.9; // B
-        }
-        sizes[i] = isMobile ? 0.06 : 0.08;
-        glowIntensity[i] = 0.6;
-      }
-    }
-    
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-    geometry.setAttribute('glowIntensity', new THREE.BufferAttribute(glowIntensity, 1));
-    
-    return { 
-      particles: geometry, 
-      tokenPositions: tokenPos, 
-      highlightedTokens: highlighted,
-      continentData: continents
-    };
-  }, [quality.particles, isMobile]);
-
-  // Create connection lines between nearby tokens (skip on mobile for performance)
-  const connections = useMemo(() => {
-    if (isMobile) return new THREE.Group();
-    
-    const group = new THREE.Group();
-    const connectionCount = quality.connections;
-    
-    for (let i = 0; i < connectionCount; i++) {
-      const point1 = tokenPositions[Math.floor(Math.random() * tokenPositions.length)];
-      const point2 = tokenPositions[Math.floor(Math.random() * tokenPositions.length)];
-      
-      if (point1 !== point2) {
-        const points = [
-          new THREE.Vector3(point1.x, point1.y, point1.z),
-          new THREE.Vector3(point2.x, point2.y, point2.z)
-        ];
-        
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({ 
-          color: '#ffffff', 
-          opacity: 0.3, 
-          transparent: true 
-        });
-        const line = new THREE.Line(geometry, material);
-        group.add(line);
-      }
-    }
-    
-    return group;
-  }, [tokenPositions, quality.connections, isMobile]);
-
-  const particleMaterial = useMemo(() => {
-    const starTexture = createStarTexture();
-    
-    return new THREE.PointsMaterial({
-      size: isMobile ? 0.25 : 0.35, // Larger base size for better glow visibility
-      map: starTexture,
-      opacity: 1.0,
+    return new THREE.MeshPhongMaterial({
+      map: diffuseTexture,
+      normalMap: normalTexture,
+      normalScale: new THREE.Vector2(0.5, 0.5),
+      shininess: 10,
+      specular: new THREE.Color(0x111111),
       transparent: true,
-      blending: THREE.AdditiveBlending, // Critical for glow effect
-      vertexColors: true,
-      sizeAttenuation: true,
-      alphaTest: 0.001,
-      depthWrite: false, // Prevents z-fighting
-      depthTest: true, // Ensures proper rendering order
+      opacity: isMobile ? 0.85 : 0.9,
     });
   }, [isMobile]);
 
-  // Animation loop - WITH EXPLOSIVE SCROLL SCALING
+
+
+  // Animation loop with scroll scaling
   useFrame((state) => {
     const time = state.clock.elapsedTime;
     
     // On first frame, ensure everything is positioned correctly
     if (isFirstFrame.current) {
-      if (meshRef.current && gridRef.current && particlesRef.current) {
+      if (meshRef.current) {
         meshRef.current.position.set(0, 0, 0);
-        gridRef.current.position.set(0, 0, 0);
-        particlesRef.current.position.set(0, 0, 0);
-        
         meshRef.current.rotation.set(0, 0, 0);
-        gridRef.current.rotation.set(0, 0, 0);
-        particlesRef.current.rotation.set(0, 0, 0);
-        
         meshRef.current.scale.setScalar(1);
-        gridRef.current.scale.setScalar(1);
-        particlesRef.current.scale.setScalar(1);
-      }
-      
-      if (!isMobile && connectionsRef.current) {
-        connectionsRef.current.position.set(0, 0, 0);
-        connectionsRef.current.rotation.set(0, 0, 0);
-        connectionsRef.current.scale.setScalar(1);
       }
       
       isFirstFrame.current = false;
-      return; // Skip animations on first frame
+      return;
     }
     
     // Basic rotation based only on time
-    if (meshRef.current && gridRef.current && particlesRef.current) {
-      const baseRotation = time * (isMobile ? 0.03 : 0.05);
+    if (meshRef.current) {
+      const baseRotation = time * (isMobile ? 0.08 : 0.12);
       
       meshRef.current.rotation.y = baseRotation;
-      gridRef.current.rotation.y = baseRotation * 0.8;
-      particlesRef.current.rotation.y = baseRotation * 0.6;
       
       // Subtle oscillation on X axis
       const oscillation = Math.sin(time * 0.3) * (isMobile ? 0.03 : 0.05);
       meshRef.current.rotation.x = oscillation;
-      gridRef.current.rotation.x = oscillation * 0.8;
       
       // EXPLOSIVE SCALING EFFECT BASED ON SCROLL
       const timePulse = 1 + Math.sin(time * 0.8) * (isMobile ? 0.01 : 0.02);
       
-      // Calculate conservative scale based on scroll - visible and contained within canvas
+      // Calculate conservative scale based on scroll
       const normalizedScrollY = Math.max(0, scrollY || 0);
-      const scrollProgress = Math.min(normalizedScrollY / 2500, 1); // Keep the balanced range
+      const scrollProgress = Math.min(normalizedScrollY / 2500, 1);
       
       // Smooth easing function for more immersive scaling
       const easeOutExpo = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
       const easeInOutQuad = (t: number) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       
-      // CONSERVATIVE scaling that stays within canvas bounds
+      // Balanced scaling that's dramatic but stays in view
       let explosiveScale = 1;
+      
       if (scrollProgress < 0.3) {
-        // Gentle start - very conservative
-        explosiveScale = 1 + easeInOutQuad(scrollProgress / 0.3) * (isMobile ? 0.5 : 0.8);
+        explosiveScale = 1 + easeInOutQuad(scrollProgress / 0.3) * (isMobile ? 1.0 : 1.5);
       } else if (scrollProgress < 0.7) {
-        // Moderate growth - stay within bounds
         const localProgress = (scrollProgress - 0.3) / 0.4;
-        explosiveScale = 1 + (isMobile ? 0.5 : 0.8) + easeOutExpo(localProgress) * (isMobile ? 1.2 : 1.8);
+        explosiveScale = 1 + (isMobile ? 1.0 : 1.5) + easeOutExpo(localProgress) * (isMobile ? 1.8 : 2.5);
       } else {
-        // Final expansion - controlled maximum
         const localProgress = (scrollProgress - 0.7) / 0.3;
-        const baseScale = 1 + (isMobile ? 0.5 : 0.8) + (isMobile ? 1.2 : 1.8);
-        explosiveScale = baseScale + Math.pow(localProgress, 1.5) * (isMobile ? 0.8 : 1.2);
+        explosiveScale = 1 + (isMobile ? 1.0 : 1.5) + (isMobile ? 1.8 : 2.5) + Math.pow(localProgress, 0.8) * (isMobile ? 1.5 : 2.0);
       }
       
-      // Clamp the scale to ensure it never goes beyond reasonable bounds
-      const maxScale = isMobile ? 3.5 : 4.8; // Maximum scale to stay in canvas
+      // Clamp maximum scale to prevent clipping
+      const maxScale = isMobile ? 4.5 : 6.0;
       explosiveScale = Math.min(explosiveScale, maxScale);
       
-      // Add gentle oscillation for organic feel
-      const scrollOscillation = Math.sin(scrollProgress * Math.PI * 2.5) * 0.04 * scrollProgress;
-      
-      // Combine time pulse with explosive scaling
-      const finalScale = timePulse * explosiveScale * (1 + scrollOscillation);
+      const finalScale = explosiveScale * timePulse;
       
       meshRef.current.scale.setScalar(finalScale);
-      gridRef.current.scale.setScalar(finalScale);
-      particlesRef.current.scale.setScalar(finalScale);
-      
-      // Enhanced particle animations with dramatic twinkling
-      const geometry = particlesRef.current.geometry;
-      const colors = geometry.getAttribute('color') as THREE.BufferAttribute;
-      const sizes = geometry.getAttribute('size') as THREE.BufferAttribute;
-      
-      for (let i = 0; i < highlightedTokens.length; i++) {
-        const isLandPoint = continentData[i] >= 0;
-        
-        if (highlightedTokens[i]) {
-          // Dramatic pulsing and twinkling for highlighted tokens
-          const mainPulse = Math.sin(time * 2 + i * 0.3) * 0.5 + 0.5;
-          const fastTwinkle = Math.sin(time * 8 + i * 1.5) * 0.3 + 0.7;
-          const slowGlow = Math.sin(time * 0.5 + i * 0.1) * 0.2 + 0.8;
-          
-          // Increase intensity with scroll for explosive effect
-          const scrollIntensity = 1 + scrollProgress * 2; // Up to 3x intensity
-          const intensity = mainPulse * fastTwinkle * slowGlow * scrollIntensity;
-          
-          if (isLandPoint) {
-            // Golden glow with warm variations
-            colors.setXYZ(i, 
-              Math.min(1.0, 1.0 * intensity), 
-              Math.min(1.0, (0.9 + Math.sin(time * 3 + i) * 0.1) * intensity), 
-              Math.min(1.0, (0.3 + Math.sin(time * 4 + i) * 0.2) * intensity)
-            );
-          } else {
-            // Cyan glow with cool variations
-            colors.setXYZ(i, 
-              Math.min(1.0, (0.3 + Math.sin(time * 2 + i) * 0.2) * intensity), 
-              Math.min(1.0, (0.9 + Math.sin(time * 3.5 + i) * 0.1) * intensity), 
-              Math.min(1.0, 1.0 * intensity)
-            );
-          }
-          
-          // Dynamic size with complex twinkling and scroll scaling
-          const baseSize = isMobile ? 0.12 : 0.15;
-          const sizePulse = Math.sin(time * 6 + i * 0.7) * 0.05;
-          const sizeTwinkle = Math.sin(time * 15 + i * 2) * 0.02;
-          const scrollSizeBoost = 1 + scrollProgress * 0.5; // Up to 1.5x size
-          sizes.setX(i, (baseSize + sizePulse + sizeTwinkle) * scrollSizeBoost);
-          
-        } else {
-          // Subtle breathing effect for regular tokens
-          const breathe = Math.sin(time * 1.5 + i * 0.05) * 0.2 + 0.8;
-          const subtleTwinkle = Math.sin(time * 4 + i * 0.3) * 0.15 + 0.85;
-          
-          // Slight intensity boost with scroll
-          const scrollIntensity = 1 + scrollProgress * 0.5;
-          const intensity = breathe * subtleTwinkle * scrollIntensity;
-          
-          if (isLandPoint) {
-            // Warm earth glow
-            colors.setXYZ(i, 
-              Math.min(1.0, 0.8 * intensity), 
-              Math.min(1.0, 0.7 * intensity), 
-              Math.min(1.0, 0.4 * intensity)
-            );
-          } else {
-            // Cool ocean glow
-            colors.setXYZ(i, 
-              Math.min(1.0, 0.4 * intensity), 
-              Math.min(1.0, 0.7 * intensity), 
-              Math.min(1.0, 0.9 * intensity)
-            );
-          }
-          
-          // Gentle size variation with scroll boost
-          const baseSize = isMobile ? 0.06 : 0.08;
-          const sizeVariation = Math.sin(time * 3 + i * 0.2) * 0.02;
-          const scrollSizeBoost = 1 + scrollProgress * 0.3;
-          sizes.setX(i, (baseSize + sizeVariation) * scrollSizeBoost);
-        }
-      }
-      
-      colors.needsUpdate = true;
-      sizes.needsUpdate = true;
-    }
-    
-    // Handle connections separately (desktop only)
-    if (!isMobile && connectionsRef.current) {
-      const baseRotation = time * 0.05;
-      connectionsRef.current.rotation.y = baseRotation * 0.4;
-      
-      // Scale connections with scroll using same CONSERVATIVE easing as globe
-      const normalizedScrollY = Math.max(0, scrollY || 0);
-      const scrollProgress = Math.min(normalizedScrollY / 2500, 1); // Match globe's range
-      
-      // Use same conservative multi-stage scaling as globe for consistency
-      let explosiveScale = 1;
-      if (scrollProgress < 0.3) {
-        explosiveScale = 1 + ((t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)(scrollProgress / 0.3) * 0.8;
-      } else if (scrollProgress < 0.7) {
-        const localProgress = (scrollProgress - 0.3) / 0.4;
-        explosiveScale = 1 + 0.8 + ((t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t))(localProgress) * 1.8;
-      } else {
-        const localProgress = (scrollProgress - 0.7) / 0.3;
-        explosiveScale = 3.6 + Math.pow(localProgress, 1.5) * 1.2;
-      }
-      
-      // Clamp connections scale to match globe bounds
-      const maxScale = 4.8; // Match globe's maximum scale
-      explosiveScale = Math.min(explosiveScale, maxScale);
-      
-      connectionsRef.current.scale.setScalar(explosiveScale);
-      
-      // Animate connection line opacity with conservative scroll intensity
-      const scrollOpacityBoost = 1 + scrollProgress * 1.8; // More conservative
-      connectionsRef.current.children.forEach((child, index) => {
-        const lineMaterial = (child as THREE.Line).material as THREE.LineBasicMaterial;
-        const phase = (index * 0.1) + time * 1.5;
-        const baseOpacity = 0.15 + Math.sin(phase) * 0.15;
-        lineMaterial.opacity = Math.min(0.7, baseOpacity * scrollOpacityBoost); // Lower max opacity
-      });
     }
   });
 
   return (
     <group>
-      {/* Main globe wireframe */}
-      <mesh ref={meshRef} geometry={globeGeometry}>
-        <meshBasicMaterial 
-          color="#ffffff" 
-          wireframe 
-          opacity={isMobile ? 0.15 : 0.25} 
-          transparent 
-        />
-      </mesh>
-      
-      {/* Grid lines */}
-      <primitive ref={gridRef} object={gridLines} />
-      
-      {/* Connection lines (desktop only) */}
-      {!isMobile && <primitive ref={connectionsRef} object={connections} />}
-      
-      {/* Particles representing land tokens */}
-      <points ref={particlesRef} geometry={particles} material={particleMaterial} />
+      {/* Main Earth globe */}
+      <mesh ref={meshRef} geometry={globeGeometry} material={earthMaterial} />
     </group>
   );
 };
 
-// Camera controls for the scene - WITH EXPLOSIVE SCROLL RESPONSE
+// Camera controls for the scene
 const CameraController = ({ scrollY, isMobile }: { scrollY: number; isMobile: boolean }) => {
   const { camera } = useThree();
   const isFirstFrame = useRef(true);
@@ -671,30 +432,27 @@ const CameraController = ({ scrollY, isMobile }: { scrollY: number; isMobile: bo
   useFrame((state) => {
     const time = state.clock.elapsedTime;
     
-    // Calculate scroll-based camera distance with AGGRESSIVE pullback to frame scaled globe
+    // Calculate scroll-based camera distance
     const normalizedScrollY = Math.max(0, scrollY || 0);
-    const scrollProgress = Math.min(normalizedScrollY / 2500, 1); // Match globe's range
+    const scrollProgress = Math.min(normalizedScrollY / 2500, 1);
     
     // Smooth easing for camera movement
     const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     const easedProgress = easeInOutCubic(scrollProgress);
     
-    // AGGRESSIVE camera pullback to accommodate scaled globe and keep it in frame
-    const baseDistance = isMobile ? 10 : 8;
+    // Camera pullback to accommodate scaled globe - MUCH MORE AGGRESSIVE
+    const baseDistance = isMobile ? 12 : 10;
     let explosiveDistance = baseDistance;
     
     if (scrollProgress < 0.3) {
-      // Immediate pullback to prepare for scaling
-      explosiveDistance = baseDistance + easedProgress * (isMobile ? 8 : 12);
+      explosiveDistance = baseDistance + easedProgress * (isMobile ? 15 : 20);
     } else if (scrollProgress < 0.7) {
-      // Strong acceleration to stay ahead of globe scaling
       const localProgress = (scrollProgress - 0.3) / 0.4;
-      explosiveDistance = baseDistance + (isMobile ? 8 : 12) + easeInOutCubic(localProgress) * (isMobile ? 20 : 28);
+      explosiveDistance = baseDistance + (isMobile ? 15 : 20) + easeInOutCubic(localProgress) * (isMobile ? 35 : 50);
     } else {
-      // Maximum pullback to keep large globe in frame
       const localProgress = (scrollProgress - 0.7) / 0.3;
-      const midDistance = baseDistance + (isMobile ? 8 : 12) + (isMobile ? 20 : 28);
-      explosiveDistance = midDistance + Math.pow(localProgress, 1.2) * (isMobile ? 25 : 35);
+      const midDistance = baseDistance + (isMobile ? 15 : 20) + (isMobile ? 35 : 50);
+      explosiveDistance = midDistance + Math.pow(localProgress, 1.2) * (isMobile ? 50 : 80);
     }
     
     // Add moderate camera shake for immersion
@@ -710,7 +468,7 @@ const CameraController = ({ scrollY, isMobile }: { scrollY: number; isMobile: bo
     
     // Reduce orbit as globe gets bigger to maintain focus
     const orbitRadius = (isMobile ? 0.2 : 0.5) * (1 - scrollProgress * 0.7);
-    const orbitSpeed = time * (isMobile ? 0.05 : 0.1) * (1 - scrollProgress * 0.5); // Slow down orbit
+    const orbitSpeed = time * (isMobile ? 0.08 : 0.15) * (1 - scrollProgress * 0.5);
     
     // Apply smooth camera positioning with shake
     camera.position.x = Math.sin(orbitSpeed) * orbitRadius + cameraShake;
@@ -756,7 +514,7 @@ class GlobeErrorBoundary extends React.Component<
   }
 }
 
-// Main component - WITH EXPLOSIVE SCROLL SCALING
+// Main component
 interface GlobeAnimationProps {
   className?: string;
 }
@@ -802,10 +560,10 @@ const GlobeAnimation: React.FC<GlobeAnimationProps> = ({ className = "" }) => {
           {isReady && (
             <Canvas
               camera={{ 
-                position: [0, 0, isMobile ? 10 : 8], 
-                fov: 45,
+                position: [0, 0, isMobile ? 12 : 10], 
+                fov: 60,
                 near: 0.1,
-                far: 1000
+                far: 2000
               }}
               style={{ background: 'transparent' }}
               gl={{ 
@@ -821,8 +579,8 @@ const GlobeAnimation: React.FC<GlobeAnimationProps> = ({ className = "" }) => {
               {/* Ambient lighting */}
               <ambientLight intensity={isMobile ? 0.6 : 0.8} />
               
-              {/* Point lights for cyber glow effect */}
-              <pointLight position={[10, 10, 10]} intensity={isMobile ? 0.8 : 1.2} color="#00ffff" />
+              {/* Point lights for realistic Earth lighting */}
+              <pointLight position={[10, 10, 10]} intensity={isMobile ? 0.8 : 1.2} color="#ffffff" />
               <pointLight position={[-10, -10, -10]} intensity={isMobile ? 0.6 : 1.0} color="#ffffff" />
               {!isMobile && <pointLight position={[0, 10, -10]} intensity={0.8} color="#ffffff" />}
               
