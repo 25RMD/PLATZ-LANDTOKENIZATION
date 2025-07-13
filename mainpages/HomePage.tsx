@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import Link from "next/link";
 import AnimatedButton from "@/components/common/AnimatedButton";
@@ -213,6 +213,28 @@ const AnimatedIcon = ({ Icon, className = "" }: { Icon: any; className?: string 
 };
 
 const HomePage = () => {
+  // Hook to get responsive scale for globe zoom compensation
+  const [globeScale, setGlobeScale] = useState(1.0);
+  
+  useEffect(() => {
+    const updateGlobeScale = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        // Mobile: no scale compensation needed
+        setGlobeScale(1.0);
+      } else if (width < 1024) {
+        // Tablet: minimal scale compensation
+        setGlobeScale(1.05);
+      } else {
+        // Desktop: full scale compensation for 90% zoom
+        setGlobeScale(1.111);
+      }
+    };
+    
+    updateGlobeScale();
+    window.addEventListener('resize', updateGlobeScale);
+    return () => window.removeEventListener('resize', updateGlobeScale);
+  }, []);
   return (
     <div className="bg-white dark:bg-primary-dark relative overflow-hidden">
       {/* Enhanced Cyber background pattern */}
@@ -253,12 +275,15 @@ const HomePage = () => {
           transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
         />
 
-        {/* 3D Globe Background - Fixed positioning with zoom compensation */}
+        {/* 3D Globe Background - Fixed positioning with responsive zoom compensation */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <div className="w-[600px] h-[600px] sm:w-[700px] sm:h-[700px] md:w-[800px] md:h-[800px]" style={{
-            transform: 'scale(1.111)',
-            transformOrigin: 'center center'
-          }}>
+          <div 
+            className="w-[600px] h-[600px] sm:w-[700px] sm:h-[700px] md:w-[800px] md:h-[800px] transform origin-center"
+            style={{
+              transform: `scale(${globeScale})`,
+              transformOrigin: 'center center'
+            }}
+          >
             <GlobeAnimation className="opacity-60 dark:opacity-50" />
           </div>
         </div>
