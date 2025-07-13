@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-client';
 import { createJwt, generateNonce } from '@/lib/authUtils'; // Assuming generateNonce isn't needed here but createJwt is
 import { isAddress, verifyMessage } from 'ethers';
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-client';
 import { verifyJwt } from '@/lib/authUtils';
 import { isAddress, verifyMessage } from 'ethers';
 import { cookies } from 'next/headers';

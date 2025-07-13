@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyJwt } from '@/lib/authUtils';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma-client';
 import { ListingStatus } from '@prisma/client';
 
 // Define the expected structure of the request body
