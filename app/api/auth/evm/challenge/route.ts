@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma-client';
+import { PrismaClient } from '@prisma/client';
 import { generateNonce } from '@/lib/authUtils';
+
+const prisma = new PrismaClient();
 import { isAddress } from 'ethers';
 
 export async function POST(request: Request) {

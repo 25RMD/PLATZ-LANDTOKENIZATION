@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma-client';
-import { createJwt, generateNonce } from '@/lib/authUtils'; // Assuming generateNonce isn't needed here but createJwt is
+import { PrismaClient } from '@prisma/client';
+import { createJwt, generateNonce } from '@/lib/authUtils';
+
+const prisma = new PrismaClient(); // Assuming generateNonce isn't needed here but createJwt is
 import { isAddress, verifyMessage } from 'ethers';
 
 // Helper function to construct the challenge message, ensure it matches the frontend

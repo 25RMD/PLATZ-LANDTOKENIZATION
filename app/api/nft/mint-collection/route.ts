@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBaseUrl } from '@/lib/getBaseUrl';
-import prisma from '@/lib/prisma-client';
+import { PrismaClient } from '@prisma/client';
 import { createCollection } from '@/lib/ethereum/contractUtils';
+
+const prisma = new PrismaClient();
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { v4 as uuidv4 } from 'uuid';
 

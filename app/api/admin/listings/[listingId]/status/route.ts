@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyJwt } from '@/lib/authUtils';
-import prisma from '@/lib/prisma-client';
-import { ListingStatus } from '@prisma/client';
+import { PrismaClient, ListingStatus } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 // Define the expected structure of the request body
 interface UpdateStatusRequestBody {

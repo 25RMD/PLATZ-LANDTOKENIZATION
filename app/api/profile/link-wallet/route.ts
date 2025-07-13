@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma-client';
+import { PrismaClient } from '@prisma/client';
 import { verifyJwt } from '@/lib/authUtils';
+
+const prisma = new PrismaClient();
 import { isAddress, verifyMessage } from 'ethers';
 import { cookies } from 'next/headers';
 
