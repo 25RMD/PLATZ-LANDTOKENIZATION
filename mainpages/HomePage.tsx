@@ -284,7 +284,7 @@ const HomePage = () => {
               transformOrigin: 'center center'
             }}
           >
-            <GlobeAnimation className="opacity-60 dark:opacity-50" />
+            <GlobeAnimation className="opacity-80 dark:opacity-70" />
           </div>
         </div>
 

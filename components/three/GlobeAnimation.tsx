@@ -57,13 +57,13 @@ const createEarthTexture = () => {
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
   
-  // Create realistic ocean gradient
+  // Create realistic ocean gradient - brightened for better visibility
   const oceanGradient = ctx.createLinearGradient(0, 0, 0, size);
-  oceanGradient.addColorStop(0, '#0f172a'); // Very deep blue
-  oceanGradient.addColorStop(0.3, '#1e40af'); // Deep blue
-  oceanGradient.addColorStop(0.5, '#2563eb'); // Ocean blue
-  oceanGradient.addColorStop(0.7, '#3b82f6'); // Lighter blue
-  oceanGradient.addColorStop(1, '#1e40af'); // Back to deep
+  oceanGradient.addColorStop(0, '#1e40af'); // Deep blue (brighter)
+  oceanGradient.addColorStop(0.3, '#2563eb'); // Ocean blue (brighter)
+  oceanGradient.addColorStop(0.5, '#3b82f6'); // Lighter blue
+  oceanGradient.addColorStop(0.7, '#60a5fa'); // Even lighter blue
+  oceanGradient.addColorStop(1, '#2563eb'); // Back to ocean blue
   
   ctx.fillStyle = oceanGradient;
   ctx.fillRect(0, 0, size, size);
@@ -75,8 +75,8 @@ const createEarthTexture = () => {
     const radius = Math.random() * 100 + 50;
     
     const depthGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    depthGradient.addColorStop(0, 'rgba(15, 23, 42, 0.3)'); // Darker depths
-    depthGradient.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    depthGradient.addColorStop(0, 'rgba(30, 64, 175, 0.2)'); // Brighter depths
+    depthGradient.addColorStop(1, 'rgba(30, 64, 175, 0)');
     
     ctx.fillStyle = depthGradient;
     ctx.beginPath();
@@ -347,10 +347,10 @@ const Globe = ({ scrollY, isMobile }: { scrollY: number; isMobile: boolean }) =>
       map: diffuseTexture,
       normalMap: normalTexture,
       normalScale: new THREE.Vector2(0.5, 0.5),
-      shininess: 10,
-      specular: new THREE.Color(0x111111),
-      transparent: true,
-      opacity: isMobile ? 0.85 : 0.9,
+      shininess: 30,
+      specular: new THREE.Color(0x333333),
+      transparent: false,
+      opacity: 1.0,
     });
   }, [isMobile]);
 
@@ -576,13 +576,13 @@ const GlobeAnimation: React.FC<GlobeAnimationProps> = ({ className = "" }) => {
               dpr={isMobile ? 1 : (typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1)}
               resize={{ polyfill: ResizeObserver }}
             >
-              {/* Ambient lighting */}
-              <ambientLight intensity={isMobile ? 0.6 : 0.8} />
+              {/* Ambient lighting - increased for better visibility */}
+              <ambientLight intensity={isMobile ? 1.0 : 1.2} />
               
-              {/* Point lights for realistic Earth lighting */}
-              <pointLight position={[10, 10, 10]} intensity={isMobile ? 0.8 : 1.2} color="#ffffff" />
-              <pointLight position={[-10, -10, -10]} intensity={isMobile ? 0.6 : 1.0} color="#ffffff" />
-              {!isMobile && <pointLight position={[0, 10, -10]} intensity={0.8} color="#ffffff" />}
+              {/* Point lights for realistic Earth lighting - increased intensity */}
+              <pointLight position={[10, 10, 10]} intensity={isMobile ? 1.5 : 2.0} color="#ffffff" />
+              <pointLight position={[-10, -10, -10]} intensity={isMobile ? 1.2 : 1.8} color="#ffffff" />
+              {!isMobile && <pointLight position={[0, 10, -10]} intensity={1.5} color="#ffffff" />}
               
               {/* Globe and animations with scroll effects */}
               <Globe scrollY={scrollValue} isMobile={isMobile} />
