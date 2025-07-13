@@ -165,7 +165,7 @@ const createEarthTexture = () => {
       ctx.fillStyle = terrainGradient;
       
       // Create organic continent shape
-      ctx.beginPath();
+  ctx.beginPath();
       const points = 32;
       for (let i = 0; i <= points; i++) {
         const angle = (i / points) * Math.PI * 2;
@@ -179,14 +179,14 @@ const createEarthTexture = () => {
         
         const x = baseX + width/2 + Math.cos(angle) * radiusX;
         const y = baseY + height/2 + Math.sin(angle) * radiusY;
-        
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-      ctx.closePath();
+    
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.closePath();
       ctx.fill();
       
       // Add mountain ranges and terrain features
