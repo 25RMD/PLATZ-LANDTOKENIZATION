@@ -60,7 +60,7 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.511.0",
     "mime-types": "^2.1.35",
-    "next": "^15.2.4",
+    "next": "15.2.8",
     "next-auth": "^5.0.0-beta.21",
     "next-themes": "^1.0.0-beta.0",
     "react": "^19.1.0",
